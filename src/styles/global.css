@@ -1268,6 +1268,26 @@ button {
   margin: 0;
 }
 
+a.project-card {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+a.project-card:hover {
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+a.mini-project-card {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+a.mini-project-card:hover {
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
 .project-card {
   overflow: hidden;
 }

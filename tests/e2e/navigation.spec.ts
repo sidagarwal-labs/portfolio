@@ -446,6 +446,26 @@ test.describe("sub-route pages", () => {
     await expect(page.locator("h1")).toBeVisible();
   });
 
+  test("project cards link to GitHub repos", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator("h1")).toBeVisible();
+
+    // Scroll to the #lab section so project cards are in the DOM
+    await page.locator("#lab").scrollIntoViewIfNeeded();
+    await page.waitForTimeout(500);
+
+    const projectCards = page.locator("a.mini-project-card");
+    const count = await projectCards.count();
+    expect(count).toBeGreaterThan(0);
+
+    for (let i = 0; i < count; i++) {
+      const href = await projectCards.nth(i).getAttribute("href");
+      expect(href).toBeTruthy();
+      expect(href).toContain("github.com");
+      expect(await projectCards.nth(i).getAttribute("target")).toBe("_blank");
+    }
+  });
+
   test("contact page loads", async ({ page }) => {
     await page.goto("/contact");
     await expect(page.locator("h1")).toBeVisible();

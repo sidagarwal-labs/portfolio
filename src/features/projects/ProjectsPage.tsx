@@ -222,7 +222,13 @@ function ProjectsPage() {
 
       <section className="project-grid">
         {filteredProjects.map((project) => (
-          <article key={project.slug} className="glass-card project-card">
+          <a
+            key={project.slug}
+            className="glass-card project-card"
+            href={project.href}
+            target="_blank"
+            rel="noreferrer"
+          >
             <ProjectVisual
               title={project.title}
               stack={project.stack}
@@ -269,14 +275,8 @@ function ProjectsPage() {
                 <span className="section-heading__eyebrow">What this proves</span>
                 <p>{project.whatThisProves}</p>
               </div>
-
-              {project.href ? (
-                <a className="inline-link" href={project.href} target="_blank" rel="noreferrer">
-                  Open public repo
-                </a>
-              ) : null}
             </div>
-          </article>
+          </a>
         ))}
       </section>
     </PageFrame>

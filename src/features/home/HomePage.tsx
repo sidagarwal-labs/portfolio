@@ -349,7 +349,13 @@ function HomePage() {
 
           <div className="mini-project-grid">
             {featuredProjects.map((project) => (
-              <article key={project.slug} className="mini-project-card">
+              <a
+                key={project.slug}
+                className="mini-project-card"
+                href={project.href}
+                target="_blank"
+                rel="noreferrer"
+              >
                 <ProjectVisual
                   title={project.title}
                   stack={project.stack}
@@ -361,7 +367,7 @@ function HomePage() {
                   <span>{`${project.focusArea} · ${project.category}`}</span>
                   <p>{project.whatThisProves}</p>
                 </div>
-              </article>
+              </a>
             ))}
           </div>
         </section>

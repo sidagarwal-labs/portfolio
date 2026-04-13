@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { profileContent } from "../content/siteContent";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { useSectionSpy } from "../hooks/useSectionSpy";
@@ -24,6 +24,7 @@ function getActiveSection(pathname: string, hash: string) {
 
 function SiteNavigation() {
   const location = useLocation();
+  const navigate = useNavigate();
   const spiedSection = useSectionSpy(sectionOrder, sectionOrder[0]);
   /* On the home page, the scroll spy is the authority for which section is active.
      On sub-routes (/experience, /projects, …), fall back to the route map. */
@@ -43,7 +44,7 @@ function SiteNavigation() {
       if (target) {
         e.preventDefault();
         target.scrollIntoView({ behavior: "smooth" });
-        window.history.replaceState(null, "", `/#${hash}`);
+        navigate(`/#${hash}`, { replace: true });
       }
     }
   }
