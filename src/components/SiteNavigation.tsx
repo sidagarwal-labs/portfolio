@@ -34,6 +34,20 @@ function SiteNavigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuId = useId();
 
+  /** When already on "/", React Router won't scroll to the hash target on its
+   *  own. Force-scroll to the element so in-page nav always works. */
+  function handleNavClick(e: React.MouseEvent<HTMLAnchorElement>, href: string) {
+    const hash = href.split("#")[1];
+    if (location.pathname === "/" && hash) {
+      const target = document.getElementById(hash);
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: "smooth" });
+        window.history.replaceState(null, "", `/#${hash}`);
+      }
+    }
+  }
+
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location.pathname]);
@@ -65,6 +79,7 @@ function SiteNavigation() {
               <Link
                 key={link.id}
                 to={link.href}
+                onClick={(e) => handleNavClick(e, link.href)}
                 className={activeSection === link.sectionId ? "site-nav__link is-active" : "site-nav__link"}
               >
                 {link.label}
@@ -100,6 +115,7 @@ function SiteNavigation() {
               <Link
                 key={link.id}
                 to={link.href}
+                onClick={(e) => handleNavClick(e, link.href)}
                 className={activeSection === link.sectionId ? "site-nav__link is-active" : "site-nav__link"}
               >
                 {link.label}
