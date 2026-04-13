@@ -55,7 +55,7 @@ function SiteNavigation() {
             </span>
             <span>
               <strong>{profileContent.shortName}</strong>
-              <small>technical PM / markets / data science</small>
+              <small>Trying to quantify the unknown</small>
             </span>
             <span className="nav-online-dot" aria-hidden="true" />
           </NavLink>
