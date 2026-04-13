@@ -9,3 +9,6 @@ test-results/
 vite.config.js
 vite.config.d.ts
 *.bak
+.env
+.env.local
+.env.*.local

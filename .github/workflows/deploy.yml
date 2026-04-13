@@ -32,6 +32,8 @@ jobs:
 
       - name: Build app
         run: npm run build
+        env:
+          VITE_FINNHUB_KEY: ${{ secrets.VITE_FINNHUB_KEY }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

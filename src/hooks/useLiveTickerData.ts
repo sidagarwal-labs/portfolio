@@ -37,34 +37,36 @@ export function useLiveTickerData(): TickerItem[] {
     llmLatency: 42,
   });
 
-  /* ── Real stock prices via Vite dev-server proxy → Yahoo Finance ── */
+  /* ── Stock prices via Finnhub (CORS-friendly, free tier) ── */
   useEffect(() => {
     let cancelled = false;
     const symbols = ["NVDA", "MSFT", "TSLA", "AAPL", "GOOGL", "CRWV", "MU"] as const;
+    const FINNHUB_KEY = import.meta.env.VITE_FINNHUB_KEY || "";
 
     async function fetchQuotes() {
+      if (!FINNHUB_KEY) return;
       for (const sym of symbols) {
+        if (cancelled) break;
         try {
           const ctrl = new AbortController();
           const timer = setTimeout(() => ctrl.abort(), 8000);
           const res = await fetch(
-            `/api/yahoo/v8/finance/chart/${sym}?range=1d&interval=1m`,
+            `https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FINNHUB_KEY}`,
             { signal: ctrl.signal }
           );
           clearTimeout(timer);
           if (!res.ok || cancelled) continue;
           const json = await res.json();
-          const meta = json?.chart?.result?.[0]?.meta;
-          if (meta?.regularMarketPrice && meta?.previousClose) {
-            const price = meta.regularMarketPrice as number;
-            const prev = meta.previousClose as number;
-            const change = ((price - prev) / prev) * 100;
+          /* Finnhub quote: c = current, pc = previous close, dp = percent change */
+          if (json?.c && json?.pc) {
+            const price = json.c as number;
+            const change = json.dp as number;
             if (!cancelled) {
               setStocks((p) => ({ ...p, [sym]: { price, change } }));
             }
           }
         } catch {
-          /* proxy not available (production) — leave at 0 → shows seed fallback */
+          /* network error — skip this symbol */
         }
       }
     }
