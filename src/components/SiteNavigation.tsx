@@ -60,6 +60,18 @@ function SiteNavigation() {
             <span className="nav-online-dot" aria-hidden="true" />
           </NavLink>
 
+          <nav className="site-nav__links site-nav__links--inline" aria-label="Primary">
+            {profileContent.navLinks.map((link) => (
+              <Link
+                key={link.id}
+                to={link.href}
+                className={activeSection === link.sectionId ? "site-nav__link is-active" : "site-nav__link"}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+
           <div className="site-nav__desktop-actions">
             <a className="site-nav__button site-nav__button--ghost" href={profileContent.resumeHref} target="_blank" rel="noreferrer">
               Resume
