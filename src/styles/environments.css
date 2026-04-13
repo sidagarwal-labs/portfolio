@@ -1,0 +1,264 @@
+/* ═══════════════════════════════════════════════════════════
+   Environment Background Themes
+   Each section maps to a planet/environment that tints:
+   - the page background gradient
+   - glass card tints
+   - ambient glow overlays
+   Transitions are animated for smooth cross-fading.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Transition setup ── */
+.page-shell[data-env] {
+  transition: background 1.6s ease;
+}
+
+.page-shell[data-env]::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  transition: opacity 1.6s ease, background 1.6s ease;
+}
+
+/* ─────────────────────────────────────
+   EARTH — intro (warm sky, green ground)
+   ───────────────────────────────────── */
+.page-shell[data-env="intro"] {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(26, 58, 106, 0.5) 0%, transparent 55%),
+    radial-gradient(circle at 80% 5%, rgba(245, 158, 11, 0.18) 0%, transparent 25%),
+    radial-gradient(circle at 20% 85%, rgba(74, 106, 80, 0.2) 0%, transparent 30%),
+    linear-gradient(180deg, #0c1628 0%, #0a1422 30%, #08120e 60%, #0a0e1a 100%);
+}
+
+.page-shell[data-env="intro"]::before {
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(100, 160, 220, 0.08) 0%, transparent 40%),
+    radial-gradient(ellipse at 50% 110%, rgba(74, 130, 80, 0.06) 0%, transparent 35%);
+  opacity: 1;
+}
+
+/* Clouds overlay */
+.page-shell[data-env="intro"]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 120px 30px at 20% 12%, rgba(232, 221, 208, 0.06), transparent),
+    radial-gradient(ellipse 160px 35px at 55% 8%, rgba(232, 221, 208, 0.04), transparent),
+    radial-gradient(ellipse 100px 25px at 78% 15%, rgba(232, 221, 208, 0.05), transparent),
+    radial-gradient(ellipse 140px 28px at 35% 18%, rgba(232, 221, 208, 0.03), transparent);
+  transition: opacity 1.6s ease;
+  opacity: 1;
+}
+
+/* ─────────────────────────────────────
+   MOON — impact (grey, stark, cratered)
+   ───────────────────────────────────── */
+.page-shell[data-env="impact"] {
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(160, 152, 144, 0.15) 0%, transparent 45%),
+    radial-gradient(circle at 70% 85%, rgba(128, 120, 112, 0.1) 0%, transparent 25%),
+    radial-gradient(circle at 15% 15%, rgba(200, 214, 229, 0.06) 0%, transparent 30%),
+    linear-gradient(180deg, #050508 0%, #0a0a0e 30%, #12100e 65%, #0d0c0a 100%);
+}
+
+.page-shell[data-env="impact"]::before {
+  background:
+    radial-gradient(ellipse at 50% 110%, rgba(168, 160, 148, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 85% 20%, rgba(26, 92, 138, 0.06) 0%, transparent 20%);
+  opacity: 1;
+}
+
+/* Subtle crater pattern overlay */
+.page-shell[data-env="impact"]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle 45px at 25% 70%, rgba(80, 76, 72, 0.08), transparent),
+    radial-gradient(circle 65px at 60% 80%, rgba(80, 76, 72, 0.06), transparent),
+    radial-gradient(circle 35px at 42% 65%, rgba(80, 76, 72, 0.07), transparent),
+    radial-gradient(circle 80px at 75% 90%, rgba(80, 76, 72, 0.05), transparent);
+  transition: opacity 1.6s ease;
+  opacity: 1;
+}
+
+/* ─────────────────────────────────────
+   MARS — lab (red, dusty, fiery)
+   ───────────────────────────────────── */
+.page-shell[data-env="lab"] {
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(184, 68, 32, 0.2) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(200, 96, 48, 0.12) 0%, transparent 30%),
+    radial-gradient(circle at 15% 20%, rgba(106, 40, 16, 0.15) 0%, transparent 35%),
+    radial-gradient(circle at 50% 0%, rgba(42, 16, 8, 0.6) 0%, transparent 45%),
+    linear-gradient(180deg, #1a0c06 0%, #1e1008 25%, #24140a 50%, #18100a 100%);
+}
+
+.page-shell[data-env="lab"]::before {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(208, 128, 80, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 100%, rgba(154, 50, 16, 0.1) 0%, transparent 40%);
+  opacity: 1;
+}
+
+/* Dust haze overlay */
+.page-shell[data-env="lab"]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    linear-gradient(180deg, rgba(200, 96, 48, 0.03) 0%, rgba(184, 68, 32, 0.06) 50%, rgba(106, 40, 16, 0.04) 100%);
+  transition: opacity 1.6s ease;
+  opacity: 1;
+  animation: mars-dust-drift 12s ease-in-out infinite alternate;
+}
+
+@keyframes mars-dust-drift {
+  0% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+/* ─────────────────────────────────────
+   SPACESHIP — library (deep interior, hull tones)
+   ───────────────────────────────────── */
+.page-shell[data-env="library"] {
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(58, 80, 96, 0.15) 0%, transparent 45%),
+    radial-gradient(circle at 30% 20%, rgba(136, 187, 221, 0.06) 0%, transparent 25%),
+    radial-gradient(circle at 70% 70%, rgba(245, 158, 11, 0.05) 0%, transparent 20%),
+    linear-gradient(180deg, #060a12 0%, #0a1218 30%, #0c141e 55%, #080c14 100%);
+}
+
+.page-shell[data-env="library"]::before {
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(42, 64, 80, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(168, 85, 247, 0.04) 0%, transparent 25%);
+  opacity: 1;
+}
+
+/* Hull panel lines overlay */
+.page-shell[data-env="library"]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    repeating-linear-gradient(90deg, transparent 0px, transparent 58px, rgba(58, 80, 96, 0.04) 58px, rgba(58, 80, 96, 0.04) 60px),
+    repeating-linear-gradient(0deg, transparent 0px, transparent 118px, rgba(58, 80, 96, 0.03) 118px, rgba(58, 80, 96, 0.03) 120px);
+  transition: opacity 1.6s ease;
+  opacity: 1;
+}
+
+/* ─────────────────────────────────────
+   ISS — contact (orbital, Earth-glow blues)
+   ───────────────────────────────────── */
+.page-shell[data-env="contact"] {
+  background:
+    radial-gradient(ellipse at 50% 110%, rgba(26, 92, 138, 0.2) 0%, transparent 50%),
+    radial-gradient(circle at 50% 100%, rgba(74, 168, 216, 0.1) 0%, transparent 35%),
+    radial-gradient(circle at 30% 30%, rgba(136, 187, 238, 0.04) 0%, transparent 25%),
+    linear-gradient(180deg, #020408 0%, #040810 35%, #060c14 60%, #040608 100%);
+}
+
+.page-shell[data-env="contact"]::before {
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(10, 77, 112, 0.12) 0%, transparent 45%),
+    radial-gradient(circle at 50% 110%, rgba(200, 224, 255, 0.04) 0%, transparent 30%);
+  opacity: 1;
+}
+
+/* Earth limb glow overlay */
+.page-shell[data-env="contact"]::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 600px 80px at 50% 98%, rgba(74, 168, 216, 0.1), transparent),
+    radial-gradient(ellipse 400px 40px at 50% 100%, rgba(200, 224, 255, 0.06), transparent);
+  transition: opacity 1.6s ease;
+  opacity: 1;
+}
+
+/* ─────────────────────────────────────
+   Glass card tint per environment
+   ───────────────────────────────────── */
+.page-shell[data-env="intro"] .glass-card {
+  background: rgba(12, 22, 40, 0.22);
+  border-color: rgba(100, 160, 220, 0.14);
+}
+
+.page-shell[data-env="impact"] .glass-card {
+  background: rgba(13, 12, 10, 0.22);
+  border-color: rgba(200, 214, 229, 0.12);
+}
+
+.page-shell[data-env="lab"] .glass-card {
+  background: rgba(26, 14, 8, 0.22);
+  border-color: rgba(255, 107, 53, 0.14);
+}
+
+.page-shell[data-env="library"] .glass-card {
+  background: rgba(8, 14, 22, 0.22);
+  border-color: rgba(136, 187, 221, 0.12);
+}
+
+.page-shell[data-env="contact"] .glass-card {
+  background: rgba(4, 8, 16, 0.22);
+  border-color: rgba(74, 168, 216, 0.12);
+}
+
+/* Smooth glass card transitions */
+.page-shell[data-env] .glass-card {
+  transition: background 1.2s ease, border-color 1.2s ease;
+}
+
+/* ─────────────────────────────────────
+   Static fallback per environment
+   ───────────────────────────────────── */
+.scene-static[data-env="intro"] .scene-static__gradient {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(26, 58, 106, 0.3), transparent 40%),
+    radial-gradient(circle at 82% 8%, rgba(245, 158, 11, 0.16), transparent 24%),
+    radial-gradient(circle at 14% 70%, rgba(74, 106, 80, 0.12), transparent 26%),
+    linear-gradient(180deg, rgba(12, 22, 40, 0.4), rgba(8, 18, 14, 0.9));
+}
+
+.scene-static[data-env="impact"] .scene-static__gradient {
+  background:
+    radial-gradient(circle at 50% 100%, rgba(160, 152, 144, 0.1), transparent 40%),
+    radial-gradient(circle at 15% 15%, rgba(200, 214, 229, 0.06), transparent 30%),
+    linear-gradient(180deg, rgba(5, 5, 8, 0.6), rgba(13, 12, 10, 0.95));
+}
+
+.scene-static[data-env="lab"] .scene-static__gradient {
+  background:
+    radial-gradient(circle at 50% 100%, rgba(184, 68, 32, 0.15), transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(200, 96, 48, 0.1), transparent 30%),
+    linear-gradient(180deg, rgba(26, 12, 6, 0.5), rgba(24, 16, 10, 0.95));
+}
+
+.scene-static[data-env="library"] .scene-static__gradient {
+  background:
+    radial-gradient(circle at 50% 40%, rgba(58, 80, 96, 0.12), transparent 40%),
+    radial-gradient(circle at 30% 20%, rgba(136, 187, 221, 0.05), transparent 25%),
+    linear-gradient(180deg, rgba(6, 10, 18, 0.5), rgba(8, 12, 20, 0.95));
+}
+
+.scene-static[data-env="contact"] .scene-static__gradient {
+  background:
+    radial-gradient(circle at 50% 110%, rgba(26, 92, 138, 0.15), transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(74, 168, 216, 0.08), transparent 30%),
+    linear-gradient(180deg, rgba(2, 4, 8, 0.5), rgba(4, 6, 8, 0.95));
+}

@@ -1,139 +1,34 @@
-<!-- index.html -->
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sid Agarwal's Blog</title>
-  <style>
-      body {
-        font-family: sans-serif;
-        max-width: 900px;
-        margin: 0;
-        line-height: 1.0;
-        padding: 20px 0 0 0;
-        background-color: #000;
-        color: #fff;
-      }
-    .container {
-        width: 100%;
-        padding: 0;
-    }
-    .content {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: flex-start;
-        gap: 12px;
-        padding: 20px;
-    }
-    .bio {
-        flex: 1 1 0;
-        text-align: left;
-    }
-    h1, h2 {
-      color: #fff;
-      margin: 0;
-      margin-bottom: 0.5em;
-      text-align: left;
-      font-size: 1.5em;
-    }
-    p {
-        margin: 0 0 0.75em 0;
-        text-align: left;
-    }
-      ul {
-          text-align: left;
-          padding-left: 20px;
-      }
-      li {
-          margin-bottom: 0.5em;
-          white-space: nowrap;
-      }
-      .nav {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        text-align: left;
-        background-color: #000;
-        padding: 10px 0;
-        z-index: 1000;
-      }
-      .nav a {
-        margin: 0 15px;
-      }
-      a {
-        color: #4ea8ff;
-        text-decoration: none;
-      }
-    a:hover {
-      text-decoration: underline;
-    }
-    .photo {
-        flex: 0 0 auto;
-        align-self: flex-start;
-    }
-    .photo img {
-        width: 100%;
-        max-width: 200px;
-        height: auto;
-        display: block;
-    }
-    footer {
-      margin-top: 50px;
-      font-size: 0.9em;
-      color: #aaa;
-      text-align: left;
-      padding: 0 20px;
-    }
-    @media (max-width: 800px) {
-      .content {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-      .photo {
-        width: 100%;
-        margin-top: 20px;
-      }
-      .photo img {
-        max-width: 300px;
-        width: 100%;
-      }
-      li {
-        white-space: normal;
-      }
-    }
-  </style>
-<meta name="google-site-verification" content="zcGX4LsFvqoQE6E6TLoD6Z_IdOILbmkPFTXbJIkWJKQ" />
-</head>
-<body>
-        <div class="content">
-          <div class="bio">
-            <h1>Sid Agarwal</h1>
-            <p>Hi, welcome to my website. Some things about me:</p>
-            <ul>
-                <li>I am a PM working on Search and LLMs.</li>
-                <li>I have my undergrad in Business Management, Supply Chain Operations, Economics.</li>
-                <li>I am pursuing my masters in Data Science.</li>
-                <li>I like space, financial markets, technology.</li>
-            </ul>
-          </div>
-          <nav class="nav">
-              <a href="index.html">Home</a>
-              <a href="blog.html">Blog</a>
-              <a href="portfolio.html">Portfolio</a>
-              <a href="books.html">Books</a>
-          </nav>
-          <div class="photo">
-            <img src="https://cdn.costumewall.com/wp-content/uploads/2015/09/dexters-laboratory-costume.jpg" />
-          </div>
-        </div>
-  <footer style="margin-top: 50px; font-size: 0.9em; color: gray;">
-    &copy; <span id="year"></span> Sid Agarwal. All rights reserved.
-  </footer>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Sid Agarwal is a technical PM and product-builder working on Microsoft Search Relevance, M365 Chat, Copilot, and applied ML systems."
+    />
+    <meta name="theme-color" content="#07111e" />
+    <meta name="google-site-verification" content="zcGX4LsFvqoQE6E6TLoD6Z_IdOILbmkPFTXbJIkWJKQ" />
+    <title>Sid Agarwal | Technical PM / Product Builder</title>
+    <script>
+      (function () {
+        var search = new URLSearchParams(window.location.search);
+        var redirectedPath = search.get("p");
+        if (!redirectedPath) {
+          return;
+        }
 
-  <script>
-    document.getElementById('year').textContent = new Date().getFullYear();
-  </script>
-</body>
+        var redirectedQuery = search.get("q");
+        var basePath = window.location.pathname.replace(/\/$/, "");
+        var restoredPath = redirectedPath.replace(/~and~/g, "&");
+        var restoredQuery = redirectedQuery ? "?" + redirectedQuery.replace(/~and~/g, "&") : "";
+
+        window.history.replaceState(null, "", basePath + restoredPath + restoredQuery + window.location.hash);
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
