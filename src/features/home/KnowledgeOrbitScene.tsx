@@ -20,14 +20,6 @@ type KnowledgeOrbitSceneProps = {
   reducedMotion: boolean;
 };
 
-/* ── Section ordering for adjacency checks ── */
-const SECTION_ORDER = ["intro", "impact", "lab", "library", "contact"];
-
-/** Returns true if the section should be rendered (only the active section) */
-function shouldRender(sectionId: string, activeSectionId: string): boolean {
-  return sectionId === activeSectionId;
-}
-
 /* ── Travel paths between environments (subtle route lines) ── */
 function TravelPaths() {
   const paths = useMemo(() => [
@@ -80,22 +72,13 @@ function KnowledgeOrbitScene({ sections, activeSectionId, reducedMotion }: Knowl
       <StarField />
       <TravelPaths />
 
-      {/* Per-section immersive environments — only render active + adjacent */}
-      <group visible={shouldRender("intro", sid)}>
-        <EarthEnvironment />
-      </group>
-      <group visible={shouldRender("impact", sid)}>
-        <MoonEnvironment />
-      </group>
-      <group visible={shouldRender("lab", sid)}>
-        <MarsEnvironment />
-      </group>
-      <group visible={shouldRender("library", sid)}>
-        <SpaceshipEnvironment />
-      </group>
-      <group visible={shouldRender("contact", sid)}>
-        <ISSEnvironment />
-      </group>
+      {/* Per-section immersive environments — only the active section is mounted,
+          so hidden environments don't build geometry or run animation loops */}
+      {sid === "intro" && <EarthEnvironment />}
+      {sid === "impact" && <MoonEnvironment />}
+      {sid === "lab" && <MarsEnvironment />}
+      {sid === "library" && <SpaceshipEnvironment />}
+      {sid === "contact" && <ISSEnvironment />}
 
       {/* Camera */}
       <CameraRig activeSection={activeSection} reducedMotion={reducedMotion} />

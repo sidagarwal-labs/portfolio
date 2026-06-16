@@ -1164,4 +1164,3 @@ export const profileContent: ProfileContent = {
   books
 };
 
-export { books, experience, navLinks, projects, sceneSections, writing };

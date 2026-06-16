@@ -8,7 +8,7 @@ import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { usePageReveal } from "../../hooks/usePageReveal";
 import { usePrefersReducedMotion } from "../../hooks/usePrefersReducedMotion";
 import { useSectionSpy } from "../../hooks/useSectionSpy";
-import { useLiveTickerData } from "../../hooks/useLiveTickerData";
+import LiveTicker from "./LiveTicker";
 import KnowledgeOrbitScene from "./KnowledgeOrbitScene";
 
 const sectionOrder = profileContent.sceneSections.map((section) => section.id);
@@ -177,8 +177,6 @@ function HomePage() {
 
   const frontierWatch = ["Starship reusable cadence", "GPU compute scaling", "LLM inference cost curve", "Autonomous systems TAM"];
 
-  const tickerItems = useLiveTickerData();
-
   return (
     <div className={isReady ? "page-shell page-shell--ready home-page" : "page-shell page-shell--entering home-page"} data-env={activeSection.id}>
       {useStaticScene ? (
@@ -192,7 +190,7 @@ function HomePage() {
         </div>
       ) : (
         <div className="scene-canvas" aria-hidden="true">
-          <Canvas camera={{ position: [0, 6, 14], fov: 50 }} dpr={[1, 1.6]}>
+          <Canvas camera={{ position: [0, 6, 14], fov: 50 }} dpr={[1, 1.5]}>
             <KnowledgeOrbitScene
               sections={profileContent.sceneSections}
               activeSectionId={activeSection.id}
@@ -459,21 +457,7 @@ function HomePage() {
         </svg>
       </button>
 
-      <div className="stock-ticker" aria-hidden="true">
-        <div className="stock-ticker__track">
-          {[...tickerItems, ...tickerItems].map((item, i) =>
-            item.href ? (
-              <a key={i} className={`stock-ticker__item stock-ticker__item--${item.variant}`} href={item.href} target="_blank" rel="noreferrer">
-                {item.symbol} <strong>{item.value}</strong>
-              </a>
-            ) : (
-              <span key={i} className={`stock-ticker__item stock-ticker__item--${item.variant}`}>
-                {item.symbol} <strong>{item.value}</strong>
-              </span>
-            )
-          )}
-        </div>
-      </div>
+      <LiveTicker />
     </div>
   );
 }

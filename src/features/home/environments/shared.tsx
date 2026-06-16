@@ -1,5 +1,5 @@
 import { useFrame, useThree } from "@react-three/fiber";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { SceneSection } from "../../../types/content";
 
@@ -56,6 +56,10 @@ export function CameraRig({ activeSection, reducedMotion }: { activeSection: Sce
   const currentLook = useRef(new THREE.Vector3(...activeSection.position));
   const posVel = useRef(new THREE.Vector3());
   const lookVel = useRef(new THREE.Vector3());
+  // Preallocated scratch vectors so the per-frame spring integration
+  // does not allocate (avoids GC pauses that show up as periodic hitches).
+  const scratchForce = useRef(new THREE.Vector3());
+  const scratchDamp = useRef(new THREE.Vector3());
 
   useFrame((state, delta) => {
     posTarget.current.set(...activeSection.cameraPosition);
@@ -69,15 +73,20 @@ export function CameraRig({ activeSection, reducedMotion }: { activeSection: Sce
       const stiffness = 12;
       const damping = 8;
 
-      const posDiff = posTarget.current.clone().sub(currentPos.current);
-      const posForce = posDiff.multiplyScalar(stiffness);
-      posVel.current.add(posForce.sub(posVel.current.clone().multiplyScalar(damping)).multiplyScalar(dt));
-      currentPos.current.add(posVel.current.clone().multiplyScalar(dt));
+      // vel += ((target - current) * stiffness - vel * damping) * dt; current += vel * dt
+      scratchForce.current.copy(posTarget.current).sub(currentPos.current).multiplyScalar(stiffness);
+      scratchDamp.current.copy(posVel.current).multiplyScalar(damping);
+      scratchForce.current.sub(scratchDamp.current).multiplyScalar(dt);
+      posVel.current.add(scratchForce.current);
+      scratchForce.current.copy(posVel.current).multiplyScalar(dt);
+      currentPos.current.add(scratchForce.current);
 
-      const lookDiff = lookTarget.current.clone().sub(currentLook.current);
-      const lookForce = lookDiff.multiplyScalar(stiffness);
-      lookVel.current.add(lookForce.sub(lookVel.current.clone().multiplyScalar(damping)).multiplyScalar(dt));
-      currentLook.current.add(lookVel.current.clone().multiplyScalar(dt));
+      scratchForce.current.copy(lookTarget.current).sub(currentLook.current).multiplyScalar(stiffness);
+      scratchDamp.current.copy(lookVel.current).multiplyScalar(damping);
+      scratchForce.current.sub(scratchDamp.current).multiplyScalar(dt);
+      lookVel.current.add(scratchForce.current);
+      scratchForce.current.copy(lookVel.current).multiplyScalar(dt);
+      currentLook.current.add(scratchForce.current);
 
       if (currentPos.current.distanceTo(posTarget.current) < 0.2 && posVel.current.length() < 0.5) {
         currentPos.current.copy(posTarget.current);
@@ -97,7 +106,7 @@ export function CameraRig({ activeSection, reducedMotion }: { activeSection: Sce
 /* ── Star Field (visible from all environments) ── */
 export function StarField() {
   const ref = useRef<THREE.Points>(null);
-  const positions = Float32Array.from({ length: 3000 }, () => THREE.MathUtils.randFloatSpread(300));
+  const positions = useMemo(() => Float32Array.from({ length: 3000 }, () => THREE.MathUtils.randFloatSpread(300)), []);
   useFrame((_, d) => { if (ref.current) ref.current.rotation.y += d * 0.002; });
   return (
     <points ref={ref}>
