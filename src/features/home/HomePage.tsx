@@ -145,8 +145,8 @@ function HomePage() {
   }, [location.hash]);
 
   const featuredProjects = [
-    ...profileContent.projects.filter((project) => project.focusArea === "Data science" || project.focusArea === "Analytics"),
-    ...profileContent.projects.filter((project) => project.focusArea !== "Data science" && project.focusArea !== "Analytics")
+    ...profileContent.projects.filter((project) => project.focusArea === "AI product systems" || project.focusArea === "Data science" || project.focusArea === "Analytics"),
+    ...profileContent.projects.filter((project) => project.focusArea !== "AI product systems" && project.focusArea !== "Data science" && project.focusArea !== "Analytics")
   ].slice(0, 4);
 
   const stackTracker = useMemo(

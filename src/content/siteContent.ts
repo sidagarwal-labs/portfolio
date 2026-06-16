@@ -210,6 +210,108 @@ const experience: ExperienceEntry[] = [
 
 const projects: ProjectEntry[] = [
   {
+    slug: "hireme-ai",
+    title: "HireMe.AI",
+    category: "AI product · Public GitHub",
+    focusArea: "AI product systems",
+    archetype: "mission-schematic",
+    thesis:
+      "A resume builder is a good excuse to ship a real end-to-end LLM product: structured parsing, tailored generation, agentic job search, and hybrid retrieval that all have to hold up together.",
+    description:
+      "An AI-powered resume and cover-letter builder with integrated job search. Upload a resume and paste a job description to get tailored documents, or search across multiple job boards and let hybrid RAG rank the best matches. Built with @jeffsengsy.",
+    missionReadout: [
+      { label: "Bull Signal", value: "Hybrid RAG ranking", detail: "BM25 and FAISS embeddings fused with Reciprocal Rank Fusion across three job boards.", tone: "positive" },
+      { label: "Growth Trend", value: "Agentic job search", detail: "A LangChain agent routes each query to Adzuna, The Muse, or JobSpy based on intent.", tone: "neutral" },
+      { label: "Vol Alert", value: "Hallucination guardrails", detail: "Empty profiles can make an LLM invent credentials, so anti-hallucination prompts and untrusted-input handling are first-order.", tone: "caution" }
+    ],
+    stack: ["Streamlit", "LangChain", "LangGraph", "OpenAI", "FAISS", "Pydantic"],
+    comparisonChips: ["Resume parsing", "Doc generation", "Agentic search", "Hybrid RAG", "RRF ranking", "LLM-as-judge eval", "Pydantic schemas", "Prompt-injection defense"],
+    artifacts: ["Live Streamlit app", "Evaluation suite", "Presentation + documentation"],
+    evidence: [
+      {
+        label: "Product surface",
+        value: "Resume parsing into a validated Pydantic profile, parallel resume and cover-letter generation, and natural-language job search in one Streamlit app."
+      },
+      {
+        label: "Retrieval lens",
+        value: "Hybrid BM25 and FAISS ranking fused with Reciprocal Rank Fusion (k=60) - dense plus lexical retrieval without a dedicated vector database."
+      },
+      {
+        label: "Evaluation lens",
+        value: "LLM-as-judge scoring plus deterministic metrics; an A/B test found gpt-4.1-nano beat gpt-4.1-mini on quality and faithfulness at twice the speed."
+      }
+    ],
+    previewCards: [
+      {
+        title: "Resume parsing",
+        subtitle: "Structured extraction",
+        note: "PDF, DOCX, or TXT in - an LLM extracts structured fields into a validated CandidateProfile with explicit do-not-invent instructions."
+      },
+      {
+        title: "Tailored documents",
+        subtitle: "Parallel generation",
+        note: "Profile plus job description plus markdown templates generate a resume and cover letter concurrently via ThreadPoolExecutor."
+      },
+      {
+        title: "Agentic job search",
+        subtitle: "Hybrid RAG",
+        note: "A LangChain agent routes to Adzuna, The Muse, and JobSpy, then BM25 and FAISS are fused with Reciprocal Rank Fusion to rank matches."
+      }
+    ],
+    drawerSections: [
+      {
+        id: "product",
+        label: "Product lane",
+        title: "An end-to-end LLM application, not a demo",
+        summary: "The app carries a full workflow from raw resume to tailored documents to ranked job matches.",
+        bullets: [
+          "Resume parsing turns PDF, DOCX, or TXT into a validated CandidateProfile (Pydantic) instead of free text.",
+          "Resume and cover letter are generated from templates so structure stays separate from model-written content.",
+          "One-click tailoring pipes a selected job straight back into the builder."
+        ]
+      },
+      {
+        id: "retrieval",
+        label: "Retrieval lane",
+        title: "Hybrid RAG ranking without a vector database",
+        summary: "Ranking combines lexical and semantic retrieval rather than leaning on one signal.",
+        bullets: [
+          "BM25 handles keyword and lexical matching; FAISS handles semantic similarity via OpenAI embeddings.",
+          "Reciprocal Rank Fusion (k=60) merges the two rankings into one ordered list.",
+          "Jobs from three different APIs are normalized into a common schema before ranking."
+        ]
+      },
+      {
+        id: "evaluation",
+        label: "Evaluation lane",
+        title: "LLM-as-judge scoring with deterministic metrics",
+        summary: "Quality is measured, not assumed, with a repeatable evaluation suite.",
+        bullets: [
+          "Faithfulness, coherence, completeness, and template adherence are tracked across runs.",
+          "An A/B test found gpt-4.1-nano beat gpt-4.1-mini on quality and faithfulness at twice the speed.",
+          "The known failure mode - hallucination on empty profiles - is documented rather than hidden."
+        ]
+      },
+      {
+        id: "safety",
+        label: "Safety lane",
+        title: "Anti-hallucination and prompt-injection defense",
+        summary: "User inputs are treated as untrusted, which matters when the output is someone's resume.",
+        bullets: [
+          "System prompts explicitly forbid inventing employers, dates, credentials, or metrics.",
+          "Resume text and job descriptions are handled as untrusted data with prompt-injection defenses.",
+          "Robust JSON extraction tolerates markdown code blocks and malformed model responses."
+        ]
+      }
+    ],
+    whatThisProves:
+      "I can ship a real end-to-end LLM product - structured outputs, hybrid retrieval, agentic tool use, evaluation, and safety - not just notebooks.",
+    href: "https://github.com/sidagarwal-labs/HireMe-AI",
+    hrefLabel: "Open GitHub repo",
+    accent: "#a855f7",
+    visualMode: "grid"
+  },
+  {
     slug: "ai-llm-stack-tracker",
     title: "AI / LLM Stack Tracker",
     category: "Live market tracker",
