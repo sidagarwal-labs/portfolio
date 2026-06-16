@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.DS_Store
+.vite/
+.venv/
+coverage/
+playwright-report/
+test-results/
+vite.config.js
+vite.config.d.ts
+*.bak
+.env
+.env.local
+.env.*.local
