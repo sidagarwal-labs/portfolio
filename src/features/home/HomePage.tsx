@@ -149,6 +149,11 @@ function HomePage() {
     ...profileContent.projects.filter((project) => project.focusArea !== "Data science" && project.focusArea !== "Analytics")
   ].slice(0, 4);
 
+  const stackTracker = useMemo(
+    () => profileContent.projects.find((project) => project.slug === "ai-llm-stack-tracker"),
+    []
+  );
+
   const projectDepthHighlights = [
     {
       label: "Applied ML stack",
@@ -336,6 +341,17 @@ function HomePage() {
               The GitHub layer now leans harder toward data-science evidence: modeling workflows, notebooks, dashboards, and one systems-visualization repo that makes the technical depth easy to scan.
             </p>
           </div>
+
+          {stackTracker ? (
+            <a className="feature-pill" href={stackTracker.href} target="_blank" rel="noreferrer">
+              <span className="feature-pill__badge">Live</span>
+              <span className="feature-pill__text">
+                <strong>{stackTracker.title}</strong>
+                <span>Market map of the AI supply chain, from chips to applications.</span>
+              </span>
+              <span className="feature-pill__arrow" aria-hidden="true">↗</span>
+            </a>
+          ) : null}
 
           <div className="signal-board signal-board--compact">
             {projectDepthHighlights.map((item) => (

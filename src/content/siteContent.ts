@@ -210,6 +210,97 @@ const experience: ExperienceEntry[] = [
 
 const projects: ProjectEntry[] = [
   {
+    slug: "ai-llm-stack-tracker",
+    title: "AI / LLM Stack Tracker",
+    category: "Live market tracker",
+    focusArea: "Analytics",
+    archetype: "console-analytics",
+    thesis:
+      "The AI buildout is easiest to reason about as a vertical stack: every layer from chip design up to the application surface has its own winners, bottlenecks, and capital cycle.",
+    description:
+      "A live tracker that maps the public companies powering the AI / LLM buildout across the full supply chain - chip design and fabrication, data-center power, cooling and networking, storage and cloud infrastructure, and the application layer - with valuation and momentum signals for every name.",
+    missionReadout: [
+      { label: "Bull Signal", value: "Full-stack coverage", detail: "50+ names from silicon design through power, networking, cloud, and the apps users touch.", tone: "positive" },
+      { label: "Growth Trend", value: "Capex-to-revenue lens", detail: "Tracks where AI spend lands first and which layers convert it into earnings.", tone: "neutral" },
+      { label: "Vol Alert", value: "Valuation dispersion", detail: "P/E ranges from the low 20s to 400x+, so momentum and 52-week distance matter as much as multiple.", tone: "caution" }
+    ],
+    stack: ["Google Sheets", "GOOGLEFINANCE", "Live market data", "Equity screening"],
+    comparisonChips: ["Chips", "Data center", "Data", "Application", "Memory / HBM", "Networking", "Power", "Foundry"],
+    artifacts: ["50+ tracked tickers", "4 stack layers", "17 functional levels"],
+    evidence: [
+      {
+        label: "Coverage",
+        value: "50+ public names spanning chip design and fab tooling through power, networking, storage, cloud, and the application layer."
+      },
+      {
+        label: "Signal columns",
+        value: "Price, market cap, daily move, EPS, P/E, beta, and distance from 52-week highs and lows for every name."
+      },
+      {
+        label: "Why it matters",
+        value: "Turns the abstract 'AI trade' into a structured map of where the capital, bottlenecks, and pricing power actually sit."
+      }
+    ],
+    previewCards: [
+      {
+        title: "Chips",
+        subtitle: "Levels 1-6",
+        note: "Design (NVDA, GOOGL, AMD), custom silicon (AVGO, ARM, MRVL), fab tooling (ASML, LRCX, AMAT), memory / HBM (MU), and foundry (TSM)."
+      },
+      {
+        title: "Data center",
+        subtitle: "Levels 7-13",
+        note: "Power (GEV, CEG, ETN), cooling (VRT), networking (ANET, AVGO), cold storage, and servers (DELL, MSFT, AMZN, ORCL)."
+      },
+      {
+        title: "Data + application",
+        subtitle: "Levels 14-17",
+        note: "Cloud and analytics (SNOW, DDOG, PLTR, MDB) up to the surfaces users touch (META, GOOGL, TSLA, MSFT)."
+      }
+    ],
+    drawerSections: [
+      {
+        id: "stack",
+        label: "Stack map",
+        title: "From silicon to the surface in one board",
+        summary: "The tracker is organized as a layered stack so each name sits where it actually adds value in the AI supply chain.",
+        bullets: [
+          "Chips layer: design, custom silicon, fab tooling, packaging, memory / HBM, and foundry.",
+          "Data-center layer: power, cooling, networking, cold storage, cloud infrastructure, and servers.",
+          "Data and application layers: storage, cloud analytics, and the consumer or enterprise surfaces on top."
+        ]
+      },
+      {
+        id: "signals",
+        label: "Signal columns",
+        title: "Valuation and momentum side by side",
+        summary: "Each row carries the columns I actually use to judge a name instead of a single price quote.",
+        bullets: [
+          "Valuation: market cap, EPS, and price-to-earnings across the whole stack.",
+          "Momentum: daily move plus distance from the 52-week high and low.",
+          "Risk: beta, so positioning reflects how violently a name moves with the tape."
+        ]
+      },
+      {
+        id: "thesis",
+        label: "Investing lens",
+        title: "Where the capital cycle actually lands",
+        summary: "The board is built to answer one question: as AI spend compounds, which layer captures the earnings and which is just passing the money through?",
+        bullets: [
+          "First-order chip names get crowded by mid-cycle, so the board keeps the later layers easy to watch.",
+          "Power, cooling, and networking surface the physical bottlenecks behind the data-center buildout.",
+          "The application layer is where monetization has to show up for the rest of the stack to hold."
+        ]
+      }
+    ],
+    whatThisProves:
+      "I track the AI buildout the way I think about products: as a system with layers, bottlenecks, and feedback loops, not a single trade.",
+    href: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiLfygL3LFE2X_ynXjE5IzIKrvVPT_AFSwuZCZn59pMUd0dsR4Tdpx-OUxaDmDiMYrioLurLWE3_CO/pubhtml",
+    hrefLabel: "Open live tracker",
+    accent: "#5df0be",
+    visualMode: "signal"
+  },
+  {
     slug: "applied-machine-learning",
     title: "Applied Machine Learning",
     category: "Public GitHub project",

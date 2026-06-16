@@ -87,6 +87,7 @@ export interface ProjectEntry {
   drawerSections: ProjectDrawerSection[];
   whatThisProves: string;
   href?: string;
+  hrefLabel?: string;
   accent: string;
   visualMode: "orbit" | "signal" | "grid" | "spectrum" | "score";
 }

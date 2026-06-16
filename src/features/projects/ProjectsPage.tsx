@@ -211,7 +211,7 @@ function ProjectsPage() {
 
                 {spotlightProject.href ? (
                   <a className="inline-link" href={spotlightProject.href} target="_blank" rel="noreferrer">
-                    Open public repo
+                    {spotlightProject.hrefLabel ?? "Open public repo"}
                   </a>
                 ) : null}
               </div>
