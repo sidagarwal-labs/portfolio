@@ -1,29 +1,36 @@
-import { useLiveTickerData } from "../../hooks/useLiveTickerData";
+import { useState } from "react";
+import { usePrefersReducedMotion } from "../../hooks/usePrefersReducedMotion";
+import TickerTrack from "./TickerTrack";
 
-/**
- * Isolated ticker component. It owns the live-data hook so the per-second
- * countdown and periodic metric drift only re-render this small strip,
- * not the whole HomePage (and the 3D Canvas subtree alongside it).
- */
 function LiveTicker() {
-  const tickerItems = useLiveTickerData();
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const [preference, setPreference] = useState<boolean | null>(() => {
+    try {
+      const stored = localStorage.getItem("market-ticker");
+      return stored === "on" ? true : stored === "off" ? false : null;
+    } catch {
+      return null;
+    }
+  });
+  const enabled = preference ?? !prefersReducedMotion;
+
+  function toggleTicker(checked: boolean) {
+    setPreference(checked);
+    try {
+      localStorage.setItem("market-ticker", checked ? "on" : "off");
+    } catch {
+      return;
+    }
+  }
 
   return (
-    <div className="stock-ticker" aria-hidden="true">
-      <div className="stock-ticker__track">
-        {[...tickerItems, ...tickerItems].map((item, i) =>
-          item.href ? (
-            <a key={i} className={`stock-ticker__item stock-ticker__item--${item.variant}`} href={item.href} target="_blank" rel="noreferrer">
-              {item.symbol} <strong>{item.value}</strong>
-            </a>
-          ) : (
-            <span key={i} className={`stock-ticker__item stock-ticker__item--${item.variant}`}>
-              {item.symbol} <strong>{item.value}</strong>
-            </span>
-          )
-        )}
-      </div>
-    </div>
+    <aside className="market-bar" aria-label="Market watch">
+      {enabled ? <TickerTrack /> : <span className="market-bar__idle">Market watch</span>}
+      <label className="market-bar__toggle">
+        <input type="checkbox" checked={enabled} onChange={(event) => toggleTicker(event.target.checked)} aria-label="Show market ticker" />
+        Ticker
+      </label>
+    </aside>
   );
 }
 

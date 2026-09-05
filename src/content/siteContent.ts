@@ -1109,21 +1109,7 @@ const projects: ProjectEntry[] = [
   }
 ];
 
-const writing: WritingEntry[] = [
-  {
-    slug: "learning-to-code-with-llms",
-    title: "Learning to code with LLMs",
-    date: "July 3, 2025",
-    readTime: "2 min",
-    summary:
-      "A short note on using Codex and GPT-4o as part of the learning loop rather than as a substitute for understanding.",
-    content: [
-      "This site used to hold a single line: learning to code with LLMs. I kept that thought because it still matters. The useful version of LLM-assisted building is not blind delegation. It is faster iteration, better debugging prompts, tighter feedback loops, and a lower barrier to trying things that would otherwise sit in a backlog of intent.",
-      "What interests me is the shift in leverage. The more technical context I have, the more useful these models become. That creates a healthy pressure to keep sharpening fundamentals instead of outsourcing them.",
-      "For product work, the lesson is similar. Tools that feel magical on the surface still need measurement, evaluation, and human taste behind them. That applies whether the task is writing code, grounding a Copilot response, or deciding which experiment should ship next."
-    ]
-  }
-];
+const writing: WritingEntry[] = [];
 
 const books: BookEntry[] = [
   {
