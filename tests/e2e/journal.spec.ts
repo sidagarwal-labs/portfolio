@@ -34,7 +34,7 @@ test("homepage presents real writing and projects without the scene runtime", as
 
   await expect(page.getByRole("heading", { name: "Sid Agarwal", exact: true })).toBeVisible();
   await expect(page.locator("canvas, .glass-card, .scene-canvas")).toHaveCount(0);
-  await expect(page.locator("#writing a")).toHaveCount(6);
+  await expect(page.locator("#writing a")).toHaveCount(7);
   await expect(page.getByRole("link", { name: "Financial models", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/models");
   await expect(page.getByRole("link", { name: "NVDocs RAG", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/NVDocs_RAG");
   await expect(page.getByRole("link", { name: "HireMe.AI", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/HireMe-AI");
@@ -55,6 +55,7 @@ test("coursework projects link to their public repos with clear scope", async ({
 test("research notes link to the verified source documents", async ({ page }) => {
   await page.goto("./");
   for (const [title, slug] of [
+    ["AI buildout: September 2026", "ai-buildout-2026-09"],
     ["Foundation labs", "foundation-labs"],
     ["AI memory & storage", "memory-storage"],
     ["GPU & memory prices", "gpu-prices"],
@@ -327,9 +328,9 @@ test.describe("GitHub note dates", () => {
   test("verified commit dates remain visible when GitHub is unavailable", async ({ page }) => {
     await page.goto("./");
     const dates = page.locator(".writing-list time");
-    await expect(dates).toHaveCount(6);
-    await expect(dates).toHaveText(Array(6).fill("Aug 18, 2026"));
-    await expect(dates.first()).toHaveAttribute("datetime", "2026-08-18T17:43:38Z");
+    await expect(dates).toHaveCount(7);
+    await expect(dates).toHaveText(Array(7).fill("Sep 9, 2026"));
+    await expect(dates.first()).toHaveAttribute("datetime", "2026-09-09T02:36:56Z");
   });
 
   test("each file refreshes from GitHub, keeps UTC dates, and reuses its cache", async ({ page }) => {
@@ -337,19 +338,19 @@ test.describe("GitHub note dates", () => {
     await page.route(noteCommitsApi, (route) => {
       const url = new URL(route.request().url());
       requests.push(url);
-      const date = url.searchParams.get("path") === "notes/foundation-labs.md"
-        ? "2026-09-04T00:05:00Z" : "2026-08-18T02:46:54Z";
+      const date = url.searchParams.get("path") === "notes/ai-buildout-2026-09.md"
+        ? "2026-09-10T00:05:00Z" : "2026-09-09T02:36:56Z";
       return route.fulfill({ json: [{ commit: { committer: { date } } }] });
     });
     await page.goto("./");
-    await expect(page.locator(".writing-list time").first()).toHaveText("Sep 4, 2026");
+    await expect(page.locator(".writing-list time").first()).toHaveText("Sep 10, 2026");
     await expect.poll(() => page.evaluate(() => localStorage.getItem("research-note-dates-v1"))).not.toBeNull();
-    expect(requests).toHaveLength(6);
+    expect(requests).toHaveLength(7);
     expect(requests.every((url) => url.searchParams.get("per_page") === "1")).toBe(true);
-    expect(new Set(requests.map((url) => url.searchParams.get("path"))).size).toBe(6);
+    expect(new Set(requests.map((url) => url.searchParams.get("path"))).size).toBe(7);
     await page.reload();
-    await expect(page.locator(".writing-list time").first()).toHaveText("Sep 4, 2026");
-    expect(requests).toHaveLength(6);
+    await expect(page.locator(".writing-list time").first()).toHaveText("Sep 10, 2026");
+    expect(requests).toHaveLength(7);
   });
 
   test("corrupt cached dates cannot break the writing list", async ({ page }) => {
@@ -357,7 +358,7 @@ test.describe("GitHub note dates", () => {
       localStorage.setItem("research-note-dates-v1", JSON.stringify({ fetchedAt: Date.now(), dates: { "foundation-labs": "not-a-date" } }));
     });
     await page.goto("./");
-    await expect(page.locator(".writing-list time")).toHaveText(Array(6).fill("Aug 18, 2026"));
+    await expect(page.locator(".writing-list time")).toHaveText(Array(7).fill("Sep 9, 2026"));
   });
 });
 

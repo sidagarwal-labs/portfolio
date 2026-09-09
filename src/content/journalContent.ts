@@ -1,10 +1,11 @@
 export const researchNotes = [
-  { title: "Foundation labs", slug: "foundation-labs", updatedAt: "2026-08-18T17:43:38Z" },
-  { title: "AI memory & storage", slug: "memory-storage", updatedAt: "2026-08-18T17:38:59Z" },
-  { title: "GPU & memory prices", slug: "gpu-prices", updatedAt: "2026-08-18T02:46:54Z" },
-  { title: "AI capital expenditure", slug: "ai-capex", updatedAt: "2026-08-18T02:46:54Z" },
-  { title: "AI adoption", slug: "ai-adoption", updatedAt: "2026-08-18T02:58:27Z" },
-  { title: "Cloud growth", slug: "cloud-growth", updatedAt: "2026-08-18T02:46:54Z" }
+  { title: "AI buildout: September 2026", slug: "ai-buildout-2026-09", updatedAt: "2026-09-09T02:36:56Z" },
+  { title: "Foundation labs", slug: "foundation-labs", updatedAt: "2026-09-09T02:36:56Z" },
+  { title: "AI memory & storage", slug: "memory-storage", updatedAt: "2026-09-09T02:36:56Z" },
+  { title: "GPU & memory prices", slug: "gpu-prices", updatedAt: "2026-09-09T02:36:56Z" },
+  { title: "AI capital expenditure", slug: "ai-capex", updatedAt: "2026-09-09T02:36:56Z" },
+  { title: "AI adoption", slug: "ai-adoption", updatedAt: "2026-09-09T02:36:56Z" },
+  { title: "Cloud growth", slug: "cloud-growth", updatedAt: "2026-09-09T02:36:56Z" }
 ].map((note) => ({
   ...note,
   href: `https://github.com/sidagarwal-labs/models/blob/main/notes/${note.slug}.md`
