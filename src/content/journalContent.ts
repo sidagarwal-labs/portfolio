@@ -25,6 +25,16 @@ export const selectedProjects = [
     title: "NVDocs RAG",
     href: "https://github.com/sidagarwal-labs/NVDocs_RAG",
     description: "Retrieval experiments on NVIDIA's NVDocs dataset: BM25, learned re-ranking, and a closer look at what the candidate pool misses."
+  },
+  {
+    title: "AI & Deep Learning Labs",
+    href: "https://github.com/sidagarwal-labs/DSBA-6165-AI-Deep-Learning",
+    description: "UNC Charlotte coursework in TensorFlow/Keras: linear and nonlinear models, Iris classification, and an MLP for building energy loads."
+  },
+  {
+    title: "Text Analytics",
+    href: "https://github.com/sidagarwal-labs/DSBA-6188-Text-Analytics",
+    description: "UNC Charlotte coursework exploring UN speeches and tweet-text preprocessing, with TF-IDF and vectorization examples. Data requirements and source attribution are documented."
   }
 ];
 

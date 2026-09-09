@@ -43,6 +43,15 @@ test("homepage presents real writing and projects without the scene runtime", as
   expect(errors).toEqual([]);
 });
 
+test("coursework projects link to their public repos with clear scope", async ({ page }) => {
+  await page.goto("./#lab");
+  const projects = page.locator(".project-list");
+  await expect(projects.getByRole("link", { name: "AI & Deep Learning Labs", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/DSBA-6165-AI-Deep-Learning");
+  await expect(projects.getByRole("link", { name: "Text Analytics", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/DSBA-6188-Text-Analytics");
+  await expect(projects.locator("li").filter({ hasText: "AI & Deep Learning Labs" })).toContainText("UNC Charlotte coursework");
+  await expect(projects.locator("li").filter({ hasText: "Text Analytics" })).toContainText("source attribution");
+});
+
 test("research notes link to the verified source documents", async ({ page }) => {
   await page.goto("./");
   for (const [title, slug] of [
