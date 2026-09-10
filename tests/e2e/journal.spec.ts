@@ -11,7 +11,9 @@ function launchPayload(net = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOStri
     net,
     launch_service_provider: { id: 121 },
     status: { abbrev: "Go" },
-    net_precision: { name: "Minute" }
+    net_precision: { name: "Minute" },
+    vid_urls: [{ type: { name: "Official Webcast" }, url: "https://www.youtube.com/watch?v=test-webcast" }],
+    webcast_live: false
   };
 }
 
@@ -42,6 +44,34 @@ test("homepage presents real writing and projects without the scene runtime", as
   expect(requests.some((url) => /three-vendor|tradingview|api\/launches/.test(url))).toBe(false);
   expect(errors).toEqual([]);
 });
+
+for (const width of [1440, 390, 320]) {
+  test(`enlarged portrait aligns with the header without crowding navigation at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("./");
+    const portrait = page.locator(".portrait");
+    await expect(portrait).toBeVisible();
+    await expect.poll(() => portrait.evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+    const photo = (await portrait.boundingBox())!;
+    const name = (await page.locator(".masthead h1").boundingBox())!;
+    const identity = (await page.locator(".masthead__identity").boundingBox())!;
+    const navigation = (await page.getByRole("navigation", { name: "Primary" }).boundingBox())!;
+    const contact = (await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Contact", exact: true }).boundingBox())!;
+    expect(identity.x + identity.width).toBeLessThan(photo.x);
+    expect(photo.width).toBeGreaterThanOrEqual(108);
+    expect(photo.x + photo.width).toBeLessThanOrEqual(width);
+    if (width > 600) {
+      expect(photo.y).toBeCloseTo(name.y, 1);
+      expect(photo.y + photo.height).toBeCloseTo(contact.y + contact.height, 1);
+      expect(navigation.x + navigation.width).toBeLessThan(photo.x);
+    } else {
+      expect(photo.height).toBe(108);
+      expect(navigation.y).toBeGreaterThanOrEqual(photo.y + photo.height);
+      expect(navigation.y).toBeGreaterThanOrEqual(identity.y + identity.height);
+    }
+    await page.screenshot({ path: testInfo.outputPath(`portrait-${width}.png`) });
+  });
+}
 
 test("coursework projects link to their public repos with clear scope", async ({ page }) => {
   await page.goto("./#lab");
@@ -182,11 +212,6 @@ test("one native track contains all items and stays mounted between pages", asyn
   await page.getByRole("link", { name: "Back to writing", exact: true }).click();
   await expect(track).toHaveAttribute("data-original", "true");
   await expect(track).toHaveCount(1);
-  await page.getByRole("checkbox", { name: "Show market ticker" }).uncheck();
-  await expect(track).toHaveCount(0);
-  await page.getByRole("checkbox", { name: "Show market ticker" }).check();
-  await expect(track).toHaveAttribute("data-state", "cached");
-  await expect(track).toHaveCount(1);
 });
 
 test("stocks and custom metrics move together in one seamless loop", async ({ page }) => {
@@ -246,9 +271,8 @@ test("quotes refresh once per minute without doubling requests for the visual lo
   await page.clock.fastForward(60_100);
   await expect(page.locator(`${primaryTicker} .ticker-item--stock strong`)).toHaveText(Array(7).fill("$240.00"));
   expect(requestedSymbols).toHaveLength(14);
-  await page.getByRole("checkbox", { name: "Show market ticker" }).uncheck();
-  await page.clock.fastForward(120_000);
-  expect(requestedSymbols).toHaveLength(14);
+  await page.clock.fastForward(60_000);
+  await expect.poll(() => requestedSymbols.length).toBe(21);
 });
 
 test("failed refreshes retain genuine quotes with explicit cached status and timestamps", async ({ page }) => {
@@ -273,36 +297,36 @@ test("invalid or empty quote values are never displayed as prices", async ({ pag
   await expect(page.locator(primaryTicker)).not.toContainText("NaN");
 });
 
-test("ticker visibility is remembered and disabling it avoids provider requests", async ({ page }) => {
-  await page.goto("./");
-  await page.getByRole("checkbox", { name: "Show market ticker" }).uncheck();
+test("ticker is always visible and ignores the former off preference", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("market-ticker", "off"));
   const requests: string[] = [];
   page.on("request", (request) => requests.push(request.url()));
+  await page.goto("./");
+  await expect(page.locator(".ticker-track")).toHaveAttribute("data-state", "ready");
+  await expect(page.getByRole("checkbox", { name: "Show market ticker" })).toHaveCount(0);
+  await expect(page.locator(".market-bar__toggle, .market-bar__idle")).toHaveCount(0);
+  expect(requests.some((url) => /finnhub|thespacedevs/.test(url))).toBe(true);
   await page.reload();
-  await expect(page.getByRole("checkbox", { name: "Show market ticker" })).not.toBeChecked();
-  await expect(page.locator(".ticker-track")).toHaveCount(0);
-  expect(requests.some((url) => /finnhub|thespacedevs/.test(url))).toBe(false);
+  await expect(page.locator(".ticker-track")).toHaveCount(1);
+  await expect(page.locator(`${primaryTicker} .ticker-item--stock`)).toHaveCount(7);
 });
 
-test("reduced motion defaults the ticker off and keeps enabled items static", async ({ page }) => {
+test("reduced motion keeps the ticker visible and static", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("./");
-  await expect(page.getByRole("checkbox", { name: "Show market ticker" })).not.toBeChecked();
-  await expect(page.locator(".ticker-track")).toHaveCount(0);
-  await page.getByRole("checkbox", { name: "Show market ticker" }).check();
   await expect(page.locator(".ticker-track")).toHaveAttribute("data-state", "ready");
   await expect(page.locator(".ticker-track")).toHaveCSS("animation-name", "none");
   await expect(page.locator('.ticker-track__group[aria-hidden="true"]')).toBeHidden();
 });
 
-test("blocked local storage does not prevent reading or disabling the ticker", async ({ page }) => {
+test("blocked local storage does not prevent reading the ticker", async ({ page }) => {
   await page.addInitScript(() => {
     Object.defineProperty(window, "localStorage", { get() { throw new DOMException("Storage blocked", "SecurityError"); } });
   });
   await page.goto("./");
   await expect(page.getByRole("heading", { name: "Sid Agarwal", exact: true })).toBeVisible();
-  await page.getByRole("checkbox", { name: "Show market ticker" }).uncheck();
-  await expect(page.locator(".ticker-track")).toHaveCount(0);
+  await expect(page.locator(".ticker-track")).toHaveAttribute("data-state", "ready");
+  await expect(page.locator(`${primaryTicker} .ticker-item--stock`)).toHaveCount(7);
 });
 
 test("keyboard users can skip navigation", async ({ page }) => {
@@ -403,14 +427,14 @@ test("SpaceX countdown advances without repeated network requests", async ({ pag
   await page.route(launchApi, (route) => {
     requests += 1;
     expect(new URL(route.request().url()).searchParams.get("lsp__id")).toBe("121");
+    expect(new URL(route.request().url()).searchParams.get("mode")).toBe("detailed");
     return route.fulfill({ json: { results: [launchPayload("2026-09-06T10:59:00Z")] } });
   });
   await page.goto("./");
   await expect(page.locator(`${primaryTicker} .launch-countdown`)).toHaveText("T-22h 59m");
   await page.clock.fastForward(120_000);
   await expect(page.locator(`${primaryTicker} .launch-countdown`)).toHaveText("T-22h 57m");
-  await page.getByRole("checkbox", { name: "Show market ticker" }).uncheck();
-  await page.getByRole("checkbox", { name: "Show market ticker" }).check();
+  await page.reload();
   await expect(page.locator(`${primaryTicker} .launch-countdown`)).toHaveText("T-22h 57m");
   expect(requests).toBe(1);
 });
@@ -419,17 +443,19 @@ test("passing a launch time does not falsely claim a liftoff", async ({ page }) 
   await page.clock.install({ time: new Date("2026-09-05T12:00:00Z") });
   await page.route(launchApi, (route) => route.fulfill({ json: { results: [launchPayload("2026-09-05T12:02:00Z")] } }));
   await page.goto("./");
-  await expect(page.locator(`${primaryTicker} .launch-countdown`)).toHaveText("T-0h 02m");
+  await expect(page.locator(".market-bar__launch .launch-countdown")).toHaveText("T-0h 02m");
   await page.clock.fastForward(180_000);
   await expect(page.locator(`${primaryTicker} .launch-countdown`)).toHaveText("Awaiting update");
+  await expect(page.locator(".ticker-item--launch-soon")).toHaveCount(0);
 });
 
 test("tentative dates do not become precise launch countdowns", async ({ page }) => {
   await page.route(launchApi, (route) => route.fulfill({ json: {
-    results: [{ ...launchPayload(), net_precision: { name: "Day" }, status: { abbrev: "TBC" } }]
+    results: [{ ...launchPayload(new Date(Date.now() + 60 * 60 * 1000).toISOString()), net_precision: { name: "Day" }, status: { abbrev: "TBC" } }]
   } }));
   await page.goto("./");
   await expect(page.locator(`${primaryTicker} .launch-countdown`)).toHaveText("Date tentative");
+  await expect(page.locator(".ticker-item--launch-soon")).toHaveCount(0);
 });
 
 test("failed launch requests are backed off while the other signals stay visible", async ({ page }) => {
@@ -439,12 +465,46 @@ test("failed launch requests are backed off while the other signals stay visible
     return route.fulfill({ status: 429, json: { detail: "Request was throttled" } });
   });
   await page.goto("./");
-  await expect(page.locator(`${primaryTicker} .launch-countdown`)).toHaveText("Unavailable");
-  await page.getByRole("checkbox", { name: "Show market ticker" }).uncheck();
-  await page.getByRole("checkbox", { name: "Show market ticker" }).check();
-  await expect(page.locator(`${primaryTicker} .launch-countdown`)).toHaveText("Unavailable");
+  await expect(page.locator(`${primaryTicker} .launch-countdown`)).toHaveText("Check schedule");
+  await page.reload();
+  await expect(page.locator(`${primaryTicker} .launch-countdown`)).toHaveText("Check schedule");
   await expect(page.locator(`${primaryTicker} .ticker-item--arena`)).toBeVisible();
   expect(requests).toBe(1);
+});
+
+test("a failed refresh retains the cached launch without a precise countdown", async ({ page }) => {
+  await page.clock.install({ time: new Date("2026-09-05T12:00:00Z") });
+  await page.addInitScript((cached) => {
+    if (!localStorage.getItem("spacex-next-launch-v2")) {
+      localStorage.setItem("spacex-next-launch-v2", JSON.stringify(cached));
+    }
+  }, {
+    fetchedAt: Date.parse("2026-09-05T09:00:00Z"),
+    launch: { name: "Falcon 9 | Cached mission", net: "2026-09-05T15:00:00Z", precise: true }
+  });
+  let requests = 0;
+  await page.route(launchApi, (route) => {
+    requests += 1;
+    return route.fulfill({ status: 429, json: { detail: "Request was throttled" } });
+  });
+  await page.goto("./");
+  await expect(page.locator(`${primaryTicker} .launch-countdown`)).toHaveText("Schedule cached");
+  await expect(page.locator(`${primaryTicker} .ticker-item--space`)).toHaveAttribute("title", /Cached mission/);
+  await expect(page.locator(".ticker-item--launch-soon")).toHaveCount(0);
+  const cached = await page.evaluate(() => JSON.parse(localStorage.getItem("spacex-next-launch-v2") ?? "null"));
+  expect(cached.launch.net).toBe("2026-09-05T15:00:00Z");
+  expect(cached.fetchedAt).toBe(Date.parse("2026-09-05T09:00:00Z"));
+  await page.reload();
+  await expect(page.locator(`${primaryTicker} .launch-countdown`)).toHaveText("Schedule cached");
+  expect(requests).toBe(1);
+  await page.route(launchApi, (route) => {
+    requests += 1;
+    return route.fulfill({ json: { results: [launchPayload("2026-09-05T15:00:00Z")] } });
+  });
+  await page.clock.fastForward(15 * 60_000);
+  await expect(page.locator(".market-bar__launch .launch-countdown")).toHaveText("T-2h 45m");
+  await expect(page.locator(".market-bar__launch .ticker-item--launch-soon")).toHaveCount(1);
+  expect(requests).toBe(2);
 });
 
 test("another provider's launch is never labeled SpaceX", async ({ page }) => {
@@ -452,8 +512,173 @@ test("another provider's launch is never labeled SpaceX", async ({ page }) => {
     results: [{ ...launchPayload(), launch_service_provider: { id: 999 } }]
   } }));
   await page.goto("./");
-  await expect(page.locator(`${primaryTicker} .launch-countdown`)).toHaveText("Unavailable");
+  await expect(page.locator(`${primaryTicker} .launch-countdown`)).toHaveText("Check schedule");
 });
+
+test("an imminent launch stays pinned on the left while the other ticker items rotate", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.route(launchApi, (route) => route.fulfill({ json: { results: [
+    launchPayload(new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString())
+  ] } }));
+  await page.goto("./");
+  const launch = page.locator(".market-bar__launch");
+  const watch = launch.locator(".launch-watch");
+  await expect(watch).toBeVisible();
+  await expect(page.locator(".launch-watch")).toHaveCount(1);
+  await expect(page.locator(".ticker-track .ticker-item--space")).toHaveCount(0);
+  await expect(page.locator(`${primaryTicker} > li`)).toHaveCount(9);
+  await expect(page.locator(`${primaryTicker} .ticker-item--stock`)).toHaveCount(7);
+  await watch.hover();
+  await expect(page.locator(".ticker-track")).toHaveCSS("animation-play-state", "running");
+  await watch.focus();
+  await expect(page.locator(".ticker-track")).toHaveCSS("animation-name", "ticker-flow");
+  const viewport = (await page.locator(".market-bar__viewport").boundingBox())!;
+  const pinned = (await launch.boundingBox())!;
+  const bar = (await page.locator(".market-bar").boundingBox())!;
+  expect(pinned.x).toBe(0);
+  expect(pinned.x + pinned.width).toBeCloseTo(viewport.x, 2);
+  expect(viewport.x + viewport.width).toBeCloseTo(bar.x + bar.width, 2);
+  const motion = await page.evaluate(() => {
+    const track = document.querySelector(".ticker-track")!;
+    const stock = track.querySelector(".ticker-item--stock")!;
+    const watchLink = document.querySelector(".market-bar__launch .launch-watch")!;
+    const animation = track.getAnimations()[0];
+    animation.pause();
+    animation.currentTime = 1_000;
+    const stockStart = stock.getBoundingClientRect().x;
+    const watchStart = watchLink.getBoundingClientRect().x;
+    animation.currentTime = 3_000;
+    return { stockTravel: stock.getBoundingClientRect().x - stockStart, watchTravel: watchLink.getBoundingClientRect().x - watchStart };
+  });
+  expect(motion.stockTravel).toBeLessThan(-10);
+  expect(motion.watchTravel).toBe(0);
+});
+
+test("confirmed launches are highlighted only inside four hours and clear after a delay", async ({ page }) => {
+  await page.clock.install({ time: new Date("2026-09-05T12:00:00Z") });
+  await page.clock.setFixedTime(new Date("2026-09-05T12:00:00Z"));
+  await page.route(launchApi, (route) => route.fulfill({ json: { results: [launchPayload("2026-09-05T16:00:00Z")] } }));
+  await page.goto("./");
+  await expect(page.locator(`${primaryTicker} .launch-countdown`)).toHaveText("T-4h 00m");
+  await expect(page.locator(".ticker-item--launch-soon")).toHaveCount(0);
+  await page.clock.setFixedTime(new Date("2026-09-05T12:01:00Z"));
+  await page.clock.fastForward(60_000);
+  await expect(page.locator(".market-bar__launch .ticker-item--launch-soon")).toBeVisible();
+  await expect(page.locator(".market-bar__launch .launch-countdown")).toHaveText("T-3h 59m");
+  await expect(page.locator(".market-bar__launch .launch-event__status")).toHaveText("Launching soon");
+  await expect(page.locator(".market-bar__launch .launch-watch")).toHaveAttribute("href", "https://www.youtube.com/watch?v=test-webcast");
+  await expect(page.locator(".ticker-track .launch-watch")).toHaveCount(0);
+  await expect(page.locator(".market-bar")).toHaveCount(1);
+  await page.route(launchApi, (route) => route.fulfill({ json: { results: [launchPayload("2026-09-05T19:00:00Z")] } }));
+  await page.clock.setFixedTime(new Date("2026-09-05T12:15:00Z"));
+  await page.clock.fastForward(14 * 60_000);
+  await expect(page.locator(`${primaryTicker} .launch-countdown`)).toHaveText("T-6h 45m");
+  await expect(page.locator(".ticker-item--launch-soon")).toHaveCount(0);
+  await expect(page.locator(".market-bar__launch")).toHaveCount(0);
+});
+
+test("a launch webcast is labeled live only on an explicit feed signal", async ({ page }) => {
+  await page.route(launchApi, (route) => route.fulfill({ json: { results: [{
+    ...launchPayload(new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()), webcast_live: true
+  }] } }));
+  await page.goto("./");
+  await expect(page.locator(".market-bar__launch .launch-event__status")).toHaveText("Stream live");
+});
+
+for (const webcastUrl of [null, "javascript:alert(1)", "https://untrusted.example/watch"]) {
+  test(`launches without a trusted official webcast use schedule links: ${webcastUrl}`, async ({ page }) => {
+    await page.route(launchApi, (route) => route.fulfill({ json: { results: [{
+      ...launchPayload(new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()),
+      vid_urls: [{ type: { name: "Official Webcast" }, url: webcastUrl }]
+    }] } }));
+    await page.goto("./");
+    const watch = page.locator(".market-bar__launch .launch-watch");
+    await expect(watch).toHaveAttribute("href", "https://www.spacex.com/launches/");
+    await expect(watch).toHaveText("Launch details");
+  });
+}
+
+test("an imminent launch respects reduced motion and keeps the watch link accessible", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.route(launchApi, (route) => route.fulfill({ json: { results: [
+    launchPayload(new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString())
+  ] } }));
+  await page.goto("./");
+  await expect(page.locator(".market-bar__launch .ticker-item--launch-soon")).toBeVisible();
+  await expect(page.locator(".ticker-track")).toHaveCSS("animation-name", "none");
+  await expect(page.locator('.ticker-track__group[aria-hidden="true"]')).toBeHidden();
+  const pulse = await page.locator(".market-bar__launch .launch-event__status").evaluate((element) => getComputedStyle(element, "::before").animationName);
+  expect(pulse).toBe("none");
+  const watch = page.locator(".market-bar__launch .launch-watch");
+  await watch.focus();
+  await expect(watch).toBeFocused();
+  await expect(watch).toBeInViewport({ ratio: 1 });
+});
+
+test("the launch mock query cannot replace real data in a production build", async ({ page }) => {
+  await page.goto("./?launch-preview=soon");
+  await expect(page.locator(`${primaryTicker} .launch-countdown`)).toHaveText(/^T-6h/);
+  await expect(page.locator(".ticker-item--launch-soon")).toHaveCount(0);
+});
+
+test("launch controls use the actual ticker width when space is reserved beside it", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.route(launchApi, (route) => route.fulfill({ json: { results: [
+    launchPayload(new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString())
+  ] } }));
+  await page.goto("./");
+  await page.addStyleTag({ content: ".market-bar { right: 18px; }" });
+  const item = page.locator(".market-bar__launch .ticker-item--launch-soon");
+  await expect(item).toBeVisible();
+  await page.locator(".market-bar__viewport").hover();
+  const viewport = (await page.locator(".market-bar__viewport").boundingBox())!;
+  const bounds = (await item.boundingBox())!;
+  const watch = (await item.locator(".launch-watch").boundingBox())!;
+  const bar = (await page.locator(".market-bar").boundingBox())!;
+  expect(viewport.width).toBeGreaterThanOrEqual(140);
+  expect(bounds.x).toBe(0);
+  expect(bounds.x + bounds.width).toBeCloseTo(viewport.x, 2);
+  expect(watch.x + watch.width).toBeLessThanOrEqual(viewport.x);
+  expect(viewport.x + viewport.width).toBeCloseTo(bar.x + bar.width, 2);
+  expect(watch.width).toBe(32);
+});
+
+for (const width of [1440, 901, 900, 390, 320]) {
+  test(`imminent launch controls fit the unified ticker at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.route(launchApi, (route) => route.fulfill({ json: { results: [
+      launchPayload(new Date(Date.now() + (2 * 60 + 14) * 60_000).toISOString())
+    ] } }));
+    await page.goto("./");
+    const item = page.locator(".market-bar__launch .ticker-item--launch-soon");
+    await expect(item).toBeVisible();
+    await page.locator(".market-bar__viewport").hover();
+    const viewport = (await page.locator(".market-bar__viewport").boundingBox())!;
+    const watch = (await item.locator(".launch-watch").boundingBox())!;
+    const countdown = (await item.locator(".launch-countdown").boundingBox())!;
+    const details = (await item.locator(".launch-event").boundingBox())!;
+    const pinned = (await item.boundingBox())!;
+    const bar = (await page.locator(".market-bar").boundingBox())!;
+    expect(pinned.width).toBe(width > 900 ? 460 : 136);
+    expect(viewport.width).toBeGreaterThanOrEqual(140);
+    expect(pinned.x).toBe(0);
+    expect(pinned.x + pinned.width).toBeCloseTo(viewport.x, 2);
+    expect(watch.x + watch.width).toBeLessThanOrEqual(viewport.x);
+    expect(viewport.x + viewport.width).toBeCloseTo(bar.x + bar.width, 2);
+    expect(countdown.x + countdown.width).toBeLessThanOrEqual(watch.x);
+    if (width > 900) {
+      expect(details.x + details.width).toBeLessThanOrEqual(countdown.x);
+    } else {
+      expect(details.y + details.height).toBeLessThanOrEqual(countdown.y + 1);
+      expect(details.x + details.width).toBeLessThanOrEqual(watch.x);
+    }
+    expect((await page.locator(".market-bar").boundingBox())!.height).toBeLessThanOrEqual(47);
+    await expect(item.locator(".launch-watch")).toHaveAccessibleName("Watch Test mission livestream");
+    await item.locator(".launch-watch").focus();
+    await expect(item.locator(".launch-watch")).toBeInViewport({ ratio: 1 });
+    await page.screenshot({ path: testInfo.outputPath(`launch-soon-${width}.png`) });
+  });
+}
 
 for (const [label, width, height] of [
   ["desktop", 1440, 1000], ["wide-desktop", 1920, 1080],
@@ -466,7 +691,7 @@ for (const [label, width, height] of [
     const layout = await page.evaluate(() => ({
       width: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
-      overflow: Array.from(document.querySelectorAll(".journal h1, .journal p, .journal a, .market-bar, .market-bar__toggle")).filter((element) => {
+      overflow: Array.from(document.querySelectorAll(".journal h1, .journal p, .journal a, .market-bar")).filter((element) => {
         const bounds = element.getBoundingClientRect();
         return bounds.width > 0 && (bounds.left < -1 || bounds.right > document.documentElement.clientWidth + 1);
       }).map((element) => element.textContent)
@@ -489,7 +714,6 @@ for (const [label, width, height] of [
     ]) {
       await item.scrollIntoViewIfNeeded();
       await expect(item).toBeInViewport({ ratio: 1 });
-      await expect(page.getByRole("checkbox", { name: "Show market ticker" })).toBeInViewport({ ratio: 1 });
     }
     await page.locator(".market-bar__viewport").evaluate((element) => { element.scrollLeft = 0; });
     await page.screenshot({ path: testInfo.outputPath(`${label}.png`), fullPage: true });

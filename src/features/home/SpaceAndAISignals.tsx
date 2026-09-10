@@ -1,24 +1,61 @@
+import { ArrowUpRight, Play } from "lucide-react";
 import { arenaLeader } from "../../content/journalContent";
-import { useSpaceXLaunch } from "../../hooks/useSpaceXLaunch";
+import type { useSpaceXLaunch } from "../../hooks/useSpaceXLaunch";
 
 const arenaDate = new Intl.DateTimeFormat("en-US", {
   month: "short", day: "numeric", year: "numeric", timeZone: "UTC"
 }).format(new Date(arenaLeader.leaderboardDate));
 
-function SpaceAndAISignals({ launch, countdown, duplicate = false }: ReturnType<typeof useSpaceXLaunch> & { duplicate?: boolean }) {
+export function SpaceXLaunchSignal({ launch, countdown, launchingSoon, webcastLive, stale, lastCheckedAt, preview, duplicate = false }: ReturnType<typeof useSpaceXLaunch> & { duplicate?: boolean }) {
+  const checked = lastCheckedAt ? ` Last checked ${new Date(lastCheckedAt).toUTCString()}.` : "";
   const launchTitle = launch
-    ? `${launch.name}. No earlier than ${new Date(launch.net).toUTCString()}. Launch schedules can change.`
-    : "Next SpaceX launch. Schedule from The Space Devs' Launch Library 2.";
+    ? `${preview ? "Simulated countdown preview. " : ""}${launch.name}. No earlier than ${new Date(launch.net).toUTCString()}.${stale ? " Cached schedule; current timing could not be verified." : ""}${checked} Launch schedules can change.`
+    : "Launch timing could not be confirmed. Check SpaceX's official schedule. Data from The Space Devs' Launch Library 2.";
+  const mission = launch?.name.split(" | ").slice(1).join(" | ") || launch?.name;
+  const source = <a className="launch-source" href="https://thespacedevs.com/llapi" title="Launch data by The Space Devs" target="_blank" rel="noopener noreferrer" tabIndex={duplicate ? -1 : undefined}>LL2</a>;
 
   return (
-    <>
-      <li className="ticker-item ticker-item--space" title={launchTitle}>
-        <a href="https://www.spacex.com/launches/" target="_blank" rel="noopener noreferrer" tabIndex={duplicate ? -1 : undefined}>
-          <span className="ticker-item__label">SpaceX</span>
+    <li className={`ticker-item ticker-item--space${launchingSoon ? " ticker-item--launch-soon" : ""}`} title={launchTitle}>
+      {launchingSoon ? (
+        <>
+          <span className="launch-event">
+            <span className="launch-event__heading">
+              <span className="ticker-item__label">SpaceX</span>
+              <span className="launch-event__status">{webcastLive ? "Stream live" : "Launching soon"}</span>
+              {preview && <span className="launch-event__preview">Preview</span>}
+              {source}
+            </span>
+            <span className="launch-event__mission">{mission}</span>
+            <span className="launch-event__mobile-status">{preview ? "Preview" : webcastLive ? "Stream live" : "Launching soon"}</span>
+          </span>
           <strong className="launch-countdown">{countdown}</strong>
-        </a>
-        <a href="https://thespacedevs.com/llapi" title="Launch data by The Space Devs" target="_blank" rel="noopener noreferrer" tabIndex={duplicate ? -1 : undefined}>LL2</a>
-      </li>
+          <a
+            className="launch-watch"
+            href={launch?.webcastUrl ?? "https://www.spacex.com/launches/"}
+            aria-label={launch?.webcastUrl ? `Watch ${mission} livestream` : `View ${mission} launch details`}
+            title={launch?.webcastUrl ? "Official mission webcast; coverage may not have started yet" : "No official webcast linked yet; open the SpaceX launch schedule"}
+            target="_blank" rel="noopener noreferrer" tabIndex={duplicate ? -1 : undefined}
+          >
+            {launch?.webcastUrl ? <Play size={14} aria-hidden="true" /> : <ArrowUpRight size={14} aria-hidden="true" />}
+            <span>{launch?.webcastUrl ? "Watch stream" : "Launch details"}</span>
+          </a>
+        </>
+      ) : (
+        <>
+          <a href="https://www.spacex.com/launches/" target="_blank" rel="noopener noreferrer" tabIndex={duplicate ? -1 : undefined}>
+            <span className="ticker-item__label">SpaceX</span>
+            <strong className="launch-countdown">{countdown}</strong>
+          </a>
+          {source}
+        </>
+      )}
+    </li>
+  );
+}
+
+function SpaceAndAISignals({ duplicate = false }: { duplicate?: boolean }) {
+  return (
+    <>
       <li className="ticker-item ticker-item--mars">
         <a href="https://science.nasa.gov/mars/facts/" title="Mars surface gravity, about 38% of Earth's" target="_blank" rel="noopener noreferrer" tabIndex={duplicate ? -1 : undefined}>
           <span className="ticker-item__label">Mars g</span>

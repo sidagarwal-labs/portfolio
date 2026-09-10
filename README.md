@@ -24,7 +24,7 @@ Book covers use the existing image URLs as small, uncropped thumbnails. Space is
 
 ## Market ticker
 
-Stock quotes and custom metrics move together on one native scrolling track with matching typography. There is no embedded TradingView widget or separate fixed metrics area. Hover pauses the track; keyboard focus and reduced-motion preferences make it a static, horizontally scrollable row. Readers can turn the ticker off, and the choice is stored locally.
+Stock quotes and custom metrics normally move together on one native scrolling track with matching typography. There is no embedded TradingView widget. An imminent SpaceX launch pins its countdown and watch action to the left of the same bar while the remaining items continue scrolling to its right. Hovering or focusing the watch action does not pause the track. Hovering the scrolling area pauses it; keyboard focus within it and reduced-motion preferences make it a static, horizontally scrollable row. The ticker is always visible; there is no on/off control, and any previously saved off preference is ignored.
 
 `useStockQuotes` uses the existing `VITE_FINNHUB_KEY` configuration and refreshes the seven symbols once per minute while the page is visible. The existing GitHub Actions deployment already reads this value from its repository secret; local development reads Vite's environment files. Quote timestamps, source, delay information, and cached status are available in each stock's hover text, not as a separate scrolling item. Failed requests retain real cached quotes or show "Unavailable" if there is no quote. Prices are never simulated.
 
@@ -32,11 +32,13 @@ Vite variables prefixed with `VITE_` are public in the client bundle. This follo
 
 The same track includes:
 
-- **SpaceX:** the next SpaceX launch from [The Space Devs' Launch Library 2](https://thespacedevs.com/llapi). The countdown advances once per minute, schedules are cached for two hours, and failed requests have a 15-minute backoff. Tentative dates are not displayed as precise countdowns. Passing the scheduled time shows "Awaiting update", not a claim that the launch happened.
+- **SpaceX:** the next SpaceX launch from [The Space Devs' Launch Library 2](https://thespacedevs.com/llapi), using the detailed response for official webcast links. The countdown advances once per minute; schedules refresh after two hours, or 15 minutes inside the four-hour launch window. Failed requests retain the last successful schedule and retry after 15 minutes. Stale data shows "Schedule cached"; missing data links to "Check schedule". A confirmed, fresh launch less than four hours away is highlighted in a fixed left-side slot, ahead of the scrolling items, instead of appearing in the scrolling loop. The action uses an HTTPS official webcast on an allowed host, or says "Launch details" when no verified stream is available. "Stream live" requires an explicit feed signal. Tentative and stale schedules never trigger the highlight. Passing the scheduled time shows "Awaiting update", not a claim that the launch happened.
 - **Mars gravity:** a fixed reference value of 3.71 m/s squared.
 - **Highest ELO LLM:** the model name, score, and date from [Arena's overall text leaderboard](https://arena.ai/leaderboard/text), ranked by point-estimate score. This is a manually verified, visibly dated snapshot, not a live feed. Update `arenaLeader` in `src/content/journalContent.ts` after checking the leaderboard; preserve its update date and score uncertainty. The September 2, 2026 snapshot, checked September 5, has claude-fable-5 at 1507 (+/-5). Overlapping ranking intervals do not establish a definitive best model.
 
 The old combined stock/launch/simulated-telemetry hook is not imported. The native quote hook and existing launch hook each run once, not once per visual copy of the scrolling loop.
+
+With the Vite dev server running, open `/?launch-preview=soon` for a labeled mock countdown starting at T-2h 14m. The mock uses an official O3b mPower webcast link verified September 10, 2026, but its countdown is simulated. It does not fetch or overwrite cached launch data and is disabled in production builds. Reloading restarts the preview.
 
 ## Verification
 
