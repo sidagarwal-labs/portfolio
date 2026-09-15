@@ -13,6 +13,11 @@ export const researchNotes = [
 
 export const selectedProjects = [
   {
+    title: "Pitt Pirates, Team 2642",
+    href: "/robotics",
+    description: "Six seasons of FIRST Robotics, from 2013 to 2018. Team captain in 2017, with robots, Championship footage, and the matches behind the results."
+  },
+  {
     title: "Financial models",
     href: "https://github.com/sidagarwal-labs/models",
     description: "An earnings-model library I maintain across tech and other sectors, with valuation work and company research."

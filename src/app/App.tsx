@@ -3,6 +3,7 @@ import RouteScrollReset from "./RouteScrollReset";
 import HomePage from "../features/home/JournalHomePage";
 import LiveTicker from "../features/home/LiveTicker";
 import ArticlePage from "../features/writing/ArticlePage";
+import RoboticsPage from "../features/robotics/RoboticsPage";
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/writing/:slug" element={<ArticlePage />} />
+        <Route path="/robotics" element={<RoboticsPage />} />
         <Route path="/experience" element={<Navigate to="/#impact" replace />} />
         <Route path="/projects" element={<Navigate to="/#lab" replace />} />
         <Route path="/writing" element={<Navigate to="/#writing" replace />} />

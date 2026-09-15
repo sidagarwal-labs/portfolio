@@ -73,6 +73,106 @@ for (const width of [1440, 390, 320]) {
   });
 }
 
+test("robotics story links from projects and preserves the captain-season context", async ({ page }) => {
+  await page.goto("./");
+  const link = page.locator("#lab").getByRole("link", { name: "Pitt Pirates, Team 2642", exact: true });
+  await expect(link).toHaveAttribute("href", "/portfolio/robotics");
+  await expect(page.locator("#impact a[href='/portfolio/robotics']")).toHaveCount(1);
+  await link.click();
+  await expect(page).toHaveURL(/\/portfolio\/robotics$/);
+  await expect(page.getByRole("heading", { name: "Pitt Pirates, Team 2642", exact: true })).toBeVisible();
+  await expect(page.locator(".article-meta")).toHaveText("2013-2018 · Team captain, 2017 FIRST Steamworks");
+  await expect(page.locator(".robotics-video")).toHaveCount(2);
+  await expect(page.locator(".robotics-video iframe")).toHaveCount(0);
+  await expect(page.locator(".robotics-photo")).toHaveCount(3);
+  await expect(page.locator(".robotics-page")).toContainText("five official events");
+  await expect(page.locator(".robotics-page")).toContainText("four FIRST Championship appearances");
+  await page.getByRole("link", { name: "Back to projects", exact: true }).click();
+  await expect(page).toHaveURL(/\/portfolio\/#lab$/);
+  await expect(page.locator("#lab")).toBeInViewport();
+  await expect(page).toHaveTitle("Sid Agarwal | Writing, Projects & Markets");
+});
+
+test("robotics match players load on demand and retain source links", async ({ page }) => {
+  const playerRequests: string[] = [];
+  await page.route("https://www.youtube-nocookie.com/embed/**", (route) => {
+    playerRequests.push(route.request().url());
+    return route.fulfill({ contentType: "text/html", body: "<!doctype html><title>Match video fixture</title>" });
+  });
+  await page.goto("./robotics");
+  await expect(page).toHaveTitle("Pitt Pirates, Team 2642 | Sid Agarwal");
+  const videos = page.locator(".robotics-video");
+  await expect(videos.locator("iframe")).toHaveCount(0);
+  expect(playerRequests).toHaveLength(0);
+  const firstMatch = page.locator(".robotics-match").first();
+  await expect(firstMatch.getByRole("link", { name: "Watch on YouTube" })).toHaveAttribute("href", "https://www.youtube.com/watch?v=23Ge6Ods51A");
+  await expect(firstMatch.getByRole("link", { name: "Match record" })).toHaveAttribute("href", "https://www.thebluealliance.com/match/2017roe_qm14");
+  await expect(page.locator(".robotics-match").nth(1).getByRole("link", { name: "Match record" })).toHaveAttribute("href", "https://www.thebluealliance.com/match/2017ncral_f1m3");
+  const before = (await videos.first().boundingBox())!;
+  await page.getByRole("button", { name: "Play 2017 Houston Championship, Roebling Qualification 14", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  const player = firstMatch.locator("iframe");
+  await expect(player).toHaveAttribute("src", "https://www.youtube-nocookie.com/embed/23Ge6Ods51A?autoplay=1&rel=0");
+  await expect(player).toHaveAttribute("title", "2017 Houston Championship, Roebling Qualification 14");
+  await expect(videos.locator("iframe")).toHaveCount(1);
+  await expect.poll(() => playerRequests.length).toBe(1);
+  await expect(page.locator(".robotics-match").nth(1).getByRole("button")).toHaveCount(1);
+  const after = (await videos.first().boundingBox())!;
+  expect(after.width).toBe(before.width);
+  expect(after.height).toBe(before.height);
+});
+
+test("robotics media failures preserve captions and original links", async ({ page }) => {
+  await page.route("https://www.pittpiratesrobotics.com/wp-content/uploads/**", (route) => route.abort());
+  await page.route("https://i.ytimg.com/vi/**", (route) => route.abort());
+  await page.goto("./robotics");
+  const photos = page.locator(".robotics-photo");
+  for (const photo of await photos.all()) {
+    await photo.scrollIntoViewIfNeeded();
+    await expect(photo.getByText("Photo unavailable", { exact: true })).toBeVisible();
+    await expect(photo.getByRole("link", { name: /^Original photo:/ })).toHaveAttribute("href", /^https:\/\/www\.pittpiratesrobotics\.com\/wp-content\/uploads\//);
+    await expect(photo.getByRole("link", { name: "Photo: Pitt Pirates Robotics", exact: true })).toHaveCount(1);
+  }
+  const play = page.getByRole("button", { name: "Play 2017 Houston Championship, Roebling Qualification 14", exact: true });
+  await play.scrollIntoViewIfNeeded();
+  await expect(play).toBeVisible();
+  await expect(play.locator("img")).toHaveCSS("visibility", "hidden");
+  await expect(page.locator(".robotics-video iframe")).toHaveCount(0);
+});
+
+for (const width of [1440, 768, 390, 320]) {
+  test(`robotics media and captions fit at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("./robotics");
+    const layout = await page.evaluate(() => ({
+      width: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      clipped: Array.from(document.querySelectorAll(".robotics-page h1, .robotics-page p, .robotics-page figcaption, .robotics-page li, .robotics-video, .robotics-photo__image")).filter((element) => {
+        const bounds = element.getBoundingClientRect();
+        return bounds.left < 0 || bounds.right > document.documentElement.clientWidth + 1;
+      }).map((element) => element.tagName)
+    }));
+    expect(layout.scrollWidth).toBeLessThanOrEqual(layout.width + 1);
+    expect(layout.clipped).toEqual([]);
+    for (const video of await page.locator(".robotics-video").all()) {
+      const bounds = (await video.boundingBox())!;
+      expect(bounds.width / bounds.height).toBeCloseTo(16 / 9, 2);
+    }
+    const galleryPhotos = page.locator(".robotics-gallery .robotics-photo");
+    const first = (await galleryPhotos.first().boundingBox())!;
+    const second = (await galleryPhotos.nth(1).boundingBox())!;
+    if (width <= 600) {
+      expect(second.y).toBeGreaterThan(first.y + first.height);
+    } else {
+      expect(first.y).toBe(second.y);
+      expect(first.x + first.width).toBeLessThan(second.x);
+    }
+    for (const photo of await page.locator(".robotics-photo").all()) await photo.scrollIntoViewIfNeeded();
+    await page.getByRole("heading", { name: "Pitt Pirates, Team 2642", exact: true }).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: testInfo.outputPath(`robotics-${width}.png`), fullPage: true });
+  });
+}
+
 test("coursework projects link to their public repos with clear scope", async ({ page }) => {
   await page.goto("./#lab");
   const projects = page.locator(".project-list");

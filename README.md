@@ -22,6 +22,14 @@ Research notes link to the original Markdown in the public financial-models repo
 
 Book covers use the existing image URLs as small, uncropped thumbnails. Space is reserved before they load; a failed image is hidden without removing the book's title or link.
 
+## Robotics
+
+`/robotics` is a journal-style project page linked from Selected projects and the background section. Its content lives in `src/features/robotics/RoboticsPage.tsx`. It covers Sid's confirmed 2013-2018 membership in the Pitt Pirates, FRC Team 2642, and his 2017 FIRST Steamworks team captaincy. Team results and alliance scores are labeled separately from personal contributions.
+
+Featured matches are 2017 Houston Roebling Qualification 14 and the 2017 Raleigh Final 3. Additional footage includes the 2018 Turing semifinal tiebreaker, the undefeated Pembroke event's final, and the team's own 2017 recap, unveiling, and Chairman's Award video. Record links point to The Blue Alliance and FIRST. Video metadata and team-hosted images were checked September 14, 2026; Statbotics ratings are not quoted because its API was unavailable during research.
+
+Photos remain hosted on the Pitt Pirates website, with original-file links and visible team attribution; no copies are included in this repository. Confirm the photographer's reuse permission before downloading or republishing copies. If a photo fails, its reserved space, caption, attribution, and original link remain. YouTube thumbnails load as images, but the privacy-enhanced player is created only after the reader presses play. Watch-on-YouTube links remain available if embedding is blocked.
+
 ## Market ticker
 
 Stock quotes and custom metrics normally move together on one native scrolling track with matching typography. There is no embedded TradingView widget. An imminent SpaceX launch pins its countdown and watch action to the left of the same bar while the remaining items continue scrolling to its right. Hovering or focusing the watch action does not pause the track. Hovering the scrolling area pauses it; keyboard focus within it and reduced-motion preferences make it a static, horizontally scrollable row. The ticker is always visible; there is no on/off control, and any previously saved off preference is ignored.

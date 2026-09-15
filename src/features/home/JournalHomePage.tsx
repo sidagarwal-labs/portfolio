@@ -53,7 +53,7 @@ function JournalHomePage() {
             <ul className="project-list">
               {selectedProjects.map((project) => (
                 <li key={project.href}>
-                  <a href={project.href}>{project.title}</a>
+                  {project.href.startsWith("/") ? <Link to={project.href}>{project.title}</Link> : <a href={project.href}>{project.title}</a>}
                   <p>{project.description}</p>
                 </li>
               ))}
@@ -109,7 +109,7 @@ function JournalHomePage() {
             <p>
               I studied business and operations at UNC Charlotte, with a minor in
               economics. I've also worked on logistics at Amazon and captained and
-              mentored a FIRST Robotics team.
+              mentored <Link to="/robotics">the Pitt Pirates, FRC Team 2642</Link>.
             </p>
             <p>
               I'm now pursuing an M.S. in Data Science and
