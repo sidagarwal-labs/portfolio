@@ -36,7 +36,7 @@ test("homepage presents real writing and projects without the scene runtime", as
 
   await expect(page.getByRole("heading", { name: "Sid Agarwal", exact: true })).toBeVisible();
   await expect(page.locator("canvas, .glass-card, .scene-canvas")).toHaveCount(0);
-  await expect(page.locator("#writing a")).toHaveCount(7);
+  await expect(page.locator("#writing a")).toHaveCount(8);
   await expect(page.getByRole("link", { name: "Financial models", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/models");
   await expect(page.getByRole("link", { name: "NVDocs RAG", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/NVDocs_RAG");
   await expect(page.getByRole("link", { name: "HireMe.AI", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/HireMe-AI");
@@ -184,7 +184,9 @@ test("coursework projects link to their public repos with clear scope", async ({
 
 test("research notes link to the verified source documents", async ({ page }) => {
   await page.goto("./");
+  await expect(page.locator("#writing a").first()).toHaveText("AI buildout: October 2026");
   for (const [title, slug] of [
+    ["AI buildout: October 2026", "ai-buildout-2026-10"],
     ["AI buildout: September 2026", "ai-buildout-2026-09"],
     ["Foundation labs", "foundation-labs"],
     ["AI memory & storage", "memory-storage"],
@@ -448,13 +450,15 @@ test("introduction and background cover different information", async ({ page })
 
 test.describe("GitHub note dates", () => {
   test.use({ timezoneId: "America/Los_Angeles" });
+  const fallbackDates = ["Oct 4, 2026", "Sep 9, 2026", ...Array(6).fill("Oct 4, 2026")];
 
   test("verified commit dates remain visible when GitHub is unavailable", async ({ page }) => {
     await page.goto("./");
     const dates = page.locator(".writing-list time");
-    await expect(dates).toHaveCount(7);
-    await expect(dates).toHaveText(Array(7).fill("Sep 9, 2026"));
-    await expect(dates.first()).toHaveAttribute("datetime", "2026-09-09T02:36:56Z");
+    await expect(dates).toHaveCount(8);
+    await expect(dates).toHaveText(fallbackDates);
+    await expect(dates.first()).toHaveAttribute("datetime", "2026-10-04T04:17:48Z");
+    await expect(dates.nth(1)).toHaveAttribute("datetime", "2026-09-09T02:36:56Z");
   });
 
   test("each file refreshes from GitHub, keeps UTC dates, and reuses its cache", async ({ page }) => {
@@ -462,19 +466,19 @@ test.describe("GitHub note dates", () => {
     await page.route(noteCommitsApi, (route) => {
       const url = new URL(route.request().url());
       requests.push(url);
-      const date = url.searchParams.get("path") === "notes/ai-buildout-2026-09.md"
-        ? "2026-09-10T00:05:00Z" : "2026-09-09T02:36:56Z";
+      const date = url.searchParams.get("path") === "notes/ai-buildout-2026-10.md"
+        ? "2026-10-05T00:05:00Z" : "2026-10-04T04:01:25Z";
       return route.fulfill({ json: [{ commit: { committer: { date } } }] });
     });
     await page.goto("./");
-    await expect(page.locator(".writing-list time").first()).toHaveText("Sep 10, 2026");
+    await expect(page.locator(".writing-list time").first()).toHaveText("Oct 5, 2026");
     await expect.poll(() => page.evaluate(() => localStorage.getItem("research-note-dates-v1"))).not.toBeNull();
-    expect(requests).toHaveLength(7);
+    expect(requests).toHaveLength(8);
     expect(requests.every((url) => url.searchParams.get("per_page") === "1")).toBe(true);
-    expect(new Set(requests.map((url) => url.searchParams.get("path"))).size).toBe(7);
+    expect(new Set(requests.map((url) => url.searchParams.get("path"))).size).toBe(8);
     await page.reload();
-    await expect(page.locator(".writing-list time").first()).toHaveText("Sep 10, 2026");
-    expect(requests).toHaveLength(7);
+    await expect(page.locator(".writing-list time").first()).toHaveText("Oct 5, 2026");
+    expect(requests).toHaveLength(8);
   });
 
   test("corrupt cached dates cannot break the writing list", async ({ page }) => {
@@ -482,7 +486,26 @@ test.describe("GitHub note dates", () => {
       localStorage.setItem("research-note-dates-v1", JSON.stringify({ fetchedAt: Date.now(), dates: { "foundation-labs": "not-a-date" } }));
     });
     await page.goto("./");
-    await expect(page.locator(".writing-list time")).toHaveText(Array(7).fill("Sep 9, 2026"));
+    await expect(page.locator(".writing-list time")).toHaveText(fallbackDates);
+  });
+
+  test("a cache from before October does not suppress the new report's date", async ({ page }) => {
+    await page.addInitScript(() => {
+      const slugs = ["ai-buildout-2026-09", "foundation-labs", "memory-storage", "gpu-prices", "ai-capex", "ai-adoption", "cloud-growth"];
+      localStorage.setItem("research-note-dates-v1", JSON.stringify({
+        fetchedAt: Date.now(),
+        dates: Object.fromEntries(slugs.map((slug) => [slug, "2026-09-09T02:36:56Z"]))
+      }));
+    });
+    const paths: string[] = [];
+    await page.route(noteCommitsApi, (route) => {
+      paths.push(new URL(route.request().url()).searchParams.get("path")!);
+      return route.abort();
+    });
+    await page.goto("./");
+    await expect(page.locator(".writing-list time")).toHaveText(fallbackDates);
+    await expect.poll(() => paths.length).toBe(8);
+    expect(paths).toContain("notes/ai-buildout-2026-10.md");
   });
 });
 

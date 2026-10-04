@@ -18,7 +18,7 @@ npm run dev
 - `src/features/home/JournalHomePage.tsx`: introduction, background, and section order.
 - `src/styles/journal.css`: the active, light, single-column design.
 
-Research notes link to the original Markdown in the public financial-models repository. `useResearchNoteDates` requests each file's most recent commit, caches the dates for an hour between visits, and retains verified fallback dates if GitHub is unavailable. Dates are displayed in UTC so they do not shift across time zones. The fallback timestamps were verified on September 5, 2026.
+Research notes link to the original Markdown in the public financial-models repository. The October 2026 AI buildout report leads the writing list, followed by the September archive and six topic notes. Reports use findings-led prose with dated source links, rather than slide-by-slide narration or monitoring checklists. `useResearchNoteDates` requests each file's most recent commit, caches dates for an hour between visits, and retains verified fallback dates if GitHub is unavailable. Dates are displayed in UTC so they do not shift across time zones. Fallbacks were verified on October 4, 2026: the October report and six topics use the October 4 published revision, while the September summary retains its September 9 commit date. Commit dates identify edits, not the observation dates of every figure.
 
 Book covers use the existing image URLs as small, uncropped thumbnails. Space is reserved before they load; a failed image is hidden without removing the book's title or link.
 

@@ -1,11 +1,12 @@
 export const researchNotes = [
+  { title: "AI buildout: October 2026", slug: "ai-buildout-2026-10", updatedAt: "2026-10-04T04:17:48Z" },
   { title: "AI buildout: September 2026", slug: "ai-buildout-2026-09", updatedAt: "2026-09-09T02:36:56Z" },
-  { title: "Foundation labs", slug: "foundation-labs", updatedAt: "2026-09-09T02:36:56Z" },
-  { title: "AI memory & storage", slug: "memory-storage", updatedAt: "2026-09-09T02:36:56Z" },
-  { title: "GPU & memory prices", slug: "gpu-prices", updatedAt: "2026-09-09T02:36:56Z" },
-  { title: "AI capital expenditure", slug: "ai-capex", updatedAt: "2026-09-09T02:36:56Z" },
-  { title: "AI adoption", slug: "ai-adoption", updatedAt: "2026-09-09T02:36:56Z" },
-  { title: "Cloud growth", slug: "cloud-growth", updatedAt: "2026-09-09T02:36:56Z" }
+  { title: "Foundation labs", slug: "foundation-labs", updatedAt: "2026-10-04T04:17:48Z" },
+  { title: "AI memory & storage", slug: "memory-storage", updatedAt: "2026-10-04T04:17:48Z" },
+  { title: "GPU & memory prices", slug: "gpu-prices", updatedAt: "2026-10-04T04:17:48Z" },
+  { title: "AI capital expenditure", slug: "ai-capex", updatedAt: "2026-10-04T04:17:48Z" },
+  { title: "AI adoption", slug: "ai-adoption", updatedAt: "2026-10-04T04:17:48Z" },
+  { title: "Cloud growth", slug: "cloud-growth", updatedAt: "2026-10-04T04:17:48Z" }
 ].map((note) => ({
   ...note,
   href: `https://github.com/sidagarwal-labs/models/blob/main/notes/${note.slug}.md`
