@@ -450,6 +450,15 @@ test("introduction and background cover different information", async ({ page })
   await expect(page.locator("#impact")).not.toContainText("expected December 2026");
 });
 
+test("introduction links to shipped Copilot launches", async ({ page }) => {
+  await page.goto("./");
+  const introduction = page.locator(".introduction");
+  await expect(introduction).toContainText("I've shipped Power BI and Viva Engage as Copilot content sources, led retrieval quality for Copilot Connectors, and helped take Copilot from zero to over 30 million paid seats.");
+  await expect(introduction.getByRole("link", { name: "Power BI", exact: true })).toHaveAttribute("href", "https://learn.microsoft.com/en-us/power-bi/create-reports/copilot-introduction");
+  await expect(introduction.getByRole("link", { name: "Viva Engage", exact: true })).toHaveAttribute("href", "https://techcommunity.microsoft.com/blog/viva_engage_blog/viva-engage-public-content-is-now-available-in-microsoft-365-copilot/4443512");
+  await expect(introduction.getByRole("link", { name: "Copilot Connectors", exact: true })).toHaveAttribute("href", "https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/overview-copilot-connector");
+});
+
 test.describe("GitHub note dates", () => {
   test.use({ timezoneId: "America/Los_Angeles" });
   const fallbackDates = ["Oct 4, 2026", "Sep 9, 2026", ...Array(6).fill("Oct 4, 2026")];
