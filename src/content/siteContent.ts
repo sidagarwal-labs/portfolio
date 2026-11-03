@@ -1230,7 +1230,7 @@ export const profileContent: ProfileContent = {
   resumeHref,
   socials: [
     { label: "Email", shortLabel: "Mail", href: "mailto:sid@agarwal-labs.com" },
-    { label: "LinkedIn", shortLabel: "In", href: "https://www.linkedin.com/in/sid-agarwal-480a68162/" },
+    { label: "LinkedIn", shortLabel: "In", href: "https://www.linkedin.com/in/sid-agarwal-labs/" },
     { label: "GitHub", shortLabel: "GH", href: "https://github.com/sidagarwal-labs" },
     { label: "Resume", shortLabel: "CV", href: resumeHref }
   ],
