@@ -37,6 +37,8 @@ test("homepage presents real writing and projects without the scene runtime", as
   await expect(page.getByRole("heading", { name: "Sid Agarwal", exact: true })).toBeVisible();
   await expect(page.locator("canvas, .glass-card, .scene-canvas")).toHaveCount(0);
   await expect(page.locator("#writing a")).toHaveCount(8);
+  await expect(page.locator(".project-list > li > a").nth(1)).toHaveText("arXiv Search");
+  await expect(page.getByRole("link", { name: "arXiv Search", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/arxiv-search");
   await expect(page.getByRole("link", { name: "Financial models", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/models");
   await expect(page.getByRole("link", { name: "NVDocs RAG", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/NVDocs_RAG");
   await expect(page.getByRole("link", { name: "HireMe.AI", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/HireMe-AI");
@@ -274,7 +276,7 @@ test("contact and the bundled resume retain their working destinations", async (
   await page.goto("./#contact");
   await expect(page.locator("#contact").getByRole("link", { name: "Email", exact: true })).toHaveAttribute("href", "mailto:sid.webster@gmail.com");
   const resumeHref = await page.getByRole("link", { name: "Resume (PDF)", exact: true }).getAttribute("href");
-  expect(resumeHref).toMatch(/^\/portfolio\/assets\/.*\.pdf$/);
+  expect(resumeHref).toMatch(/^\/portfolio\/assets\/Siddhant_Agarwal_Resume-[\w-]+\.pdf$/);
   const resume = await request.get(resumeHref!);
   expect(resume.ok()).toBe(true);
   expect((await resume.body()).subarray(0, 5).toString()).toBe("%PDF-");

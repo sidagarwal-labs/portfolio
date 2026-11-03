@@ -19,6 +19,11 @@ export const selectedProjects = [
     description: "Six seasons of FIRST Robotics, from 2013 to 2018. Team captain in 2017, with robots, Championship footage, and the matches behind the results."
   },
   {
+    title: "arXiv Search",
+    href: "https://github.com/sidagarwal-labs/arxiv-search",
+    description: "Hybrid search over 23,304 recent arXiv papers in information retrieval, NLP, and machine learning. Keyword and embedding fusion raised graded nDCG@10 from 0.52 to 0.72 on development queries; held-out testing and RAG answers are next."
+  },
+  {
     title: "Financial models",
     href: "https://github.com/sidagarwal-labs/models",
     description: "An earnings-model library I maintain across tech and other sectors, with valuation work and company research."

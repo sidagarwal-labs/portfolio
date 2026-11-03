@@ -1,4 +1,4 @@
-import resumeHref from "../../Siddhant_Agarwal_Resume (7).pdf?url";
+import resumeHref from "../../Siddhant_Agarwal_Resume.pdf?url";
 import type {
   BookEntry,
   ExperienceEntry,
