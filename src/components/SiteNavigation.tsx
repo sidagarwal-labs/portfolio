@@ -92,7 +92,7 @@ function SiteNavigation() {
             <a className="site-nav__button site-nav__button--ghost" href={profileContent.resumeHref} target="_blank" rel="noreferrer">
               Resume
             </a>
-            <a className="site-nav__button" href="mailto:sid.webster@gmail.com">
+            <a className="site-nav__button" href="mailto:sid@agarwal-labs.com">
               Reach out
             </a>
           </div>
@@ -128,7 +128,7 @@ function SiteNavigation() {
             <a className="site-nav__button site-nav__button--ghost" href={profileContent.resumeHref} target="_blank" rel="noreferrer">
               Resume
             </a>
-            <a className="site-nav__button" href="mailto:sid.webster@gmail.com">
+            <a className="site-nav__button" href="mailto:sid@agarwal-labs.com">
               Reach out
             </a>
           </div>

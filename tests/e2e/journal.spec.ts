@@ -274,7 +274,7 @@ test("earlier projects remain available through an accessible disclosure", async
 
 test("contact and the bundled resume retain their working destinations", async ({ page, request }) => {
   await page.goto("./#contact");
-  await expect(page.locator("#contact").getByRole("link", { name: "Email", exact: true })).toHaveAttribute("href", "mailto:sid.webster@gmail.com");
+  await expect(page.locator("#contact").getByRole("link", { name: "Email", exact: true })).toHaveAttribute("href", "mailto:sid@agarwal-labs.com");
   const resumeHref = await page.getByRole("link", { name: "Resume (PDF)", exact: true }).getAttribute("href");
   expect(resumeHref).toMatch(/^\/assets\/Siddhant_Agarwal_Resume-[\w-]+\.pdf$/);
   const resume = await request.get(resumeHref!);
