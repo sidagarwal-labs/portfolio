@@ -2,7 +2,7 @@
 
 A simple personal site for writing, research notes, projects, and reading.
 
-Public site: https://sidagarwal-labs.github.io/portfolio/
+Public site: https://agarwal-labs.com/
 
 ## Local development
 
@@ -55,7 +55,7 @@ npm run build
 npm run test:e2e
 ```
 
-The test command builds in Vite's `test` mode with a non-secret fixture quote key, then starts a temporary preview on port 4175 with the real `/portfolio/` base path. Tests cover desktop and mobile layouts, keyboard access, removed-note recovery, legacy links, GitHub Pages redirects, commit dates and caching, book thumbnails, launch scheduling, shared ticker motion, and quote loading, failure, cleanup, and reduced-motion behavior. Provider responses are mocked for repeatability. A normal `npm run build` uses the real configured key; the deploy command always performs that normal build first.
+The test command builds in Vite's `test` mode with a non-secret fixture quote key, then starts a temporary preview on port 4175 with the real root `/` base path used by the custom domain. Tests cover desktop and mobile layouts, keyboard access, removed-note recovery, legacy links, GitHub Pages redirects, commit dates and caching, book thumbnails, launch scheduling, shared ticker motion, and quote loading, failure, cleanup, and reduced-motion behavior. Provider responses are mocked for repeatability. A normal `npm run build` uses the real configured key; the deploy command always performs that normal build first.
 
 The production TypeScript project checks `src/main.tsx` and its transitive imports. Previous 3D pages, styles, and supporting dependencies remain in the repository but are not part of the deployed app. This also leaves unrelated work-in-progress pages untouched.
 
@@ -69,6 +69,6 @@ git push origin main
 
 The existing `.github/workflows/deploy.yml` workflow builds the app using the repository's `VITE_FINNHUB_KEY` secret and deploys the `dist` artifact to GitHub Pages. The Pages source should be set to GitHub Actions. The workflow also supports manual dispatch from the Actions tab.
 
-Verify the completed deployment at https://sidagarwal-labs.github.io/portfolio/. `public/404.html` preserves direct article links on GitHub Pages.
+Verify the completed deployment at https://agarwal-labs.com/. The custom domain is configured in the repository's Pages settings, and the old `sidagarwal-labs.github.io/portfolio/` URL redirects to it. The app is built for the domain root, so do not restore a `/portfolio/` base path. `public/404.html` preserves direct article links on GitHub Pages.
 
 `npm run deploy` is the older branch-based publishing command. Use it only when Pages is explicitly configured to serve the `gh-pages` branch instead of the Actions workflow.

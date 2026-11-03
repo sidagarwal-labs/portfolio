@@ -78,10 +78,10 @@ for (const width of [1440, 390, 320]) {
 test("robotics story links from projects and preserves the captain-season context", async ({ page }) => {
   await page.goto("./");
   const link = page.locator("#lab").getByRole("link", { name: "Pitt Pirates, Team 2642", exact: true });
-  await expect(link).toHaveAttribute("href", "/portfolio/robotics");
-  await expect(page.locator("#impact a[href='/portfolio/robotics']")).toHaveCount(1);
+  await expect(link).toHaveAttribute("href", "/robotics");
+  await expect(page.locator("#impact a[href='/robotics']")).toHaveCount(1);
   await link.click();
-  await expect(page).toHaveURL(/\/portfolio\/robotics$/);
+  await expect(page).toHaveURL(/:4175\/robotics$/);
   await expect(page.getByRole("heading", { name: "Pitt Pirates, Team 2642", exact: true })).toBeVisible();
   await expect(page.locator(".article-meta")).toHaveText("2013-2018 · Team captain, 2017 FIRST Steamworks");
   await expect(page.locator(".robotics-video")).toHaveCount(2);
@@ -90,7 +90,7 @@ test("robotics story links from projects and preserves the captain-season contex
   await expect(page.locator(".robotics-page")).toContainText("five official events");
   await expect(page.locator(".robotics-page")).toContainText("four FIRST Championship appearances");
   await page.getByRole("link", { name: "Back to projects", exact: true }).click();
-  await expect(page).toHaveURL(/\/portfolio\/#lab$/);
+  await expect(page).toHaveURL(/:4175\/#lab$/);
   await expect(page.locator("#lab")).toBeInViewport();
   await expect(page).toHaveTitle("Sid Agarwal | Writing, Projects & Markets");
 });
@@ -222,7 +222,7 @@ for (const [path, sectionId] of [
 ]) {
   test(`legacy /${path} links still reach the right section`, async ({ page }) => {
     await page.goto(`./${path}`);
-    await expect(page).toHaveURL(new RegExp(`/portfolio/#${sectionId}$`));
+    await expect(page).toHaveURL(new RegExp(`:4175/#${sectionId}$`));
     await expect(page.locator(`#${sectionId}`)).toBeInViewport();
   });
 }
@@ -259,7 +259,7 @@ test("GitHub Pages 404 recovery preserves an essay URL, query, and fragment", as
   await page.route("**/writing/missing-note?**", (route) => route.fulfill({ status: 404, contentType: "text/html", body: fallbackHtml }), { times: 1 });
   await page.goto("./writing/missing-note?from=share&mode=read#main");
   await expect(page.getByRole("heading", { name: "Note not found", level: 1 })).toBeVisible();
-  await expect(page).toHaveURL(/\/portfolio\/writing\/missing-note\?from=share&mode=read#main$/);
+  await expect(page).toHaveURL(/:4175\/writing\/missing-note\?from=share&mode=read#main$/);
 });
 
 test("earlier projects remain available through an accessible disclosure", async ({ page }) => {
@@ -276,7 +276,7 @@ test("contact and the bundled resume retain their working destinations", async (
   await page.goto("./#contact");
   await expect(page.locator("#contact").getByRole("link", { name: "Email", exact: true })).toHaveAttribute("href", "mailto:sid.webster@gmail.com");
   const resumeHref = await page.getByRole("link", { name: "Resume (PDF)", exact: true }).getAttribute("href");
-  expect(resumeHref).toMatch(/^\/portfolio\/assets\/Siddhant_Agarwal_Resume-[\w-]+\.pdf$/);
+  expect(resumeHref).toMatch(/^\/assets\/Siddhant_Agarwal_Resume-[\w-]+\.pdf$/);
   const resume = await request.get(resumeHref!);
   expect(resume.ok()).toBe(true);
   expect((await resume.body()).subarray(0, 5).toString()).toBe("%PDF-");
