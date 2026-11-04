@@ -57,23 +57,21 @@ for (const width of [1440, 390, 320]) {
     const photo = (await portrait.boundingBox())!;
     const name = (await page.locator(".masthead h1").boundingBox())!;
     const identity = (await page.locator(".masthead__identity").boundingBox())!;
-    const navigation = (await page.getByRole("navigation", { name: "Primary" }).boundingBox())!;
-    const contact = (await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Contact", exact: true }).boundingBox())!;
-    const quickLinks = (await page.getByRole("list", { name: "Resume and profiles" }).boundingBox())!;
+    const bar = (await page.locator(".masthead__bar").boundingBox())!;
+    const actions = (await page.getByRole("list", { name: "Resume and email" }).boundingBox())!;
     expect(identity.x + identity.width).toBeLessThan(photo.x);
     expect(photo.width).toBeGreaterThanOrEqual(108);
     expect(photo.x + photo.width).toBeLessThanOrEqual(width);
+    expect(actions.x + actions.width).toBeLessThanOrEqual(width);
     if (width > 600) {
       expect(photo.y).toBeCloseTo(name.y, 1);
-      expect(photo.y + photo.height).toBeCloseTo(contact.y + contact.height, 1);
-      expect(navigation.x + navigation.width).toBeLessThan(photo.x);
-      expect(quickLinks.x + quickLinks.width).toBeLessThan(photo.x);
+      expect(photo.y + photo.height).toBeCloseTo(bar.y + bar.height, 1);
+      expect(bar.height).toBeLessThan(40);
+      expect(bar.x + bar.width).toBeLessThan(photo.x);
     } else {
       expect(photo.height).toBe(108);
-      expect(quickLinks.y).toBeGreaterThanOrEqual(photo.y + photo.height);
-      expect(quickLinks.x + quickLinks.width).toBeLessThanOrEqual(width);
-      expect(navigation.y).toBeGreaterThanOrEqual(quickLinks.y + quickLinks.height);
-      expect(navigation.y).toBeGreaterThanOrEqual(identity.y + identity.height);
+      expect(bar.y).toBeGreaterThanOrEqual(photo.y + photo.height);
+      expect(bar.y).toBeGreaterThanOrEqual(identity.y + identity.height);
     }
     await page.screenshot({ path: testInfo.outputPath(`portrait-${width}.png`) });
   });
@@ -229,16 +227,16 @@ test("research notes link to the verified source documents", async ({ page }) =>
 
 test("section links scroll immediately and do not hijack subsequent scrolling", async ({ page }) => {
   await page.goto("./");
-  for (const [label, sectionId] of [["Projects", "lab"], ["Writing", "writing"], ["About", "impact"], ["Reading", "library"], ["Contact", "contact"]]) {
+  for (const [label, sectionId] of [["Projects", "lab"], ["Writing", "writing"], ["About", "impact"]]) {
     await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: label, exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`#${sectionId}$`));
     await expect(page.locator(`#${sectionId}`)).toBeInViewport();
   }
   await page.evaluate(() => window.scrollTo(0, 0));
-  await expect(page).toHaveURL(/#contact$/);
+  await expect(page).toHaveURL(/#impact$/);
   expect(await page.evaluate(() => getComputedStyle(document.documentElement).scrollBehavior)).toBe("auto");
-  await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Contact", exact: true }).click();
-  await expect(page.locator("#contact")).toBeInViewport();
+  await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "About", exact: true }).click();
+  await expect(page.locator("#impact")).toBeInViewport();
 });
 
 for (const [path, sectionId] of [
@@ -309,20 +307,19 @@ test("contact and the bundled resume retain their working destinations", async (
   expect((await resume.body()).subarray(0, 5).toString()).toBe("%PDF-");
 });
 
-test("the masthead puts the role, resume, and profiles at the top of every page", async ({ page, request }) => {
+test("the masthead keeps the role, navigation, resume, and email in one clean row on every page", async ({ page, request }) => {
   for (const path of ["./", "./robotics"]) {
     await page.goto(path);
     await expect(page.locator(".masthead__role")).toHaveText("Senior Product Manager, AI search & retrieval at Microsoft");
-    const links = page.locator(".masthead").getByRole("list", { name: "Resume and profiles" }).getByRole("link");
-    await expect(links).toHaveText(["Resume (PDF)", "Email", "LinkedIn", "GitHub"]);
-    await expect(links.nth(1)).toHaveAttribute("href", "mailto:sid@agarwal-labs.com");
-    await expect(links.nth(2)).toHaveAttribute("href", "https://www.linkedin.com/in/sid-agarwal-labs/");
-    await expect(links.nth(3)).toHaveAttribute("href", "https://github.com/sidagarwal-labs");
-    const resumeHref = await links.first().getAttribute("href");
-    expect(resumeHref).toMatch(/^\/assets\/Siddhant_Agarwal_Resume-[\w-]+\.pdf$/);
+    await expect(page.locator(".masthead__location")).toHaveText("Charlotte, North Carolina");
+    await expect(page.locator(".masthead a")).toHaveCount(path === "./" ? 5 : 6);
     const navigation = page.getByRole("navigation", { name: "Primary" });
-    await expect(navigation.getByRole("link")).toHaveText(["Projects", "Writing", "About", "Reading", "Contact", "Resume"]);
-    await expect(navigation.getByRole("link", { name: "Resume", exact: true })).toHaveAttribute("href", resumeHref!);
+    await expect(navigation.getByRole("link")).toHaveText(["Projects", "Writing", "About"]);
+    const actions = page.locator(".masthead").getByRole("list", { name: "Resume and email" }).getByRole("link");
+    await expect(actions).toHaveText(["Resume", "Email"]);
+    await expect(actions.nth(1)).toHaveAttribute("href", "mailto:sid@agarwal-labs.com");
+    const resumeHref = await actions.first().getAttribute("href");
+    expect(resumeHref).toMatch(/^\/assets\/Siddhant_Agarwal_Resume-[\w-]+\.pdf$/);
     expect((await request.get(resumeHref!)).ok()).toBe(true);
   }
 });

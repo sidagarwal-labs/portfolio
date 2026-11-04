@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { profileContent } from "../content/siteContent";
 
 function JournalLayout({ children, home = false }: { children: ReactNode; home?: boolean }) {
+  const email = profileContent.socials.find((social) => social.label === "Email");
+
   return (
     <>
       <a className="skip-link" href="#main">Skip to content</a>
@@ -11,27 +13,21 @@ function JournalLayout({ children, home = false }: { children: ReactNode; home?:
           <div className="masthead__identity">
             {home ? <h1>{profileContent.shortName}</h1> : <Link className="masthead__name" to="/">{profileContent.shortName}</Link>}
             <p className="masthead__role">Senior Product Manager, AI search &amp; retrieval at Microsoft</p>
+            <p className="masthead__location">Charlotte, North Carolina</p>
           </div>
           <img className="portrait" src={profileContent.avatarUrl} alt="Sid Agarwal's GitHub avatar" width="132" height="132" />
 
-          <div className="masthead__meta">
-            <span className="masthead__location">Charlotte, North Carolina</span>
-            <ul className="masthead__links" aria-label="Resume and profiles">
-              <li><a href={profileContent.resumeHref}>Resume (PDF)</a></li>
-              {profileContent.socials.filter((social) => social.label !== "Resume").map((social) => (
-                <li key={social.label}><a href={social.href}>{social.label}</a></li>
-              ))}
+          <div className="masthead__bar">
+            <nav className="site-links" aria-label="Primary">
+              <Link to="/#lab">Projects</Link>
+              <Link to="/#writing">Writing</Link>
+              <Link to="/#impact">About</Link>
+            </nav>
+            <ul className="masthead__actions" aria-label="Resume and email">
+              <li><a className="masthead__resume" href={profileContent.resumeHref}>Resume</a></li>
+              {email && <li><a href={email.href}>Email</a></li>}
             </ul>
           </div>
-
-          <nav className="site-links" aria-label="Primary">
-            <Link to="/#lab">Projects</Link>
-            <Link to="/#writing">Writing</Link>
-            <Link to="/#impact">About</Link>
-            <Link to="/#library">Reading</Link>
-            <Link to="/#contact">Contact</Link>
-            <a href={profileContent.resumeHref}>Resume</a>
-          </nav>
         </header>
 
         <main id="main" tabIndex={-1}>{children}</main>

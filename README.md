@@ -15,7 +15,7 @@ npm run dev
 
 - `src/content/journalContent.ts`: selected projects, earlier coursework, research links, verified fallback commit dates, stock symbols, and the dated Arena leaderboard snapshot. The repository list is curated; note dates refresh from GitHub.
 - `src/content/siteContent.ts`: books, cover images, social links, resume, and optional local essays. The local `writing` list is currently empty; the LLM-coding note was removed. Future entries receive a page at `/writing/<slug>`.
-- `src/components/JournalLayout.tsx`: the masthead on every page, with name, role, location, resume and profile links, and navigation.
+- `src/components/JournalLayout.tsx`: the masthead on every page, with name, role, location, and one row of section navigation plus resume and email links.
 - `src/features/home/JournalHomePage.tsx`: introduction, background, and section order: projects, writing, background, reading, then contact.
 - `src/styles/journal.css`: the active, light, single-column design.
 - `public/favicon.ico`, `public/icon-192.png`, `public/apple-touch-icon.png`: site icons made from the same avatar image as the masthead portrait.
