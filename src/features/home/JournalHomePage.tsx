@@ -1,12 +1,20 @@
 import { Link } from "react-router-dom";
 import JournalLayout from "../../components/JournalLayout";
-import { researchNotes, selectedProjects } from "../../content/journalContent";
+import { courseworkProjects, currentResearchNotes, earlierBuildoutEditions, selectedProjects } from "../../content/journalContent";
 import { profileContent } from "../../content/siteContent";
 import { useResearchNoteDates } from "../../hooks/useResearchNoteDates";
 
 const noteDateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "short", day: "numeric", year: "numeric", timeZone: "UTC"
 });
+
+function NoteDate({ value }: { value: string }) {
+  return (
+    <time className="entry-meta" dateTime={value} title={`Last GitHub commit: ${value}`}>
+      {noteDateFormatter.format(new Date(value))}
+    </time>
+  );
+}
 
 function JournalHomePage() {
   const noteDates = useResearchNoteDates();
@@ -34,15 +42,46 @@ function JournalHomePage() {
             </p>
           </div>
 
+          <section className="journal-section" id="lab" aria-labelledby="projects-heading">
+            <h2 id="projects-heading">Selected projects</h2>
+            <ul className="project-list">
+              {selectedProjects.map((project) => (
+                <li key={project.href}>
+                  <a href={project.href}>{project.title}</a>
+                  <p>{project.description}</p>
+                </li>
+              ))}
+            </ul>
+            <details className="project-archive">
+              <summary>Earlier projects</summary>
+              <ul>
+                {courseworkProjects.map((project) => (
+                  <li key={project.href}>
+                    <a href={project.href}>{project.title}</a>
+                    <span className="project-archive__note"> &middot; {project.note}</span>
+                  </li>
+                ))}
+                {earlierProjects.map((project) => <li key={project.slug}><a href={project.href}>{project.title}</a></li>)}
+              </ul>
+            </details>
+            <a className="small-link" href="https://github.com/sidagarwal-labs?tab=repositories">All repositories on GitHub</a>
+          </section>
+
           <section className="journal-section" id="writing" aria-labelledby="writing-heading">
             <h2 id="writing-heading">Writing &amp; notes</h2>
+            {marketTracker && (
+              <p className="section-lede">
+                I follow the AI buildout: where the capital goes, what becomes a bottleneck,
+                and which businesses turn that investment into earnings. My{" "}
+                <a href={marketTracker.href}>AI / LLM Stack Tracker</a> maps public
+                companies across chips, power, data centers, and applications.
+              </p>
+            )}
             <ul className="writing-list">
-              {researchNotes.map((note) => (
+              {currentResearchNotes.map((note) => (
                 <li key={note.slug}>
                   <a href={note.href}>{note.title}</a>
-                  <time className="entry-meta" dateTime={noteDates[note.slug]} title={`Last GitHub commit: ${noteDates[note.slug]}`}>
-                    {noteDateFormatter.format(new Date(noteDates[note.slug]))}
-                  </time>
+                  <NoteDate value={noteDates[note.slug]} />
                 </li>
               ))}
               {profileContent.writing.map((entry) => (
@@ -52,41 +91,34 @@ function JournalHomePage() {
                 </li>
               ))}
             </ul>
+            {earlierBuildoutEditions.length > 0 && (
+              <details className="project-archive note-archive">
+                <summary>Earlier AI buildout editions</summary>
+                <ul>
+                  {earlierBuildoutEditions.map((note) => (
+                    <li key={note.slug}>
+                      <a href={note.href}>{note.title}</a> <NoteDate value={noteDates[note.slug]} />
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+            <p className="disclaimer">Research for my own learning, not investment advice.</p>
           </section>
 
-          <section className="journal-section" id="lab" aria-labelledby="projects-heading">
-            <h2 id="projects-heading">Selected projects</h2>
-            <ul className="project-list">
-              {selectedProjects.map((project) => (
-                <li key={project.href}>
-                  {project.href.startsWith("/") ? <Link to={project.href}>{project.title}</Link> : <a href={project.href}>{project.title}</a>}
-                  <p>{project.description}</p>
-                </li>
-              ))}
-            </ul>
-            <details className="project-archive">
-              <summary>Earlier projects</summary>
-              <ul>
-                {earlierProjects.map((project) => <li key={project.slug}><a href={project.href}>{project.title}</a></li>)}
-              </ul>
-            </details>
-            <a className="small-link" href="https://github.com/sidagarwal-labs?tab=repositories">All repositories on GitHub</a>
+          <section className="journal-section" id="impact" aria-labelledby="about-heading">
+            <h2 id="about-heading">A little background</h2>
+            <p>
+              I studied business and operations at UNC Charlotte, with a minor in
+              economics. I've also worked on logistics at Amazon and captained and
+              mentored <Link to="/robotics">the Pitt Pirates, FRC Team 2642</Link>.
+            </p>
+            <p>
+              I'm now pursuing an M.S. in Data Science and
+              Business Analytics.
+            </p>
+            <a className="small-link" href={profileContent.resumeHref}>Resume (PDF)</a>
           </section>
-
-          {marketTracker && (
-            <section className="journal-section" aria-labelledby="markets-heading">
-              <h2 id="markets-heading">Following the AI buildout</h2>
-              <p>
-                I'm interested in where the capital goes, what becomes a bottleneck,
-                and which businesses turn that investment into earnings.
-              </p>
-              <p>
-                My <a href={marketTracker.href}>AI / LLM Stack Tracker</a> maps public
-                companies across chips, power, data centers, and applications.
-              </p>
-              <p className="disclaimer">Research for my own learning, not investment advice.</p>
-            </section>
-          )}
 
           <section className="journal-section" id="library" aria-labelledby="reading-heading">
             <h2 id="reading-heading">On my bookshelf</h2>
@@ -108,20 +140,6 @@ function JournalHomePage() {
                 </li>
               ))}
             </ul>
-          </section>
-
-          <section className="journal-section" id="impact" aria-labelledby="about-heading">
-            <h2 id="about-heading">A little background</h2>
-            <p>
-              I studied business and operations at UNC Charlotte, with a minor in
-              economics. I've also worked on logistics at Amazon and captained and
-              mentored <Link to="/robotics">the Pitt Pirates, FRC Team 2642</Link>.
-            </p>
-            <p>
-              I'm now pursuing an M.S. in Data Science and
-              Business Analytics.
-            </p>
-            <a className="small-link" href={profileContent.resumeHref}>Resume (PDF)</a>
           </section>
 
           <section className="journal-section contact-section" id="contact" aria-labelledby="contact-heading">

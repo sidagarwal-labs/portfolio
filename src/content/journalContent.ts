@@ -12,26 +12,24 @@ export const researchNotes = [
   href: `https://github.com/sidagarwal-labs/models/blob/main/notes/${note.slug}.md`
 }));
 
+const buildoutPrefix = "ai-buildout-";
+// Edition slugs are ai-buildout-YYYY-MM, so descending slug order is newest first.
+const buildoutEditions = researchNotes
+  .filter((note) => note.slug.startsWith(buildoutPrefix))
+  .sort((a, b) => b.slug.localeCompare(a.slug));
+
+export const currentResearchNotes = [
+  ...buildoutEditions.slice(0, 1),
+  ...researchNotes.filter((note) => !note.slug.startsWith(buildoutPrefix))
+];
+
+export const earlierBuildoutEditions = buildoutEditions.slice(1);
+
 export const selectedProjects = [
-  {
-    title: "Pitt Pirates, Team 2642",
-    href: "/robotics",
-    description: "Six seasons of FIRST Robotics, from 2013 to 2018. Team captain in 2017, with robots, Championship footage, and the matches behind the results."
-  },
   {
     title: "arXiv Search",
     href: "https://github.com/sidagarwal-labs/arxiv-search",
     description: "Hybrid search over 23,304 recent arXiv papers in information retrieval, NLP, and machine learning. Keyword and embedding fusion raised graded nDCG@10 from 0.52 to 0.72 on development queries; held-out testing and RAG answers are next."
-  },
-  {
-    title: "Financial models",
-    href: "https://github.com/sidagarwal-labs/models",
-    description: "An earnings-model library I maintain across tech and other sectors, with valuation work and company research."
-  },
-  {
-    title: "HireMe.AI",
-    href: "https://github.com/sidagarwal-labs/HireMe-AI",
-    description: "A resume and cover-letter builder with job search and hybrid retrieval. Built with @jeffsengsy."
   },
   {
     title: "NVDocs RAG",
@@ -39,14 +37,27 @@ export const selectedProjects = [
     description: "Retrieval experiments on NVIDIA's NVDocs dataset: BM25, learned re-ranking, and a closer look at what the candidate pool misses."
   },
   {
+    title: "HireMe.AI",
+    href: "https://github.com/sidagarwal-labs/HireMe-AI",
+    description: "A resume and cover-letter builder with job search and hybrid retrieval. Built with @jeffsengsy."
+  },
+  {
+    title: "Financial models",
+    href: "https://github.com/sidagarwal-labs/models",
+    description: "An earnings-model library I maintain across tech and other sectors, with valuation work and company research."
+  }
+];
+
+export const courseworkProjects = [
+  {
     title: "AI & Deep Learning Labs",
     href: "https://github.com/sidagarwal-labs/DSBA-6165-AI-Deep-Learning",
-    description: "UNC Charlotte coursework in TensorFlow/Keras: linear and nonlinear models, Iris classification, and an MLP for building energy loads."
+    note: "UNC Charlotte coursework in TensorFlow/Keras"
   },
   {
     title: "Text Analytics",
     href: "https://github.com/sidagarwal-labs/DSBA-6188-Text-Analytics",
-    description: "UNC Charlotte coursework exploring UN speeches and tweet-text preprocessing, with TF-IDF and vectorization examples. Data requirements and source attribution are documented."
+    note: "UNC Charlotte coursework with documented data requirements and source attribution"
   }
 ];
 

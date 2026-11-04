@@ -13,18 +13,20 @@ npm run dev
 
 ## Content
 
-- `src/content/journalContent.ts`: selected projects, research links, verified fallback commit dates, stock symbols, and the dated Arena leaderboard snapshot. The repository list is curated; note dates refresh from GitHub.
+- `src/content/journalContent.ts`: selected projects, earlier coursework, research links, verified fallback commit dates, stock symbols, and the dated Arena leaderboard snapshot. The repository list is curated; note dates refresh from GitHub.
 - `src/content/siteContent.ts`: books, cover images, social links, resume, and optional local essays. The local `writing` list is currently empty; the LLM-coding note was removed. Future entries receive a page at `/writing/<slug>`.
-- `src/features/home/JournalHomePage.tsx`: introduction, background, and section order.
+- `src/components/JournalLayout.tsx`: the masthead on every page, with name, role, location, resume and profile links, and navigation.
+- `src/features/home/JournalHomePage.tsx`: introduction, background, and section order: projects, writing, background, reading, then contact.
 - `src/styles/journal.css`: the active, light, single-column design.
+- `public/favicon.ico`, `public/icon-192.png`, `public/apple-touch-icon.png`: site icons made from the same avatar image as the masthead portrait.
 
-Research notes link to the original Markdown in the public financial-models repository. The October 2026 AI buildout report leads the writing list, followed by the September archive and six topic notes. Reports use findings-led prose with dated source links, rather than slide-by-slide narration or monitoring checklists. `useResearchNoteDates` requests each file's most recent commit, caches dates for an hour between visits, and retains verified fallback dates if GitHub is unavailable. Dates are displayed in UTC so they do not shift across time zones. Fallbacks were verified on October 4, 2026: the October report and six topics use the October 4 published revision, while the September summary retains its September 9 commit date. Commit dates identify edits, not the observation dates of every figure.
+Research notes link to the original Markdown in the public financial-models repository. The newest AI buildout edition leads the writing list, followed by six topic notes; older editions, currently September 2026, sit under an "Earlier AI buildout editions" disclosure. Edition slugs follow `ai-buildout-YYYY-MM`, so a new edition automatically becomes the featured one. Reports use findings-led prose with dated source links, rather than slide-by-slide narration or monitoring checklists. `useResearchNoteDates` requests each file's most recent commit, caches dates for an hour between visits, and retains verified fallback dates if GitHub is unavailable. Dates are displayed in UTC so they do not shift across time zones. Fallbacks were verified on October 4, 2026: the October report and six topics use the October 4 published revision, while the September summary retains its September 9 commit date. Commit dates identify edits, not the observation dates of every figure.
 
 Book covers use the existing image URLs as small, uncropped thumbnails. Space is reserved before they load; a failed image is hidden without removing the book's title or link.
 
 ## Robotics
 
-`/robotics` is a journal-style project page linked from Selected projects and the background section. Its content lives in `src/features/robotics/RoboticsPage.tsx`. It covers Sid's confirmed 2013-2018 membership in the Pitt Pirates, FRC Team 2642, and his 2017 FIRST Steamworks team captaincy. Team results and alliance scores are labeled separately from personal contributions.
+`/robotics` is a journal-style project page linked from the background section, and its back link returns there. Its content lives in `src/features/robotics/RoboticsPage.tsx`. It covers Sid's confirmed 2013-2018 membership in the Pitt Pirates, FRC Team 2642, and his 2017 FIRST Steamworks team captaincy. Team results and alliance scores are labeled separately from personal contributions.
 
 Featured matches are 2017 Houston Roebling Qualification 14 and the 2017 Raleigh Final 3. Additional footage includes the 2018 Turing semifinal tiebreaker, the undefeated Pembroke event's final, and the team's own 2017 recap, unveiling, and Chairman's Award video. Record links point to The Blue Alliance and FIRST. Video metadata and team-hosted images were checked September 14, 2026; Statbotics ratings are not quoted because its API was unavailable during research.
 

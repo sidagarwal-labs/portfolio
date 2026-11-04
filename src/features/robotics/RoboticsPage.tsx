@@ -87,7 +87,7 @@ function RoboticsPage() {
   return (
     <JournalLayout>
       <article className="article-page robotics-page">
-        <Link className="small-link" to="/#lab">Back to projects</Link>
+        <Link className="small-link" to="/#impact">Back to background</Link>
         <h1>Pitt Pirates, Team 2642</h1>
         <p className="article-meta">2013-2018 &middot; Team captain, 2017 FIRST Steamworks</p>
         <div className="article-body">

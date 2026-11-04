@@ -36,8 +36,8 @@ test("homepage presents real writing and projects without the scene runtime", as
 
   await expect(page.getByRole("heading", { name: "Sid Agarwal", exact: true })).toBeVisible();
   await expect(page.locator("canvas, .glass-card, .scene-canvas")).toHaveCount(0);
-  await expect(page.locator("#writing a")).toHaveCount(8);
-  await expect(page.locator(".project-list > li > a").nth(1)).toHaveText("arXiv Search");
+  await expect(page.locator("#writing .writing-list > li > a")).toHaveCount(7);
+  await expect(page.locator(".project-list > li > a").first()).toHaveText("arXiv Search");
   await expect(page.getByRole("link", { name: "arXiv Search", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/arxiv-search");
   await expect(page.getByRole("link", { name: "Financial models", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/models");
   await expect(page.getByRole("link", { name: "NVDocs RAG", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/NVDocs_RAG");
@@ -59,6 +59,7 @@ for (const width of [1440, 390, 320]) {
     const identity = (await page.locator(".masthead__identity").boundingBox())!;
     const navigation = (await page.getByRole("navigation", { name: "Primary" }).boundingBox())!;
     const contact = (await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Contact", exact: true }).boundingBox())!;
+    const quickLinks = (await page.getByRole("list", { name: "Resume and profiles" }).boundingBox())!;
     expect(identity.x + identity.width).toBeLessThan(photo.x);
     expect(photo.width).toBeGreaterThanOrEqual(108);
     expect(photo.x + photo.width).toBeLessThanOrEqual(width);
@@ -66,20 +67,23 @@ for (const width of [1440, 390, 320]) {
       expect(photo.y).toBeCloseTo(name.y, 1);
       expect(photo.y + photo.height).toBeCloseTo(contact.y + contact.height, 1);
       expect(navigation.x + navigation.width).toBeLessThan(photo.x);
+      expect(quickLinks.x + quickLinks.width).toBeLessThan(photo.x);
     } else {
       expect(photo.height).toBe(108);
-      expect(navigation.y).toBeGreaterThanOrEqual(photo.y + photo.height);
+      expect(quickLinks.y).toBeGreaterThanOrEqual(photo.y + photo.height);
+      expect(quickLinks.x + quickLinks.width).toBeLessThanOrEqual(width);
+      expect(navigation.y).toBeGreaterThanOrEqual(quickLinks.y + quickLinks.height);
       expect(navigation.y).toBeGreaterThanOrEqual(identity.y + identity.height);
     }
     await page.screenshot({ path: testInfo.outputPath(`portrait-${width}.png`) });
   });
 }
 
-test("robotics story links from projects and preserves the captain-season context", async ({ page }) => {
+test("robotics story links from the background and preserves the captain-season context", async ({ page }) => {
   await page.goto("./");
-  const link = page.locator("#lab").getByRole("link", { name: "Pitt Pirates, Team 2642", exact: true });
+  await expect(page.locator("#lab a[href='/robotics']")).toHaveCount(0);
+  const link = page.locator("#impact").getByRole("link", { name: "the Pitt Pirates, FRC Team 2642", exact: true });
   await expect(link).toHaveAttribute("href", "/robotics");
-  await expect(page.locator("#impact a[href='/robotics']")).toHaveCount(1);
   await link.click();
   await expect(page).toHaveURL(/:4175\/robotics$/);
   await expect(page.getByRole("heading", { name: "Pitt Pirates, Team 2642", exact: true })).toBeVisible();
@@ -89,10 +93,10 @@ test("robotics story links from projects and preserves the captain-season contex
   await expect(page.locator(".robotics-photo")).toHaveCount(3);
   await expect(page.locator(".robotics-page")).toContainText("five official events");
   await expect(page.locator(".robotics-page")).toContainText("four FIRST Championship appearances");
-  await page.getByRole("link", { name: "Back to projects", exact: true }).click();
-  await expect(page).toHaveURL(/:4175\/#lab$/);
-  await expect(page.locator("#lab")).toBeInViewport();
-  await expect(page).toHaveTitle("Sid Agarwal | Writing, Projects & Markets");
+  await page.getByRole("link", { name: "Back to background", exact: true }).click();
+  await expect(page).toHaveURL(/:4175\/#impact$/);
+  await expect(page.locator("#impact")).toBeInViewport();
+  await expect(page).toHaveTitle("Sid Agarwal | Senior Product Manager, AI Search & Retrieval");
 });
 
 test("robotics match players load on demand and retain source links", async ({ page }) => {
@@ -175,18 +179,40 @@ for (const width of [1440, 768, 390, 320]) {
   });
 }
 
-test("coursework projects link to their public repos with clear scope", async ({ page }) => {
+test("coursework sits under earlier projects and links to public repos with clear scope", async ({ page }) => {
   await page.goto("./#lab");
-  const projects = page.locator(".project-list");
-  await expect(projects.getByRole("link", { name: "AI & Deep Learning Labs", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/DSBA-6165-AI-Deep-Learning");
-  await expect(projects.getByRole("link", { name: "Text Analytics", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/DSBA-6188-Text-Analytics");
-  await expect(projects.locator("li").filter({ hasText: "AI & Deep Learning Labs" })).toContainText("UNC Charlotte coursework");
-  await expect(projects.locator("li").filter({ hasText: "Text Analytics" })).toContainText("source attribution");
+  await expect(page.locator(".project-list > li > a")).toHaveText(["arXiv Search", "NVDocs RAG", "HireMe.AI", "Financial models"]);
+  await expect(page.locator(".project-list")).not.toContainText("UNC Charlotte coursework");
+  const archive = page.locator("#lab .project-archive");
+  await archive.locator("summary").click();
+  await expect(archive.getByRole("link", { name: "AI & Deep Learning Labs", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/DSBA-6165-AI-Deep-Learning");
+  await expect(archive.getByRole("link", { name: "Text Analytics", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/DSBA-6188-Text-Analytics");
+  await expect(archive.locator("li").filter({ hasText: "AI & Deep Learning Labs" })).toContainText("UNC Charlotte coursework");
+  await expect(archive.locator("li").filter({ hasText: "Text Analytics" })).toContainText("source attribution");
+});
+
+test("writing features the newest AI buildout edition and keeps earlier editions one click away", async ({ page }) => {
+  await page.goto("./");
+  const writing = page.locator("#writing");
+  await expect(writing.locator(".writing-list > li > a")).toHaveText([
+    "AI buildout: October 2026", "Foundation labs", "AI memory & storage", "GPU & memory prices",
+    "AI capital expenditure", "AI adoption", "Cloud growth"
+  ]);
+  await expect(page.getByRole("heading", { name: "Following the AI buildout" })).toHaveCount(0);
+  await expect(writing.getByRole("link", { name: "AI / LLM Stack Tracker", exact: true })).toHaveAttribute("href", /docs\.google\.com\/spreadsheets/);
+  await expect(writing.locator(".disclaimer")).toHaveText("Research for my own learning, not investment advice.");
+  const editions = writing.locator(".note-archive");
+  await expect(editions.locator("summary")).toHaveText("Earlier AI buildout editions");
+  await expect(editions).not.toHaveAttribute("open", "");
+  await editions.locator("summary").click();
+  await expect(editions).toHaveAttribute("open", "");
+  await expect(editions.getByRole("link", { name: "AI buildout: September 2026", exact: true })).toBeVisible();
 });
 
 test("research notes link to the verified source documents", async ({ page }) => {
   await page.goto("./");
-  await expect(page.locator("#writing a").first()).toHaveText("AI buildout: October 2026");
+  await expect(page.locator("#writing .writing-list a").first()).toHaveText("AI buildout: October 2026");
+  await page.locator("#writing .note-archive summary").click();
   for (const [title, slug] of [
     ["AI buildout: October 2026", "ai-buildout-2026-10"],
     ["AI buildout: September 2026", "ai-buildout-2026-09"],
@@ -203,7 +229,7 @@ test("research notes link to the verified source documents", async ({ page }) =>
 
 test("section links scroll immediately and do not hijack subsequent scrolling", async ({ page }) => {
   await page.goto("./");
-  for (const [label, sectionId] of [["Writing", "writing"], ["Projects", "lab"], ["Reading", "library"], ["About", "impact"], ["Contact", "contact"]]) {
+  for (const [label, sectionId] of [["Projects", "lab"], ["Writing", "writing"], ["About", "impact"], ["Reading", "library"], ["Contact", "contact"]]) {
     await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: label, exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`#${sectionId}$`));
     await expect(page.locator(`#${sectionId}`)).toBeInViewport();
@@ -264,7 +290,7 @@ test("GitHub Pages 404 recovery preserves an essay URL, query, and fragment", as
 
 test("earlier projects remain available through an accessible disclosure", async ({ page }) => {
   await page.goto("./#lab");
-  const disclosure = page.locator(".project-archive");
+  const disclosure = page.locator("#lab .project-archive");
   await disclosure.locator("summary").focus();
   await page.keyboard.press("Enter");
   await expect(disclosure).toHaveAttribute("open", "");
@@ -276,11 +302,48 @@ test("contact and the bundled resume retain their working destinations", async (
   await page.goto("./#contact");
   await expect(page.locator("#contact").getByRole("link", { name: "Email", exact: true })).toHaveAttribute("href", "mailto:sid@agarwal-labs.com");
   await expect(page.locator("#contact").getByRole("link", { name: "LinkedIn", exact: true })).toHaveAttribute("href", "https://www.linkedin.com/in/sid-agarwal-labs/");
-  const resumeHref = await page.getByRole("link", { name: "Resume (PDF)", exact: true }).getAttribute("href");
+  const resumeHref = await page.locator("#impact").getByRole("link", { name: "Resume (PDF)", exact: true }).getAttribute("href");
   expect(resumeHref).toMatch(/^\/assets\/Siddhant_Agarwal_Resume-[\w-]+\.pdf$/);
   const resume = await request.get(resumeHref!);
   expect(resume.ok()).toBe(true);
   expect((await resume.body()).subarray(0, 5).toString()).toBe("%PDF-");
+});
+
+test("the masthead puts the role, resume, and profiles at the top of every page", async ({ page, request }) => {
+  for (const path of ["./", "./robotics"]) {
+    await page.goto(path);
+    await expect(page.locator(".masthead__role")).toHaveText("Senior Product Manager, AI search & retrieval at Microsoft");
+    const links = page.locator(".masthead").getByRole("list", { name: "Resume and profiles" }).getByRole("link");
+    await expect(links).toHaveText(["Resume (PDF)", "Email", "LinkedIn", "GitHub"]);
+    await expect(links.nth(1)).toHaveAttribute("href", "mailto:sid@agarwal-labs.com");
+    await expect(links.nth(2)).toHaveAttribute("href", "https://www.linkedin.com/in/sid-agarwal-labs/");
+    await expect(links.nth(3)).toHaveAttribute("href", "https://github.com/sidagarwal-labs");
+    const resumeHref = await links.first().getAttribute("href");
+    expect(resumeHref).toMatch(/^\/assets\/Siddhant_Agarwal_Resume-[\w-]+\.pdf$/);
+    const navigation = page.getByRole("navigation", { name: "Primary" });
+    await expect(navigation.getByRole("link")).toHaveText(["Projects", "Writing", "About", "Reading", "Contact", "Resume"]);
+    await expect(navigation.getByRole("link", { name: "Resume", exact: true })).toHaveAttribute("href", resumeHref!);
+    expect((await request.get(resumeHref!)).ok()).toBe(true);
+  }
+});
+
+test("the homepage leads with projects and describes the role in its metadata", async ({ page }) => {
+  await page.goto("./");
+  expect(await page.locator("main > section").evaluateAll((sections) => sections.map((section) => section.id))).toEqual(["lab", "writing", "impact", "library", "contact"]);
+  await expect(page).toHaveTitle("Sid Agarwal | Senior Product Manager, AI Search & Retrieval");
+  await expect(page.locator("meta[name='description']")).toHaveAttribute("content", /Senior Product Manager at Microsoft working on AI search and retrieval/);
+  await expect(page.locator("meta[property='og:title']")).toHaveAttribute("content", "Sid Agarwal | Senior Product Manager, AI Search & Retrieval");
+});
+
+test("site icons come from the bundled avatar files", async ({ page, request }) => {
+  await page.goto("./");
+  const icons = await page.locator("link[rel='icon'], link[rel='apple-touch-icon']").evaluateAll((links) => links.map((link) => link.getAttribute("href")));
+  expect(icons).toEqual(["/favicon.ico", "/icon-192.png", "/apple-touch-icon.png"]);
+  for (const href of icons) {
+    const response = await request.get(href!);
+    expect(response.ok()).toBe(true);
+    expect(response.headers()["content-type"]).toMatch(/^image\//);
+  }
 });
 
 test("a blocked ticker shows quote links without invented prices", async ({ page }) => {
@@ -462,15 +525,17 @@ test("introduction links to shipped Copilot launches", async ({ page }) => {
 
 test.describe("GitHub note dates", () => {
   test.use({ timezoneId: "America/Los_Angeles" });
-  const fallbackDates = ["Oct 4, 2026", "Sep 9, 2026", ...Array(6).fill("Oct 4, 2026")];
+  const fallbackDates = Array(7).fill("Oct 4, 2026");
 
   test("verified commit dates remain visible when GitHub is unavailable", async ({ page }) => {
     await page.goto("./");
     const dates = page.locator(".writing-list time");
-    await expect(dates).toHaveCount(8);
+    await expect(dates).toHaveCount(7);
     await expect(dates).toHaveText(fallbackDates);
     await expect(dates.first()).toHaveAttribute("datetime", "2026-10-04T04:17:48Z");
-    await expect(dates.nth(1)).toHaveAttribute("datetime", "2026-09-09T02:36:56Z");
+    const earlierEdition = page.locator(".note-archive time");
+    await expect(earlierEdition).toHaveAttribute("datetime", "2026-09-09T02:36:56Z");
+    await expect(earlierEdition).toHaveText("Sep 9, 2026");
   });
 
   test("each file refreshes from GitHub, keeps UTC dates, and reuses its cache", async ({ page }) => {
