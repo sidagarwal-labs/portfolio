@@ -48,6 +48,25 @@ test("homepage presents real writing and projects without the scene runtime", as
 });
 
 for (const width of [1440, 390, 320]) {
+  test(`arXiv Search links to the live website and retains GitHub at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("./#lab");
+    const project = page.locator(".project-list > li").filter({ has: page.getByRole("link", { name: "arXiv Search", exact: true }) });
+    await expect(project.getByRole("link", { name: "arXiv Search", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/arxiv-search");
+    const website = project.getByRole("link", { name: "arXiv Search live website", exact: true });
+    await expect(website).toHaveText("Live website");
+    await expect(website).toHaveAttribute("href", "https://arxiv.agarwal-labs.com/");
+    await expect(website).toBeInViewport({ ratio: 1 });
+    await expect(page.locator(".project-list").getByRole("link", { name: /live website$/ })).toHaveCount(1);
+    await page.route("https://arxiv.agarwal-labs.com/", (route) => route.fulfill({
+      contentType: "text/html",
+      body: "<!doctype html><title>arXiv Search destination</title>"
+    }));
+    await website.click();
+    await expect(page).toHaveURL("https://arxiv.agarwal-labs.com/");
+    await expect(page).toHaveTitle("arXiv Search destination");
+  });
+
   test(`enlarged portrait aligns with the header without crowding navigation at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("./");

@@ -29,6 +29,7 @@ export const selectedProjects = [
   {
     title: "arXiv Search",
     href: "https://github.com/sidagarwal-labs/arxiv-search",
+    websiteHref: "https://arxiv.agarwal-labs.com/",
     description: "Hybrid search over 23,304 recent arXiv papers in information retrieval, NLP, and machine learning. Keyword and embedding fusion raised graded nDCG@10 from 0.52 to 0.72 on development queries; held-out testing and RAG answers are next."
   },
   {

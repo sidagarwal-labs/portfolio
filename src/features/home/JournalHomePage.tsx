@@ -48,6 +48,11 @@ function JournalHomePage() {
               {selectedProjects.map((project) => (
                 <li key={project.href}>
                   <a href={project.href}>{project.title}</a>
+                  {project.websiteHref && (
+                    <span className="small-link">
+                      {" "}&middot; <a href={project.websiteHref} aria-label={`${project.title} live website`}>Live website</a>
+                    </span>
+                  )}
                   <p>{project.description}</p>
                 </li>
               ))}
