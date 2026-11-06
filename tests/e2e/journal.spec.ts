@@ -37,8 +37,8 @@ test("homepage presents real writing and projects without the scene runtime", as
   await expect(page.getByRole("heading", { name: "Sid Agarwal", exact: true })).toBeVisible();
   await expect(page.locator("canvas, .glass-card, .scene-canvas")).toHaveCount(0);
   await expect(page.locator("#writing .writing-list > li > a")).toHaveCount(7);
-  await expect(page.locator(".project-list > li > a").first()).toHaveText("arXiv Search");
-  await expect(page.getByRole("link", { name: "arXiv Search", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/arxiv-search");
+  await expect(page.locator(".project-list .project-title").first()).toHaveText("arXiv Search");
+  await expect(page.getByRole("link", { name: "arXiv Search", exact: true })).toHaveAttribute("href", "https://arxiv.agarwal-labs.com/");
   await expect(page.getByRole("link", { name: "Financial models", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/models");
   await expect(page.getByRole("link", { name: "NVDocs RAG", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/NVDocs_RAG");
   await expect(page.getByRole("link", { name: "HireMe.AI", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/HireMe-AI");
@@ -48,16 +48,21 @@ test("homepage presents real writing and projects without the scene runtime", as
 });
 
 for (const width of [1440, 390, 320]) {
-  test(`arXiv Search links to the live website and retains GitHub at ${width}px`, async ({ page }) => {
+  test(`arXiv Search title opens the website and its GitHub pill opens the repo at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("./#lab");
     const project = page.locator(".project-list > li").filter({ has: page.getByRole("link", { name: "arXiv Search", exact: true }) });
-    await expect(project.getByRole("link", { name: "arXiv Search", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/arxiv-search");
-    const website = project.getByRole("link", { name: "arXiv Search live website", exact: true });
-    await expect(website).toHaveText("Live website");
+    const website = project.getByRole("link", { name: "arXiv Search", exact: true });
+    const github = project.getByRole("link", { name: "arXiv Search on GitHub", exact: true });
+    await expect(github).toHaveText("GitHub");
+    await expect(github).toHaveAttribute("href", "https://github.com/sidagarwal-labs/arxiv-search");
+    await expect(github).toBeInViewport({ ratio: 1 });
     await expect(website).toHaveAttribute("href", "https://arxiv.agarwal-labs.com/");
     await expect(website).toBeInViewport({ ratio: 1 });
-    await expect(page.locator(".project-list").getByRole("link", { name: /live website$/ })).toHaveCount(1);
+    await expect(project.getByRole("link")).toHaveCount(2);
+    await expect(page.locator(".project-list .project-github")).toHaveCount(1);
+    await expect(page.locator(".project-list")).not.toContainText("Live website");
+    await project.screenshot({ path: testInfo.outputPath(`arxiv-project-${width}.png`) });
     await page.route("https://arxiv.agarwal-labs.com/", (route) => route.fulfill({
       contentType: "text/html",
       body: "<!doctype html><title>arXiv Search destination</title>"
@@ -65,6 +70,18 @@ for (const width of [1440, 390, 320]) {
     await website.click();
     await expect(page).toHaveURL("https://arxiv.agarwal-labs.com/");
     await expect(page).toHaveTitle("arXiv Search destination");
+    await page.goBack();
+    await expect(website).toBeVisible();
+    await page.route("https://github.com/sidagarwal-labs/arxiv-search", (route) => route.fulfill({
+      contentType: "text/html",
+      body: "<!doctype html><title>arXiv Search GitHub destination</title>"
+    }));
+    await website.focus();
+    await page.keyboard.press("Tab");
+    await expect(github).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL("https://github.com/sidagarwal-labs/arxiv-search");
+    await expect(page).toHaveTitle("arXiv Search GitHub destination");
   });
 
   test(`enlarged portrait aligns with the header without crowding navigation at ${width}px`, async ({ page }, testInfo) => {
@@ -198,7 +215,7 @@ for (const width of [1440, 768, 390, 320]) {
 
 test("coursework sits under earlier projects and links to public repos with clear scope", async ({ page }) => {
   await page.goto("./#lab");
-  await expect(page.locator(".project-list > li > a")).toHaveText(["arXiv Search", "NVDocs RAG", "HireMe.AI", "Financial models"]);
+  await expect(page.locator(".project-list .project-title")).toHaveText(["arXiv Search", "NVDocs RAG", "HireMe.AI", "Financial models"]);
   await expect(page.locator(".project-list")).not.toContainText("UNC Charlotte coursework");
   const archive = page.locator("#lab .project-archive");
   await archive.locator("summary").click();

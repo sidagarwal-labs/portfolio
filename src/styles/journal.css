@@ -161,6 +161,10 @@ section { scroll-margin-top: 28px; }
 
 .project-list p { margin-top: 4px; font-size: 16px; line-height: 1.65; color: var(--muted); }
 
+.project-github { display: inline-block; margin-left: 12px; padding: 1px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 13px; line-height: 1.6; vertical-align: middle; text-decoration: none; }
+
+.project-github:hover { border-color: var(--link); background: var(--line); }
+
 .reading-list { display: grid; gap: 12px; }
 
 .reading-list li { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 16px; align-items: center; min-height: 50px; }

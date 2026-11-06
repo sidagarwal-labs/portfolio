@@ -47,11 +47,9 @@ function JournalHomePage() {
             <ul className="project-list">
               {selectedProjects.map((project) => (
                 <li key={project.href}>
-                  <a href={project.href}>{project.title}</a>
+                  <a className="project-title" href={project.websiteHref ?? project.href}>{project.title}</a>
                   {project.websiteHref && (
-                    <span className="small-link">
-                      {" "}&middot; <a href={project.websiteHref} aria-label={`${project.title} live website`}>Live website</a>
-                    </span>
+                    <a className="project-github" href={project.href} aria-label={`${project.title} on GitHub`}>GitHub</a>
                   )}
                   <p>{project.description}</p>
                 </li>
