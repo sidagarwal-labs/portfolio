@@ -29,7 +29,7 @@ function JournalHomePage() {
             <p>
               I'm Sid, a Senior Product Manager at Microsoft working on search and retrieval
               quality for <a href="https://www.microsoft.com/en-us/microsoft-365-copilot">Microsoft 365 Copilot</a>.
-              During my time there, I've shipped{" "}
+              I started there as a product manager intern in 2021, and since then I've shipped{" "}
               <a href="https://learn.microsoft.com/en-us/power-bi/create-reports/copilot-introduction">Power BI</a> and{" "}
               <a href="https://techcommunity.microsoft.com/blog/viva_engage_blog/viva-engage-public-content-is-now-available-in-microsoft-365-copilot/4443512">Viva Engage</a>{" "}
               as Copilot content sources, led retrieval quality for{" "}
@@ -113,8 +113,9 @@ function JournalHomePage() {
             <h2 id="about-heading">A little background</h2>
             <p>
               I studied business and operations at UNC Charlotte, with a minor in
-              economics. I've also worked on logistics at Amazon and captained and
-              mentored <Link to="/robotics">the Pitt Pirates, FRC Team 2642</Link>.
+              economics. In 2020, I interned as a product manager at Amazon, designing
+              weather and route-closure safety alerts for Middle Mile drivers. I also
+              captained and mentored <Link to="/robotics">the Pitt Pirates, FRC Team 2642</Link>.
             </p>
             <p>
               I'm now pursuing an M.S. in Data Science and

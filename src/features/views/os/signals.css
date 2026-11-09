@@ -1,0 +1,9 @@
+.os-signals { display: flex; flex: none; align-items: center; gap: 2px; }
+.os-signals button { display: inline-flex; align-items: center; gap: 5px; padding: 5px 7px; border: 0; border-radius: 5px; background: transparent; color: inherit; font: inherit; font-size: 11px; cursor: pointer; white-space: nowrap; }
+.os-signals button:hover { background: rgba(128, 128, 128, 0.2); }
+.os-signals button[data-alert] { background: #dceaff; color: #173c70; }
+.os-signals svg { flex: none; }
+.os-signals__model { max-width: 130px; overflow: hidden; text-overflow: ellipsis; }
+.os--retro .os-signals button { border-radius: 0; padding: 4px; }
+.os-home .os-signals { justify-content: center; flex-wrap: wrap; }
+@media (max-width: 1200px) { .os-taskbar .os-signals button span:not(.sr-only) { display: none; } }

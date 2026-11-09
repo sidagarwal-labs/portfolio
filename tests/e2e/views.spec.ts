@@ -1,0 +1,611 @@
+import { expect, test, type Page } from "@playwright/test";
+
+const sectionIds = ["intro", "lab", "writing", "impact", "library", "contact"];
+const alternateViews = ["search", "forward", "training", "terminal"] as const;
+const bootKey = "search-view-booted-v1";
+
+test.beforeEach(async ({ page }) => {
+  await page.route("https://finnhub.io/api/v1/quote?*", (route) => route.fulfill({ json: { c: 230.36, dp: 0.84, t: 1788552000 } }));
+  await page.route("https://api.github.com/repos/sidagarwal-labs/models/commits?*", (route) => route.abort());
+  await page.route("https://ll.thespacedevs.com/2.3.0/launches/upcoming/**", (route) => route.fulfill({ json: { results: [] } }));
+  await page.route("https://ll.thespacedevs.com/2.3.0/launches/previous/**", (route) => route.fulfill({ json: { results: [] } }));
+  await page.route("https://s3.tradingview.com/**", (route) => route.abort());
+  await page.route("https://datasets-server.huggingface.co/**", (route) => route.abort());
+});
+
+async function horizontalOverflow(page: Page) {
+  return page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+}
+
+test("Lab OS is the default view and the switcher only appears on full-page homepage views", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("./");
+  await expect(page.locator("html")).toHaveAttribute("data-view", "os");
+  await expect(page.locator('.os-win[data-app="search"]')).toBeVisible();
+  await expect(page.locator(".view-switcher")).toHaveCount(0);
+
+  await page.goto("./?view=journal");
+  await expect(page.locator("html")).not.toHaveAttribute("data-view", /.+/);
+  await expect(page.locator(".project-list .project-title").first()).toHaveText("arXiv Search");
+  await expect(page.getByRole("button", { name: "View: Journal" })).toBeVisible();
+
+  await page.goto("./robotics");
+  await expect(page.locator(".view-switcher")).toHaveCount(0);
+});
+
+for (const view of alternateViews) {
+  test(`?view=${view} renders every section with working contact links`, async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto(`./?view=${view}`);
+
+    await expect(page.locator("html")).toHaveAttribute("data-view", view);
+    for (const id of sectionIds) await expect(page.locator(`#${id}`)).toHaveCount(1);
+    await expect(page.getByRole("heading", { name: /Sid Agarwal/ }).first()).toBeVisible();
+    await expect(page.locator('a[href="mailto:sid@agarwal-labs.com"]').first()).toBeAttached();
+    await expect(page.locator('a[href="https://www.linkedin.com/in/sid-agarwal-labs/"]').first()).toBeAttached();
+    await expect(page.locator('a[href="https://arxiv.agarwal-labs.com/"]').first()).toBeAttached();
+    await expect(page.locator(".market-bar")).toBeAttached();
+    await expect(page.locator("#library").getByText("The Nvidia Way").first()).toBeAttached();
+    expect(errors).toEqual([]);
+  });
+
+  test(`?view=${view} has no horizontal overflow on desktop and phones`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    for (const width of [1440, 390, 320]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto(`./?view=${view}`);
+      await expect(page.locator("#contact")).toBeAttached();
+      expect(await horizontalOverflow(page), `${view} at ${width}px`).toBeLessThanOrEqual(0);
+    }
+  });
+}
+
+test("the view switcher changes views, remembers the choice, and can return to Lab OS", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("./?view=journal");
+  await page.getByRole("button", { name: "View: Journal" }).click();
+  await page.getByRole("button", { name: /Forward pass/ }).click();
+
+  await expect(page).toHaveURL(/\?view=forward$/);
+  await expect(page.locator("html")).toHaveAttribute("data-view", "forward");
+
+  await page.goto("./");
+  await expect(page.locator("html")).toHaveAttribute("data-view", "forward");
+
+  await page.getByRole("button", { name: "View: Forward pass" }).click();
+  await page.getByRole("button", { name: /Journal/ }).click();
+  await expect(page).toHaveURL(/\?view=journal$/);
+  await expect(page.locator("html")).not.toHaveAttribute("data-view", /.+/);
+
+  await page.getByRole("button", { name: "View: Journal" }).click();
+  await page.getByRole("button", { name: /Lab OS/ }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator("html")).toHaveAttribute("data-view", "os");
+
+  await page.goto("./robotics");
+  await expect(page.locator("html")).not.toHaveAttribute("data-view", /.+/);
+});
+
+test("the search view boots once per session and can be skipped", async ({ page }) => {
+  await page.goto("./?view=search");
+  const boot = page.locator(".se-boot");
+  await expect(boot).toBeVisible();
+  await expect(page.getByRole("button", { name: "Skip intro" })).toBeFocused();
+  await page.getByRole("button", { name: "Skip intro" }).click();
+  await expect(boot).toHaveCount(0);
+  await expect(page.locator("html")).not.toHaveClass(/se-booting/);
+  await expect(page.locator("#se-query")).toBeVisible();
+
+  await page.reload();
+  await expect(page.locator("#se-query")).toBeVisible();
+  await expect(boot).toHaveCount(0);
+
+  await page.evaluate((key) => sessionStorage.removeItem(key), bootKey);
+  await page.reload();
+  await expect(boot).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(boot).toHaveCount(0);
+});
+
+test("the search view skips the boot intro for reduced motion", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("./?view=search");
+  await expect(page.locator("#se-query")).toBeVisible();
+  await expect(page.locator(".se-boot")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Replay the boot-up intro" })).toHaveCount(0);
+});
+
+test("the search box ranks portfolio content with BM25 and explains the ranking", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("./?view=search");
+  const query = page.getByLabel("Search Sid's work");
+  const titles = page.locator(".se-matches .se-result h3");
+
+  await query.fill("RAG");
+  await expect(titles).toHaveText(["NVDocs RAG", "arXiv Search"]);
+  await page.getByLabel("Explain ranking").check();
+  await expect(page.locator(".se-matches .se-signals").first()).toContainText(/BM25 \d+\.\d{2} · matched rag/);
+
+  await query.fill("ai buil");
+  await expect(titles.first()).toHaveText("AI buildout: October 2026");
+  await expect(page.locator(".se-matches .se-signals").first()).toContainText("title phrase");
+
+  await query.fill("robotics");
+  await expect(titles.first()).toContainText("FRC Team 2642");
+
+  await query.fill("xyzzy");
+  await expect(page.locator(".se-matches")).toContainText("No results");
+  await page.locator(".se-matches").getByRole("button", { name: "resume" }).click();
+  await expect(query).toHaveValue("resume");
+  await expect(titles.first()).toHaveText("Resume (PDF)");
+});
+
+test("the search tabs jump to each section and highlight it on desktop and phones", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const tabs = [["Projects", "lab"], ["Writing", "writing"], ["About", "impact"], ["Books", "library"], ["All", "intro"]];
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("./?view=search");
+    const nav = page.getByRole("navigation", { name: "Primary" });
+    for (const [label, id] of tabs) {
+      await nav.getByRole("link", { name: label, exact: true }).click();
+      await expect(page).toHaveURL(new RegExp(`#${id}$`));
+      await expect(nav.getByRole("link", { name: label, exact: true }), `${label} at ${width}px`).toHaveAttribute("aria-current", "location");
+      await expect(nav).toBeInViewport();
+      const top = await page.locator(`#${id}`).evaluate((element) => element.getBoundingClientRect().top);
+      expect(top, `${label} at ${width}px`).toBeLessThan(260);
+    }
+  }
+  await expect(page.locator("#impact")).toContainText("UNC Charlotte");
+  await expect(page.locator("#impact")).toContainText("People also ask");
+});
+
+for (const embedded of [false, true]) {
+  test(`Forward pass keeps Background selected ${embedded ? "inside Lab OS" : "full page"}`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width: 1920, height: 1440 });
+    await page.goto(embedded ? "./?view=os" : "./?view=forward");
+    if (embedded) {
+      await page.locator(".os-icons .os-icon", { hasText: "Forward pass" }).click();
+      await page.getByRole("button", { name: "Maximize Forward pass", exact: true }).click();
+    }
+
+    const view = embedded ? page.frameLocator('.os-win[data-app="forward"] iframe') : page;
+    const nav = view.getByRole("navigation", { name: "Sections" });
+    const background = nav.locator('a[href="#impact"]');
+    const books = nav.locator('a[href="#library"]');
+
+    for (const viewport of [{ width: 1920, height: 1440 }, { width: 1440, height: 900 }]) {
+      await page.setViewportSize(viewport);
+      await background.click();
+      await expect(background).toHaveAttribute("aria-current", "true");
+      await expect(books).not.toHaveAttribute("aria-current", "true");
+      await expect(view.getByRole("heading", { name: "A little background" })).toBeInViewport();
+      const top = await view.locator("#impact").evaluate((section) => section.getBoundingClientRect().top);
+      expect(top).toBeGreaterThanOrEqual(0);
+      expect(top).toBeLessThan(100);
+
+      await view.locator("#library").evaluate((section) => section.scrollIntoView());
+      await expect(books).toHaveAttribute("aria-current", "true");
+      await background.click();
+      await expect(background).toHaveAttribute("aria-current", "true");
+    }
+  });
+}
+
+test("Forward pass redraws actual learned attention and restores its seeded model", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("./?view=forward");
+  await page.locator(".fp-token", { hasText: "retrieval" }).click();
+  await expect(page.locator(".fp-token[data-masked]")).toHaveCount(2);
+  const weights = () => page.locator(".fp-matrix__cell").evaluateAll((cells) => cells.map((cell) => cell.getAttribute("style")));
+  const initial = await weights();
+  const predictions = await page.locator(".fp-predictions").innerText();
+  await page.getByRole("button", { name: "Train 12 epochs", exact: true }).click();
+  await expect(page.locator(".tiny-model__status")).toContainText("epoch 12/24", { timeout: 20_000 });
+  expect(await weights()).not.toEqual(initial);
+  await expect(page.locator(".fp-predictions")).not.toHaveText(predictions);
+  await expect(page.locator(".fp-caption__note").first()).toContainText("Learned embeddings");
+  await page.getByRole("button", { name: "Reset model" }).click();
+  await expect(page.locator(".tiny-model__status")).toContainText("epoch 0/24");
+  expect(await weights()).toEqual(initial);
+});
+
+test("the terminal view runs commands and keeps the ticker on top", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("./?view=terminal");
+  const ticker = await page.locator(".market-bar").boundingBox();
+  expect(ticker?.y).toBeLessThan(10);
+
+  await page.getByLabel("Command", { exact: true }).fill("lib");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#library")).toBeInViewport();
+
+  await page.getByLabel("Command", { exact: true }).fill("nope");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#tm-command-status")).toContainText(/HELP/);
+});
+
+test("notebook navigation does not fake training; explicit training produces measured loss and resets", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("./?view=training");
+  for (const id of sectionIds) {
+    await page.locator(`#${id}`).scrollIntoViewIfNeeded();
+    await page.waitForTimeout(100);
+  }
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await expect(page.locator("#contact .tr-prompt").first()).toHaveText("In [6]:");
+  await expect(page.locator(".tiny-model__status")).toContainText("epoch 0/24");
+  await expect(page.getByRole("link", { name: "Download resume (PDF)" })).toHaveAttribute("href", /\.pdf$/);
+  await page.getByRole("button", { name: "Train 12 epochs", exact: true }).click();
+  await expect(page.locator(".tiny-model__status")).toContainText("epoch 12/24", { timeout: 20_000 });
+  await expect(page.locator(".tiny-model__status")).toContainText("Paused");
+  await expect(page.getByRole("img", { name: /Measured loss/ }).first()).toBeAttached();
+  await page.getByRole("button", { name: "Train 12 more epochs" }).click();
+  await expect(page.locator(".tiny-model__status")).toContainText("Complete", { timeout: 20_000 });
+  await expect(page.getByRole("button", { name: "Train 12 more epochs" })).toBeDisabled();
+  await page.getByRole("button", { name: "Reset model" }).click();
+  await expect(page.locator(".tiny-model__status")).toContainText("epoch 0/24");
+});
+
+const searchWin = '.os-win[data-app="search"]';
+
+test("Lab OS runs Sid Search in a window with its own address bar and history", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("./");
+
+  const frame = page.frameLocator(`${searchWin} iframe`);
+  await expect(frame.locator("#se-query")).toHaveValue("Sid Agarwal");
+  for (const id of sectionIds) await expect(frame.locator(`#${id}`)).toHaveCount(1);
+  /* The OS supplies taskbar widgets and menus without duplicating them in the app. */
+  await expect(frame.locator(".market-bar, .view-switcher")).toHaveCount(0);
+  await expect(page.locator(".market-bar")).toHaveCount(0);
+  await expect(page.locator(".os-taskbar .os-signals")).toBeVisible();
+
+  const address = page.locator(`${searchWin} .os-address__text`);
+  await expect(address).toHaveText("agarwal-labs.com/search?q=Sid+Agarwal");
+  const historyLength = await page.evaluate(() => history.length);
+  await frame.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "About", exact: true }).click();
+  await expect(address).toHaveText(/#impact$/);
+  await expect(frame.locator("#impact")).toBeInViewport();
+  await frame.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Books", exact: true }).click();
+  await expect(address).toHaveText(/#library$/);
+
+  await page.locator(searchWin).getByRole("button", { name: "Back" }).click();
+  await expect(address).toHaveText(/#impact$/);
+  await page.locator(searchWin).getByRole("button", { name: "Forward" }).click();
+  await expect(address).toHaveText(/#library$/);
+  /* Window navigation never adds entries to the tab's own history. */
+  expect(await page.evaluate(() => history.length)).toBe(historyLength);
+
+  await frame.locator('a[href$=".pdf"]').first().click();
+  await expect(page.locator('.os-win[data-app="resume"]')).toBeVisible();
+  await expect(page.locator('.os-win[data-app="resume"]')).toHaveClass(/is-active/);
+  expect(errors).toEqual([]);
+});
+
+test("Lab OS deep links open Sid Search at the linked section", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("./#writing");
+  await expect(page.locator(`${searchWin} .os-address__text`)).toHaveText(/#writing$/);
+  await expect(page.frameLocator(`${searchWin} iframe`).locator("#writing")).toBeInViewport();
+});
+
+test("Lab OS windows open, focus, minimize, maximize, and close", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("./");
+  await expect(page.locator(searchWin)).toBeVisible();
+
+  await page.locator(".os-icons .os-icon", { hasText: "Journal" }).click();
+  const journal = page.locator('.os-win[data-app="journal"]');
+  await expect(journal).toHaveClass(/is-active/);
+  await expect(page.frameLocator('.os-win[data-app="journal"] iframe').getByRole("heading", { name: "Sid Agarwal", exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Minimize Journal" }).click();
+  await expect(journal).toHaveClass(/is-minimized/);
+  await expect(page.locator(searchWin)).toHaveClass(/is-active/);
+  await page.locator(".os-task", { hasText: "Journal" }).click();
+  await expect(journal).not.toHaveClass(/is-minimized/);
+  await expect(journal).toHaveClass(/is-active/);
+
+  await page.getByRole("button", { name: "Maximize Journal" }).click();
+  const desk = await page.locator(".os-desktop").boundingBox();
+  const box = await journal.boundingBox();
+  expect(box?.width).toBe(desk?.width);
+  await page.getByRole("button", { name: "Restore Journal" }).click();
+  expect((await journal.boundingBox())?.width).toBeLessThan(desk?.width ?? 0);
+
+  await page.getByRole("button", { name: "Close Journal" }).click();
+  await expect(journal).toHaveCount(0);
+  await expect(page.locator(".os-task", { hasText: "Journal" })).toHaveCount(0);
+});
+
+test("Lab OS start menu switches styles and full-page views", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("./");
+
+  await page.locator(".os-start").click();
+  const menu = page.getByRole("dialog", { name: "Start menu" });
+  await menu.getByRole("button", { name: "Retro", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-os-style", "retro");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-os-style", "retro");
+  await expect(page.locator(".os-start")).toContainText("Start");
+
+  await page.locator(".os-start").click();
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
+  await expect(page.locator(".os-start")).toBeFocused();
+
+  await page.locator(".os-start").click();
+  await menu.getByRole("list", { name: "Full-page views" }).getByRole("button", { name: "Journal", exact: true }).click();
+  await expect(page).toHaveURL(/\?view=journal$/);
+  await expect(page.locator("html")).not.toHaveAttribute("data-view", /.+/);
+  await expect(page.locator("html")).not.toHaveAttribute("data-os-style", /.+/);
+});
+
+test("Lab OS games are playable", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("./");
+  await page.locator(".os-icons .os-icon", { hasText: "Games" }).click();
+  const folder = page.locator(".os-folder");
+
+  await folder.locator(".os-icon", { hasText: "Mines" }).click();
+  const cells = page.locator(".mines__cell");
+  await expect(cells).toHaveCount(81);
+  await expect(cells.nth(40)).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(cells.nth(41)).toBeFocused();
+  await page.keyboard.press("f");
+  await expect(cells.nth(41)).toHaveAttribute("aria-label", /flag/i);
+  await cells.nth(40).click();
+  expect(await page.locator(".mines__cell[data-open]").count()).toBeGreaterThan(1);
+
+  await page.locator(".os-task", { hasText: "Games" }).click();
+  await folder.locator(".os-icon", { hasText: "Rank It" }).click();
+  const firstResult = await page.locator(".rankit__doc").first().getAttribute("data-doc");
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator(".rankit__doc").nth(1)).toHaveAttribute("data-doc", firstResult!);
+  await page.getByRole("button", { name: "Submit ranking" }).click();
+  await expect(page.locator(".rankit__score")).toContainText(/nDCG@5 [01]\.\d{3}/);
+
+  await page.locator(".os-task", { hasText: "Games" }).click();
+  await folder.locator(".os-icon", { hasText: "Next Token" }).click();
+  const choices = page.getByRole("group", { name: "Next token choices" }).getByRole("button");
+  await expect(choices.first()).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(choices.nth(1)).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".nexttoken__bar")).not.toHaveCount(0);
+
+  await page.locator(".os-task", { hasText: "Games" }).click();
+  await folder.locator(".os-icon", { hasText: "Snake" }).click();
+  await expect(page.locator(".snake canvas")).toBeVisible();
+  const snake = page.locator(".snake");
+  await snake.getByRole("button", { name: "Start", exact: true }).last().click();
+  await expect(snake).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(snake).toHaveAttribute("data-status", "paused");
+  await page.keyboard.press("ArrowUp");
+  await expect(snake).toHaveAttribute("data-status", "running");
+  await page.getByRole("button", { name: "Minimize Snake", exact: true }).click();
+  await expect(snake).toHaveAttribute("data-status", "paused");
+  await page.locator(".os-task", { hasText: "Snake" }).click();
+  await expect(snake).toBeFocused();
+
+  await page.locator(".os-task", { hasText: "Games" }).click();
+  await folder.locator(".os-icon", { hasText: "Blocks" }).click();
+  const blocks = page.locator(".blocks");
+  await blocks.getByRole("button", { name: "Start", exact: true }).last().click();
+  await expect(blocks).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.locator(".blocks__grid")).toHaveAttribute("aria-label", /column 3,/);
+  await page.keyboard.press("Space");
+  await expect(blocks.locator(".game__hud b").first()).not.toHaveText("0");
+  await page.keyboard.press("p");
+  await expect(blocks).toHaveAttribute("data-status", "paused");
+  await page.getByRole("button", { name: "Minimize Blocks", exact: true }).click();
+  await page.locator(".os-task", { hasText: "Blocks" }).click();
+  await expect(blocks).toBeFocused();
+  await blocks.getByRole("button", { name: "Resume", exact: true }).last().click();
+  await blocks.getByRole("button", { name: "Move left", exact: true }).click();
+  await expect(page.locator(".blocks__grid")).toHaveAttribute("aria-label", /column 3,/);
+  await expect(blocks).toBeFocused();
+  expect(errors).toEqual([]);
+});
+
+test("Lab OS on phones starts on a home screen and opens apps full screen", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 760 });
+    await page.goto("./");
+    await expect(page.locator(".os-home")).toBeVisible();
+    await expect(page.locator(".os-win")).toHaveCount(0);
+    await expect(page.locator(".os-widget").getByRole("link", { name: "Resume" })).toHaveAttribute("href", /\.pdf$/);
+    expect(await horizontalOverflow(page), `home at ${width}px`).toBeLessThanOrEqual(0);
+
+    await page.locator(".os-home__grid .os-icon", { hasText: "Sid Search" }).click();
+    const win = page.locator(searchWin);
+    await expect(win).toBeVisible();
+    expect((await win.boundingBox())?.width).toBe(width);
+    await expect(page.frameLocator(`${searchWin} iframe`).locator("#se-query")).toBeVisible();
+    expect(await horizontalOverflow(page), `search at ${width}px`).toBeLessThanOrEqual(0);
+
+    await win.getByRole("button", { name: "Home" }).click();
+    await expect(win).toHaveClass(/is-minimized/);
+    await expect(page.locator(".os-home")).toBeVisible();
+  }
+});
+
+for (const style of ["modern", "retro"]) {
+  test(`Lab OS ${style} has a usable taskbar, calendar, live-data apps, and show-desktop toggle`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.clock.install({ time: new Date("2026-03-15T12:34:00Z") });
+    await page.goto(`./?view=os&style=${style}`);
+    const taskbar = page.locator(".os-taskbar");
+    const clock = page.getByRole("button", { name: "Date and calendar" });
+    await expect(clock.locator("time span")).toBeVisible();
+    await page.clock.fastForward(60_000);
+    await expect(clock.locator("time")).toHaveAttribute("datetime", /^2026-03-15T12:35:/);
+    const bar = await taskbar.boundingBox();
+    expect(bar!.y + bar!.height).toBe(900);
+    await clock.click();
+    const calendar = page.getByRole("dialog", { name: "Calendar", exact: true });
+    await expect(calendar).toBeVisible();
+    await expect(calendar.locator('[aria-current="date"]')).toHaveCount(1);
+    await page.keyboard.press("Escape");
+    await expect(calendar).toHaveCount(0);
+    await expect(clock).toBeFocused();
+    await clock.click();
+    await page.frameLocator(`${searchWin} iframe`).getByLabel("Search Sid's work").click();
+    await expect(calendar).toHaveCount(0);
+
+    /* The taskbar widgets open full pages that also work outside the OS. */
+    const liveApps = [
+      { button: "Open Markets", app: "markets", heading: "NVIDIA" },
+      { button: "Open Launch Tracker", app: "launches", heading: "SpaceX launch tracker" },
+      { button: "Open AI Leaderboards", app: "leaderboards", heading: "AI leaderboards" }
+    ];
+    for (const { button, app, heading } of liveApps) {
+      await page.getByRole("button", { name: button }).click();
+      await expect(page.locator(`.os-win[data-app="${app}"] .os-address__text`)).toHaveText(`agarwal-labs.com/${app}`);
+      const frame = page.frameLocator(`.os-win[data-app="${app}"] iframe`);
+      await expect(frame.getByRole("heading", { name: heading, exact: true })).toBeVisible();
+      await expect(frame.locator(".market-bar")).toHaveCount(0);
+    }
+    const appFrame = (app: string) => page.frameLocator(`.os-win[data-app="${app}"] iframe`);
+    await expect(appFrame("markets").locator(".mk-quote")).toContainText("$230.36");
+    await expect(appFrame("launches").getByText("No SpaceX launches are on the schedule right now.")).toBeVisible();
+    await expect(appFrame("leaderboards").getByText(/^Saved snapshot, published /)).toBeVisible();
+    await page.getByRole("button", { name: "Open Markets" }).click();
+    await expect(page.locator('.os-win[data-app="markets"]')).toHaveCount(1);
+
+    await page.getByRole("button", { name: "Show desktop", exact: true }).click();
+    await expect(page.locator(".os-win:not(.is-minimized)")).toHaveCount(0);
+    await page.getByRole("button", { name: "Restore windows", exact: true }).click();
+    await expect(page.locator(".os-win:not(.is-minimized)")).toHaveCount(4);
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await expect(clock.locator("time span")).toBeInViewport();
+    await expect(page.locator(".os-start")).toBeInViewport();
+    expect(await horizontalOverflow(page)).toBe(0);
+    await page.context().setOffline(true);
+    await expect(taskbar.getByRole("img", { name: "Browser offline" })).toBeVisible();
+    await page.context().setOffline(false);
+    await expect(taskbar.getByRole("img", { name: "Browser online" })).toBeVisible();
+  });
+}
+
+test("desktop icons drag without opening, persist, move with the keyboard, and can be arranged", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("./?view=os");
+  await page.getByRole("button", { name: "Show desktop", exact: true }).click();
+  const icon = page.locator(".os-icons .os-icon", { hasText: "Journal" });
+  const before = (await icon.boundingBox())!;
+  await page.mouse.move(before.x + 40, before.y + 35);
+  await page.mouse.down();
+  await page.mouse.move(before.x + 224, before.y + 35, { steps: 8 });
+  await page.mouse.up();
+  await expect(page.locator('.os-win[data-app="journal"]')).toHaveCount(0);
+  expect((await icon.boundingBox())!.x).toBe(before.x + 184);
+  await page.keyboard.press("Shift+ArrowDown");
+  expect((await icon.boundingBox())!.y).toBe(before.y + 92);
+  await page.reload();
+  await page.getByRole("button", { name: "Show desktop", exact: true }).click();
+  expect((await icon.boundingBox())!.x).toBe(before.x + 184);
+  expect((await icon.boundingBox())!.y).toBe(before.y + 92);
+  await page.locator(".os-start").click();
+  await page.getByRole("button", { name: "Arrange desktop icons", exact: true }).click();
+  expect((await icon.boundingBox())!.x).toBe(before.x);
+  expect((await icon.boundingBox())!.y).toBe(before.y);
+  await icon.focus();
+  await page.keyboard.press("Shift+ArrowUp");
+  expect((await icon.boundingBox())!.y).toBe(before.y - 92);
+  expect((await page.locator(".os-icons .os-icon", { hasText: "Sid Search" }).boundingBox())!.y).toBe(before.y);
+  await page.keyboard.press("Shift+ArrowRight");
+  await page.setViewportSize({ width: 390, height: 900 });
+  await expect(page.locator(".os-home")).toBeVisible();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(icon).toBeVisible();
+  expect((await icon.boundingBox())!.x).toBe(before.x + 92);
+  expect((await icon.boundingBox())!.y).toBe(before.y - 92);
+  await icon.click();
+  await expect(page.locator('.os-win[data-app="journal"]')).toBeVisible();
+});
+
+test("windows move and resize from all eight edges and corners, enforcing minimum sizes", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("./?view=os");
+  await page.locator(".os-icons .os-icon", { hasText: "README.txt" }).click();
+  const win = page.locator('.os-win[data-app="readme"]');
+  const start = (await win.boundingBox())!;
+  await page.mouse.move(start.x + 120, start.y + 18);
+  await page.mouse.down();
+  await page.mouse.move(start.x + 40, start.y + 28, { steps: 5 });
+  await page.mouse.up();
+  expect((await win.boundingBox())!.x).toBe(start.x - 80);
+  expect((await win.boundingBox())!.y).toBe(start.y + 10);
+  for (const direction of ["n", "s", "e", "w", "ne", "nw", "se", "sw"]) {
+    const before = (await win.boundingBox())!;
+    const handle = (await win.locator(`.os-win__grip--${direction}`).boundingBox())!;
+    const dx = direction.includes("w") ? -16 : direction.includes("e") ? 16 : 0;
+    const dy = direction.includes("n") ? -16 : direction.includes("s") ? 16 : 0;
+    await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(handle.x + handle.width / 2 + dx, handle.y + handle.height / 2 + dy, { steps: 4 });
+    await page.mouse.up();
+    const after = (await win.boundingBox())!;
+    expect(after.width, direction).toBe(before.width + Math.abs(dx));
+    expect(after.height, direction).toBe(before.height + Math.abs(dy));
+    expect(after.x, direction).toBe(before.x + Math.min(dx, 0));
+    expect(after.y, direction).toBe(before.y + Math.min(dy, 0));
+  }
+  const end = (await win.boundingBox())!;
+  await page.mouse.move(end.x + end.width - 7, end.y + end.height - 7);
+  await page.mouse.down();
+  await page.mouse.move(end.x + 200, end.y + 160, { steps: 5 });
+  await page.mouse.up();
+  expect((await win.boundingBox())!.width).toBe(300);
+  expect((await win.boundingBox())!.height).toBe(220);
+  await expect(win).toContainText("browser-based desktop simulation");
+});
+
+test("Start search and restart use the real desktop rather than a different three-icon scene", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("./?view=os");
+  await page.getByRole("button", { name: "Skip intro" }).click();
+  const labels = await page.locator(".os-icons .os-icon__label").allTextContents();
+  await page.locator(".os-start").click();
+  const search = page.getByRole("searchbox", { name: "Search apps" });
+  await expect(search).toBeFocused();
+  await search.fill("no-such-app");
+  await expect(page.getByRole("status")).toContainText("No apps match this search.");
+  await search.fill("journal");
+  const menu = page.getByRole("dialog", { name: "Start menu" });
+  await menu.getByRole("list", { name: "Apps", exact: true }).getByRole("button", { name: "Journal", exact: true }).click();
+  await expect(page.locator('.os-win[data-app="journal"]')).toBeVisible();
+  await page.clock.install();
+  await page.locator(".os-start").click();
+  await menu.getByRole("button", { name: "Restart", exact: true }).click();
+  await expect(page.locator(".se-boot")).toBeVisible();
+  for (const elapsed of [450, 1000, 1000]) {
+    await page.clock.runFor(elapsed);
+    await expect(page.locator(".se-boot__desktop")).toHaveCount(0);
+  }
+  await expect(page.locator(".se-boot")).toHaveCount(0);
+  await expect(page.locator(".os-icons .os-icon__label")).toHaveText(labels);
+  await expect(page.locator(".os-win")).toHaveCount(1);
+  await expect(page.locator(searchWin)).toBeVisible();
+});

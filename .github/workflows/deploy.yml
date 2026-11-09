@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Daily rebuild so the AI leaderboards pick up new Epoch AI benchmark data.
+  schedule:
+    - cron: "17 9 * * *"
 
 permissions:
   contents: read
@@ -29,6 +32,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
+
+      - name: Refresh leaderboard data
+        run: npm run data:leaderboards
 
       - name: Build app
         run: npm run build

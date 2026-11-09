@@ -64,6 +64,16 @@ export const courseworkProjects = [
 
 export const marketSymbols = ["NVDA", "MSFT", "TSLA", "AAPL", "GOOGL", "CRWV", "MU"];
 
+export const marketCompanies: Record<string, { name: string; exchange: string; about: string }> = {
+  NVDA: { name: "NVIDIA", exchange: "NASDAQ", about: "GPUs, networking, and the CUDA software stack behind most AI training." },
+  MSFT: { name: "Microsoft", exchange: "NASDAQ", about: "Azure, Microsoft 365, and Copilot across the commercial cloud." },
+  TSLA: { name: "Tesla", exchange: "NASDAQ", about: "Electric vehicles, energy storage, and autonomy." },
+  AAPL: { name: "Apple", exchange: "NASDAQ", about: "iPhone, Mac, services, and on-device silicon." },
+  GOOGL: { name: "Alphabet", exchange: "NASDAQ", about: "Search, YouTube, Google Cloud, TPUs, and Gemini." },
+  CRWV: { name: "CoreWeave", exchange: "NASDAQ", about: "GPU cloud capacity built for AI training and inference." },
+  MU: { name: "Micron Technology", exchange: "NASDAQ", about: "DRAM, NAND, and the high-bandwidth memory used in AI accelerators." }
+};
+
 export const arenaLeader = {
   model: "claude-fable-5",
   score: 1507,

@@ -1,0 +1,1720 @@
+{
+  "generatedAt": "2026-11-09T21:46:58.885Z",
+  "arena": {
+    "publishedAt": "2026-11-08",
+    "boards": {
+      "text_style_control": [
+        {
+          "rank": 1,
+          "model": "Gemini 4 Carbon (High)",
+          "org": "google",
+          "license": "Proprietary",
+          "score": 1526.6,
+          "lower": 1517,
+          "upper": 1536.2,
+          "votes": 4281
+        },
+        {
+          "rank": 2,
+          "model": "Gemini 4 Argon (High)",
+          "org": "google",
+          "license": "Proprietary",
+          "score": 1522,
+          "lower": 1516.5,
+          "upper": 1527.5,
+          "votes": 18850
+        },
+        {
+          "rank": 3,
+          "model": "Muse Wonder (Max)",
+          "org": "meta",
+          "license": "Proprietary",
+          "score": 1512.1,
+          "lower": 1505.7,
+          "upper": 1518.6,
+          "votes": 11483
+        },
+        {
+          "rank": 4,
+          "model": "Claude Opus 5.5 (High)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1505.7,
+          "lower": 1499.6,
+          "upper": 1511.8,
+          "votes": 14815
+        },
+        {
+          "rank": 5,
+          "model": "Claude Fable 5 (High)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1503.8,
+          "lower": 1499.6,
+          "upper": 1508,
+          "votes": 45562
+        },
+        {
+          "rank": 6,
+          "model": "Claude Fable 5.1 (Max)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1503.1,
+          "lower": 1497.5,
+          "upper": 1508.6,
+          "votes": 19755
+        },
+        {
+          "rank": 7,
+          "model": "Claude Opus 4.6 (High)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1502.9,
+          "lower": 1499.7,
+          "upper": 1506.2,
+          "votes": 84428
+        },
+        {
+          "rank": 8,
+          "model": "Claude Opus 4.7 (High)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1501,
+          "lower": 1497.2,
+          "upper": 1504.8,
+          "votes": 64295
+        },
+        {
+          "rank": 9,
+          "model": "Gemini 3.8 Flash (High)",
+          "org": "google",
+          "license": "Proprietary",
+          "score": 1497.5,
+          "lower": 1493.3,
+          "upper": 1501.8,
+          "votes": 59624
+        },
+        {
+          "rank": 10,
+          "model": "Claude Opus 4.6",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1496.5,
+          "lower": 1493.3,
+          "upper": 1499.7,
+          "votes": 89224
+        },
+        {
+          "rank": 11,
+          "model": "Muse Spark 1.3 (Max)",
+          "org": "meta",
+          "license": "Proprietary",
+          "score": 1495.8,
+          "lower": 1490.7,
+          "upper": 1500.9,
+          "votes": 25563
+        },
+        {
+          "rank": 12,
+          "model": "Muse Spark 1.2 (xHigh)",
+          "org": "meta",
+          "license": "Proprietary",
+          "score": 1494,
+          "lower": 1488.1,
+          "upper": 1499.9,
+          "votes": 14561
+        },
+        {
+          "rank": 13,
+          "model": "Claude Opus 4.7",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1493.7,
+          "lower": 1490,
+          "upper": 1497.5,
+          "votes": 65387
+        },
+        {
+          "rank": 14,
+          "model": "Muse Spark 1.1",
+          "org": "meta",
+          "license": "Proprietary",
+          "score": 1490.6,
+          "lower": 1486.5,
+          "upper": 1494.8,
+          "votes": 45555
+        },
+        {
+          "rank": 15,
+          "model": "Claude Opus 5 (High)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1489.9,
+          "lower": 1486.3,
+          "upper": 1493.5,
+          "votes": 73730
+        },
+        {
+          "rank": 16,
+          "model": "Gemini 3.7 Flash (High)",
+          "org": "google",
+          "license": "Proprietary",
+          "score": 1489.3,
+          "lower": 1484.6,
+          "upper": 1494,
+          "votes": 33306
+        },
+        {
+          "rank": 17,
+          "model": "Muse Spark",
+          "org": "meta",
+          "license": "Proprietary",
+          "score": 1489,
+          "lower": 1483.3,
+          "upper": 1494.8,
+          "votes": 14008
+        },
+        {
+          "rank": 18,
+          "model": "Claude Opus 5 (Max)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1488.7,
+          "lower": 1484,
+          "upper": 1493.4,
+          "votes": 35712
+        },
+        {
+          "rank": 19,
+          "model": "Kimi K3 (Max)",
+          "org": "moonshot",
+          "license": "Kimi K3 license",
+          "score": 1487.3,
+          "lower": 1483,
+          "upper": 1491.6,
+          "votes": 40409
+        },
+        {
+          "rank": 20,
+          "model": "Gemini 3.1 Pro Preview",
+          "org": "google",
+          "license": "Proprietary",
+          "score": 1486.8,
+          "lower": 1483.9,
+          "upper": 1489.8,
+          "votes": 132347
+        }
+      ],
+      "webdev": [
+        {
+          "rank": 1,
+          "model": "Claude Opus 5.5 (Max)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1818.2,
+          "lower": 1806.2,
+          "upper": 1830.2,
+          "votes": 4034
+        },
+        {
+          "rank": 2,
+          "model": "Claude Sonnet 5.5 (xHigh)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1773.5,
+          "lower": 1763.2,
+          "upper": 1783.7,
+          "votes": 5536
+        },
+        {
+          "rank": 3,
+          "model": "Gemini 4 Carbon (High)",
+          "org": "google",
+          "license": "Proprietary",
+          "score": 1768.1,
+          "lower": 1752.8,
+          "upper": 1783.4,
+          "votes": 2130
+        },
+        {
+          "rank": 4,
+          "model": "GPT-6 Astra (Max)",
+          "org": "openai",
+          "license": "Proprietary",
+          "score": 1766.9,
+          "lower": 1758.1,
+          "upper": 1775.7,
+          "votes": 8161
+        },
+        {
+          "rank": 5,
+          "model": "Claude Fable 5.1 (Max)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1744.3,
+          "lower": 1736.2,
+          "upper": 1752.3,
+          "votes": 9507
+        },
+        {
+          "rank": 6,
+          "model": "GPT-6.1 Sol (Max)",
+          "org": "openai",
+          "license": "Proprietary",
+          "score": 1742.6,
+          "lower": 1732.6,
+          "upper": 1752.7,
+          "votes": 5283
+        },
+        {
+          "rank": 7,
+          "model": "Muse Wonder Full (Max)",
+          "org": "meta",
+          "license": "Proprietary",
+          "score": 1723.7,
+          "lower": 1709.3,
+          "upper": 1738.1,
+          "votes": 2080
+        },
+        {
+          "rank": 8,
+          "model": "Claude Sonnet 5.5 (High)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1713.4,
+          "lower": 1704.8,
+          "upper": 1722,
+          "votes": 7582
+        },
+        {
+          "rank": 9,
+          "model": "Claude Opus 5 (Max)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1690.9,
+          "lower": 1684.8,
+          "upper": 1697,
+          "votes": 19583
+        },
+        {
+          "rank": 10,
+          "model": "Kimi K3.1 Pro (Max)",
+          "org": "moonshot",
+          "license": "Kimi K3.1 Pro License",
+          "score": 1686.9,
+          "lower": 1676.9,
+          "upper": 1696.9,
+          "votes": 4651
+        },
+        {
+          "rank": 11,
+          "model": "Gemini 4 Argon (High)",
+          "org": "google",
+          "license": "Proprietary",
+          "score": 1682.8,
+          "lower": 1672.8,
+          "upper": 1692.8,
+          "votes": 4677
+        },
+        {
+          "rank": 12,
+          "model": "GPT-6.1 Terra (Max)",
+          "org": "openai",
+          "license": "Proprietary",
+          "score": 1678.4,
+          "lower": 1667.2,
+          "upper": 1689.5,
+          "votes": 3626
+        },
+        {
+          "rank": 13,
+          "model": "Qwen3.8-Max (0902)",
+          "org": "alibaba",
+          "license": "Proprietary",
+          "score": 1676.9,
+          "lower": 1670.5,
+          "upper": 1683.2,
+          "votes": 21409
+        },
+        {
+          "rank": 14,
+          "model": "GPT-6 Sol (Max)",
+          "org": "openai",
+          "license": "Proprietary",
+          "score": 1673.8,
+          "lower": 1665.2,
+          "upper": 1682.3,
+          "votes": 6936
+        },
+        {
+          "rank": 15,
+          "model": "Qwen3.8-Max",
+          "org": "alibaba",
+          "license": "Proprietary",
+          "score": 1670.2,
+          "lower": 1658.1,
+          "upper": 1682.3,
+          "votes": 3371
+        },
+        {
+          "rank": 16,
+          "model": "DeepSeek-V4.1-Flash-20261017 (Max)",
+          "org": "deepseek",
+          "license": "MIT",
+          "score": 1664.2,
+          "lower": 1657.4,
+          "upper": 1671.1,
+          "votes": 13449
+        },
+        {
+          "rank": 17,
+          "model": "Kimi K3 (Max)",
+          "org": "moonshot",
+          "license": "Kimi K3 license",
+          "score": 1656.8,
+          "lower": 1651.1,
+          "upper": 1662.6,
+          "votes": 22147
+        },
+        {
+          "rank": 18,
+          "model": "Claude Opus 5 (High)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1656.5,
+          "lower": 1651.2,
+          "upper": 1661.7,
+          "votes": 26966
+        },
+        {
+          "rank": 19,
+          "model": "Muse Spark 1.3 (Max)",
+          "org": "meta",
+          "license": "Proprietary",
+          "score": 1654.1,
+          "lower": 1647,
+          "upper": 1661.2,
+          "votes": 11827
+        },
+        {
+          "rank": 20,
+          "model": "Muse Wonder (Max)",
+          "org": "meta",
+          "license": "Proprietary",
+          "score": 1649.7,
+          "lower": 1640,
+          "upper": 1659.4,
+          "votes": 4940
+        }
+      ],
+      "vision_style_control": [
+        {
+          "rank": 1,
+          "model": "Claude Fable 5 (High)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1309.5,
+          "lower": 1302.6,
+          "upper": 1316.4,
+          "votes": 15527
+        },
+        {
+          "rank": 2,
+          "model": "Claude Opus 4.7",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1300,
+          "lower": 1293.4,
+          "upper": 1306.5,
+          "votes": 23826
+        },
+        {
+          "rank": 3,
+          "model": "Qwen3.8-Max",
+          "org": "alibaba",
+          "license": "Proprietary",
+          "score": 1299.1,
+          "lower": 1291.7,
+          "upper": 1306.6,
+          "votes": 9839
+        },
+        {
+          "rank": 4,
+          "model": "Claude Opus 4.6 (High)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1298.7,
+          "lower": 1292.3,
+          "upper": 1305.1,
+          "votes": 22109
+        },
+        {
+          "rank": 5,
+          "model": "Claude Opus 4.7 (High)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1298.3,
+          "lower": 1291.8,
+          "upper": 1304.8,
+          "votes": 22590
+        },
+        {
+          "rank": 6,
+          "model": "Claude Opus 5.5 (High)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1295.2,
+          "lower": 1285.3,
+          "upper": 1305,
+          "votes": 4829
+        },
+        {
+          "rank": 7,
+          "model": "Muse Spark",
+          "org": "meta",
+          "license": "Proprietary",
+          "score": 1294.3,
+          "lower": 1285.2,
+          "upper": 1303.4,
+          "votes": 5841
+        },
+        {
+          "rank": 8,
+          "model": "Gemini 3.7 Flash (High)",
+          "org": "google",
+          "license": "Proprietary",
+          "score": 1293.9,
+          "lower": 1285.3,
+          "upper": 1302.4,
+          "votes": 6839
+        },
+        {
+          "rank": 9,
+          "model": "Muse Spark 1.2 (xHigh)",
+          "org": "meta",
+          "license": "Proprietary",
+          "score": 1293.6,
+          "lower": 1279.2,
+          "upper": 1308,
+          "votes": 1929
+        },
+        {
+          "rank": 10,
+          "model": "Gemini 3.8 Flash (High)",
+          "org": "google",
+          "license": "Proprietary",
+          "score": 1293.1,
+          "lower": 1284.9,
+          "upper": 1301.3,
+          "votes": 7682
+        },
+        {
+          "rank": 11,
+          "model": "Claude Opus 4.6",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1293,
+          "lower": 1286.8,
+          "upper": 1299.3,
+          "votes": 26605
+        },
+        {
+          "rank": 12,
+          "model": "GPT-6.1 Sol (Max)",
+          "org": "openai",
+          "license": "Proprietary",
+          "score": 1292.2,
+          "lower": 1281.7,
+          "upper": 1302.7,
+          "votes": 4034
+        },
+        {
+          "rank": 13,
+          "model": "Muse Spark 1.3 (Max)",
+          "org": "meta",
+          "license": "Proprietary",
+          "score": 1290.6,
+          "lower": 1282.5,
+          "upper": 1298.7,
+          "votes": 7723
+        },
+        {
+          "rank": 14,
+          "model": "Gemini 3 Pro",
+          "org": "google",
+          "license": "Proprietary",
+          "score": 1289.3,
+          "lower": 1281.9,
+          "upper": 1296.7,
+          "votes": 13541
+        },
+        {
+          "rank": 15,
+          "model": "Claude Fable 5.1 (Max)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1289.2,
+          "lower": 1280.6,
+          "upper": 1297.9,
+          "votes": 6330
+        },
+        {
+          "rank": 16,
+          "model": "Muse Spark 1.3 (xHigh)",
+          "org": "meta",
+          "license": "Proprietary",
+          "score": 1288.4,
+          "lower": 1280.2,
+          "upper": 1296.6,
+          "votes": 7594
+        },
+        {
+          "rank": 17,
+          "model": "GPT-5.6 Sol (xHigh)",
+          "org": "openai",
+          "license": "Proprietary",
+          "score": 1288,
+          "lower": 1280.9,
+          "upper": 1295.2,
+          "votes": 12340
+        },
+        {
+          "rank": 18,
+          "model": "Claude Opus 4.8 (High)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1286,
+          "lower": 1279.6,
+          "upper": 1292.5,
+          "votes": 18178
+        },
+        {
+          "rank": 19,
+          "model": "Claude Opus 5 (High)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1285.3,
+          "lower": 1278.8,
+          "upper": 1291.8,
+          "votes": 19342
+        },
+        {
+          "rank": 20,
+          "model": "GPT-5.5",
+          "org": "openai",
+          "license": "Proprietary",
+          "score": 1284.6,
+          "lower": 1278.9,
+          "upper": 1290.2,
+          "votes": 30044
+        }
+      ],
+      "search_style_control": [
+        {
+          "rank": 1,
+          "model": "GPT-5.6 Sol (xHigh)",
+          "org": "openai",
+          "license": "Proprietary",
+          "score": 1255.6,
+          "lower": 1249,
+          "upper": 1262.2,
+          "votes": 62627
+        },
+        {
+          "rank": 2,
+          "model": "GPT-6.1 Sol (Max)",
+          "org": "openai",
+          "license": "Proprietary",
+          "score": 1249,
+          "lower": 1241,
+          "upper": 1257,
+          "votes": 26802
+        },
+        {
+          "rank": 3,
+          "model": "GPT-6 Astra (Max)",
+          "org": "openai",
+          "license": "Proprietary",
+          "score": 1244.9,
+          "lower": 1236.9,
+          "upper": 1253,
+          "votes": 17457
+        },
+        {
+          "rank": 4,
+          "model": "GPT-6 Sol (Max)",
+          "org": "openai",
+          "license": "Proprietary",
+          "score": 1229.3,
+          "lower": 1221.5,
+          "upper": 1237.1,
+          "votes": 13508
+        },
+        {
+          "rank": 5,
+          "model": "Claude Fable 5 (High)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1228.6,
+          "lower": 1221.9,
+          "upper": 1235.3,
+          "votes": 69533
+        },
+        {
+          "rank": 6,
+          "model": "Claude Fable 5.1 (High)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1228.5,
+          "lower": 1221.5,
+          "upper": 1235.5,
+          "votes": 34006
+        },
+        {
+          "rank": 7,
+          "model": "Qwen3.8-Max",
+          "org": "alibaba",
+          "license": "Proprietary",
+          "score": 1226.3,
+          "lower": 1212.8,
+          "upper": 1239.8,
+          "votes": 2059
+        },
+        {
+          "rank": 8,
+          "model": "GPT-5.5 (Search)",
+          "org": "openai",
+          "license": "Proprietary",
+          "score": 1225.5,
+          "lower": 1220.2,
+          "upper": 1230.8,
+          "votes": 121707
+        },
+        {
+          "rank": 9,
+          "model": "Claude Opus 4.6 (Search)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1221.8,
+          "lower": 1217,
+          "upper": 1226.6,
+          "votes": 166748
+        },
+        {
+          "rank": 10,
+          "model": "Claude Opus 5.5 (Medium)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1213.8,
+          "lower": 1207,
+          "upper": 1220.6,
+          "votes": 32009
+        },
+        {
+          "rank": 11,
+          "model": "Claude Opus 5 (High)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1213.5,
+          "lower": 1206.7,
+          "upper": 1220.3,
+          "votes": 34226
+        },
+        {
+          "rank": 12,
+          "model": "GPT-6 Luna (Max)",
+          "org": "openai",
+          "license": "Proprietary",
+          "score": 1211.2,
+          "lower": 1204.1,
+          "upper": 1218.3,
+          "votes": 47488
+        },
+        {
+          "rank": 13,
+          "model": "Claude Opus 4.7",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1209.9,
+          "lower": 1204.8,
+          "upper": 1215,
+          "votes": 121903
+        },
+        {
+          "rank": 14,
+          "model": "Gemini 3.1 Pro (Grounding)",
+          "org": "google",
+          "license": "Proprietary",
+          "score": 1208.5,
+          "lower": 1203.7,
+          "upper": 1213.2,
+          "votes": 172042
+        },
+        {
+          "rank": 15,
+          "model": "Grok 4.20 Multi-Agent Beta (0309)",
+          "org": "xai",
+          "license": "Proprietary",
+          "score": 1207,
+          "lower": 1201.4,
+          "upper": 1212.7,
+          "votes": 121081
+        },
+        {
+          "rank": 16,
+          "model": "Grok 4.5",
+          "org": "xai",
+          "license": "Proprietary",
+          "score": 1205.6,
+          "lower": 1199.8,
+          "upper": 1211.3,
+          "votes": 105720
+        },
+        {
+          "rank": 17,
+          "model": "Claude Sonnet 4.6 (Search)",
+          "org": "anthropic",
+          "license": "Proprietary",
+          "score": 1201.2,
+          "lower": 1196.4,
+          "upper": 1206,
+          "votes": 167506
+        },
+        {
+          "rank": 18,
+          "model": "Gemini 3 Pro (Grounding)",
+          "org": "google",
+          "license": "Proprietary",
+          "score": 1200.9,
+          "lower": 1195.3,
+          "upper": 1206.5,
+          "votes": 38322
+        },
+        {
+          "rank": 19,
+          "model": "Grok 4.20 Beta 1",
+          "org": "xai",
+          "license": "Proprietary",
+          "score": 1199.9,
+          "lower": 1193.8,
+          "upper": 1206.1,
+          "votes": 55903
+        },
+        {
+          "rank": 20,
+          "model": "o3 (Search)",
+          "org": "openai",
+          "license": "Proprietary",
+          "score": 1197.3,
+          "lower": 1190.4,
+          "upper": 1204.1,
+          "votes": 20655
+        }
+      ],
+      "text_to_image": [
+        {
+          "rank": 1,
+          "model": "GPT-Image-2.5 Sunburst",
+          "org": "openai",
+          "license": "Proprietary",
+          "score": 1428.3,
+          "lower": 1423,
+          "upper": 1433.6,
+          "votes": 58604
+        },
+        {
+          "rank": 2,
+          "model": "GPT-Image-2.6 Sunburst (Medium)",
+          "org": "openai",
+          "license": "Proprietary",
+          "score": 1406.2,
+          "lower": 1392.8,
+          "upper": 1419.5,
+          "votes": 2720
+        },
+        {
+          "rank": 3,
+          "model": "GPT-Image-2.5 Flare",
+          "org": "openai",
+          "license": "Proprietary",
+          "score": 1400.4,
+          "lower": 1395.3,
+          "upper": 1405.5,
+          "votes": 57645
+        },
+        {
+          "rank": 4,
+          "model": "GPT-Image-2.6 Flare (Medium)",
+          "org": "openai",
+          "license": "Proprietary",
+          "score": 1382.8,
+          "lower": 1369.7,
+          "upper": 1395.9,
+          "votes": 2552
+        },
+        {
+          "rank": 5,
+          "model": "GPT-Image-2 (Medium)",
+          "org": "openai",
+          "license": "Proprietary",
+          "score": 1381.8,
+          "lower": 1377.9,
+          "upper": 1385.7,
+          "votes": 106289
+        },
+        {
+          "rank": 6,
+          "model": "MAI-Image-2.6",
+          "org": "microsoft-ai",
+          "license": "Proprietary",
+          "score": 1329.9,
+          "lower": 1324.7,
+          "upper": 1335.1,
+          "votes": 38967
+        },
+        {
+          "rank": 7,
+          "model": "Gemini Nano Banana 2.1",
+          "org": "google",
+          "license": "Proprietary",
+          "score": 1327.7,
+          "lower": 1318.6,
+          "upper": 1336.8,
+          "votes": 4966
+        },
+        {
+          "rank": 8,
+          "model": "Grok Imagine Image 2.0",
+          "org": "xai",
+          "license": "Proprietary",
+          "score": 1318.6,
+          "lower": 1311.2,
+          "upper": 1326.1,
+          "votes": 9961
+        },
+        {
+          "rank": 9,
+          "model": "Reve 2.1",
+          "org": "reve",
+          "license": "Proprietary",
+          "score": 1301.9,
+          "lower": 1294.2,
+          "upper": 1309.5,
+          "votes": 7909
+        },
+        {
+          "rank": 10,
+          "model": "Grok Imagine Image 2.0 (20260801)",
+          "org": "xai",
+          "license": "Proprietary",
+          "score": 1289.5,
+          "lower": 1284.2,
+          "upper": 1294.9,
+          "votes": 32993
+        },
+        {
+          "rank": 11,
+          "model": "Reve 2.0",
+          "org": "reve",
+          "license": "Proprietary",
+          "score": 1268.2,
+          "lower": 1261.9,
+          "upper": 1274.4,
+          "votes": 15323
+        },
+        {
+          "rank": 12,
+          "model": "Muse Image",
+          "org": "meta",
+          "license": "Proprietary",
+          "score": 1266.5,
+          "lower": 1261.9,
+          "upper": 1271,
+          "votes": 57616
+        },
+        {
+          "rank": 13,
+          "model": "Gemini 3.1 Flash Image (nano-banana-2, Web Search)",
+          "org": "google",
+          "license": "Proprietary",
+          "score": 1256.6,
+          "lower": 1252.7,
+          "upper": 1260.4,
+          "votes": 77983
+        },
+        {
+          "rank": 14,
+          "model": "Qwen-Image-3.0-Pro",
+          "org": "alibaba",
+          "license": "Proprietary",
+          "score": 1254.2,
+          "lower": 1247.6,
+          "upper": 1260.8,
+          "votes": 10915
+        },
+        {
+          "rank": 15,
+          "model": "MAI-Image-2.5",
+          "org": "microsoft-ai",
+          "license": "Proprietary",
+          "score": 1252.6,
+          "lower": 1248.3,
+          "upper": 1256.8,
+          "votes": 59125
+        },
+        {
+          "rank": 16,
+          "model": "Gemini 3.1 Flash-Lite Image (nano-banana-2-lite)",
+          "org": "google",
+          "license": "Proprietary",
+          "score": 1249.2,
+          "lower": 1243.2,
+          "upper": 1255.3,
+          "votes": 17148
+        },
+        {
+          "rank": 17,
+          "model": "Seedream 5.0 Pro",
+          "org": "bytedance",
+          "license": "Proprietary",
+          "score": 1248.8,
+          "lower": 1244.9,
+          "upper": 1252.6,
+          "votes": 107755
+        },
+        {
+          "rank": 18,
+          "model": "Gemini 3 Pro Image (nano-banana-pro, 2K)",
+          "org": "google",
+          "license": "Proprietary",
+          "score": 1245.8,
+          "lower": 1242.8,
+          "upper": 1248.8,
+          "votes": 185024
+        },
+        {
+          "rank": 19,
+          "model": "GPT-Image-1.5 (High Fidelity)",
+          "org": "openai",
+          "license": "Proprietary",
+          "score": 1236,
+          "lower": 1232.9,
+          "upper": 1239.1,
+          "votes": 169494
+        },
+        {
+          "rank": 20,
+          "model": "Gemini 3 Pro Image Preview (nano-banana-pro)",
+          "org": "google",
+          "license": "Proprietary",
+          "score": 1231.2,
+          "lower": 1226.3,
+          "upper": 1236.2,
+          "votes": 83833
+        }
+      ]
+    }
+  },
+  "epoch": {
+    "fetchedAt": "2026-11-09T21:46:58.870Z",
+    "benchmarks": [
+      {
+        "id": "eci",
+        "name": "Epoch Capabilities Index",
+        "blurb": "Epoch's composite score that stitches dozens of benchmarks onto one scale, so models tested on different suites can be compared.",
+        "unit": "index",
+        "href": "https://epoch.ai/benchmarks/eci",
+        "rows": [
+          {
+            "model": "GPT-6 Astra",
+            "org": "OpenAI",
+            "score": 169.1,
+            "low": 166.2,
+            "high": 172.3,
+            "date": "2026-09-03"
+          },
+          {
+            "model": "GPT-6.1 Sol",
+            "org": "OpenAI",
+            "score": 168.9,
+            "low": 166,
+            "high": 172.2,
+            "date": "2026-09-29"
+          },
+          {
+            "model": "Claude Opus 5.5",
+            "org": "Anthropic",
+            "score": 168.4,
+            "low": 165.5,
+            "high": 171.5,
+            "date": "2026-09-22"
+          },
+          {
+            "model": "GPT-6.1 Terra",
+            "org": "OpenAI",
+            "score": 167.8,
+            "low": 164.9,
+            "high": 171.2,
+            "date": "2026-10-26"
+          },
+          {
+            "model": "Claude Fable 5.1",
+            "org": "Anthropic",
+            "score": 166.9,
+            "low": 164.3,
+            "high": 169.8,
+            "date": "2026-09-01"
+          },
+          {
+            "model": "Gemini 4 Argon",
+            "org": "Google DeepMind",
+            "score": 166.4,
+            "low": 163.8,
+            "high": 169.4,
+            "date": "2026-09-30"
+          },
+          {
+            "model": "Claude Sonnet 5.5",
+            "org": "Anthropic",
+            "score": 166.2,
+            "low": 163.5,
+            "high": 169.2,
+            "date": "2026-09-28"
+          },
+          {
+            "model": "Claude Opus 5",
+            "org": "Anthropic",
+            "score": 164.4,
+            "low": 162,
+            "high": 167.2,
+            "date": "2026-07-24"
+          },
+          {
+            "model": "Claude Fable 5",
+            "org": "Anthropic",
+            "score": 164.2,
+            "low": 161.8,
+            "high": 166.9,
+            "date": "2026-06-09"
+          },
+          {
+            "model": "GPT-6 Sol",
+            "org": "OpenAI",
+            "score": 164.1,
+            "low": 161.6,
+            "high": 166.8,
+            "date": "2026-09-22"
+          }
+        ]
+      },
+      {
+        "id": "gpqa",
+        "name": "GPQA Diamond",
+        "blurb": "198 graduate-level biology, chemistry, and physics questions written so that skilled non-experts with web access still miss them.",
+        "unit": "percent",
+        "href": "https://epoch.ai/benchmarks/gpqa-diamond",
+        "rows": [
+          {
+            "model": "Gemini 4 Argon",
+            "org": "Google DeepMind",
+            "score": 96.4,
+            "error": 1.2,
+            "date": "2026-09-30",
+            "detail": "high"
+          },
+          {
+            "model": "GPT-6 Astra",
+            "org": "OpenAI",
+            "score": 95.8,
+            "error": 1.4,
+            "date": "2026-09-03",
+            "detail": "max"
+          },
+          {
+            "model": "Claude Sonnet 5.5",
+            "org": "Anthropic",
+            "score": 95.6,
+            "error": 1.4,
+            "date": "2026-09-28",
+            "detail": "max"
+          },
+          {
+            "model": "GPT-6.1 Sol",
+            "org": "OpenAI",
+            "score": 95.4,
+            "error": 1.4,
+            "date": "2026-09-29",
+            "detail": "max"
+          },
+          {
+            "model": "Gemini 3.8 Flash",
+            "org": "Google DeepMind",
+            "score": 95.4,
+            "error": 1.4,
+            "date": "2026-09-02",
+            "detail": "high"
+          },
+          {
+            "model": "Gemini 3.7 Flash",
+            "org": "Google DeepMind",
+            "score": 94.8,
+            "error": 1.3,
+            "date": "2026-08-13",
+            "detail": "high"
+          },
+          {
+            "model": "GPT-5.4 Pro",
+            "org": "OpenAI",
+            "score": 94.6,
+            "error": 1.6,
+            "date": "2026-03-05",
+            "detail": "xhigh"
+          },
+          {
+            "model": "Gemini 3.1 Pro",
+            "org": "Google DeepMind",
+            "score": 94.4,
+            "error": 1.6,
+            "date": "2026-02-19"
+          },
+          {
+            "model": "GPT-6.1 Terra",
+            "org": "OpenAI",
+            "score": 94.3,
+            "error": 1.5,
+            "date": "2026-10-26",
+            "detail": "max"
+          },
+          {
+            "model": "GPT-6 Sol",
+            "org": "OpenAI",
+            "score": 94.3,
+            "error": 1.5,
+            "date": "2026-09-22",
+            "detail": "max"
+          }
+        ]
+      },
+      {
+        "id": "frontiermath",
+        "name": "FrontierMath (Tiers 1-3)",
+        "blurb": "Unpublished research-level math problems with automatically checkable answers; most take specialists hours to solve.",
+        "unit": "percent",
+        "href": "https://epoch.ai/frontiermath",
+        "rows": [
+          {
+            "model": "Claude Fable 5.2",
+            "org": "Anthropic",
+            "score": 95.1,
+            "error": 1.3,
+            "date": "2026-11-09",
+            "detail": "max"
+          },
+          {
+            "model": "GPT-6.1 Sol",
+            "org": "OpenAI",
+            "score": 93.7,
+            "error": 1.4,
+            "date": "2026-09-29",
+            "detail": "max"
+          },
+          {
+            "model": "GPT-6 Astra",
+            "org": "OpenAI",
+            "score": 93.7,
+            "error": 1.4,
+            "date": "2026-09-03",
+            "detail": "max"
+          },
+          {
+            "model": "Claude Opus 5.5",
+            "org": "Anthropic",
+            "score": 91.2,
+            "error": 1.7,
+            "date": "2026-09-22",
+            "detail": "max"
+          },
+          {
+            "model": "GPT-6.1 Terra",
+            "org": "OpenAI",
+            "score": 90.9,
+            "error": 1.7,
+            "date": "2026-10-26",
+            "detail": "max"
+          },
+          {
+            "model": "Claude Fable 5.1",
+            "org": "Anthropic",
+            "score": 90.2,
+            "error": 1.8,
+            "date": "2026-09-01",
+            "detail": "max"
+          },
+          {
+            "model": "GPT-6 Sol",
+            "org": "OpenAI",
+            "score": 89.8,
+            "error": 1.8,
+            "date": "2026-09-22",
+            "detail": "max"
+          },
+          {
+            "model": "GPT-5.6 Sol",
+            "org": "OpenAI",
+            "score": 89.1,
+            "error": 1.8,
+            "date": "2026-07-09",
+            "detail": "max"
+          },
+          {
+            "model": "Claude Sonnet 5.5",
+            "org": "Anthropic",
+            "score": 88.8,
+            "error": 1.9,
+            "date": "2026-09-28",
+            "detail": "max"
+          },
+          {
+            "model": "GPT-5.5 Pro",
+            "org": "OpenAI",
+            "score": 87.7,
+            "error": 1.9,
+            "date": "2026-04-23",
+            "detail": "xhigh"
+          }
+        ]
+      },
+      {
+        "id": "swebench",
+        "name": "SWE-bench Verified",
+        "blurb": "Real GitHub issues from Python repositories; a model passes when its patch makes the hidden tests pass. Run by Epoch with a fixed scaffold.",
+        "unit": "percent",
+        "href": "https://epoch.ai/benchmarks/swe-bench-verified",
+        "rows": [
+          {
+            "model": "Claude Opus 4.7",
+            "org": "Anthropic",
+            "score": 83.5,
+            "error": 1.7,
+            "date": "2026-04-16",
+            "detail": "max"
+          },
+          {
+            "model": "GPT-5.5",
+            "org": "OpenAI",
+            "score": 80.6,
+            "error": 1.8,
+            "date": "2026-04-23",
+            "detail": "xhigh"
+          },
+          {
+            "model": "Gemini 3.5 Flash",
+            "org": "Google DeepMind",
+            "score": 79.3,
+            "error": 1.8,
+            "date": "2026-05-19"
+          },
+          {
+            "model": "GLM-5.2",
+            "org": "Z.ai (Zhipu AI)",
+            "score": 78.7,
+            "error": 1.9,
+            "date": "2026-06-16"
+          },
+          {
+            "model": "Claude Opus 4.6",
+            "org": "Anthropic",
+            "score": 78.7,
+            "error": 1.9,
+            "date": "2026-02-05",
+            "detail": "no thinking"
+          },
+          {
+            "model": "DeepSeek-V4-Pro",
+            "org": "DeepSeek",
+            "score": 77.6,
+            "error": 1.9,
+            "date": "2026-04-24",
+            "detail": "max"
+          },
+          {
+            "model": "Qwen3.7-Max",
+            "org": "Alibaba",
+            "score": 77.3,
+            "error": 1.9,
+            "date": "2026-05-19"
+          },
+          {
+            "model": "GPT-5.4",
+            "org": "OpenAI",
+            "score": 76.9,
+            "error": 1.9,
+            "date": "2026-03-05",
+            "detail": "high"
+          },
+          {
+            "model": "Qwen 3.6 Max (Preview)",
+            "org": "Alibaba",
+            "score": 76.7,
+            "error": 1.9,
+            "date": "2026-04-20",
+            "detail": "Preview"
+          },
+          {
+            "model": "Kimi K2.6",
+            "org": "Moonshot",
+            "score": 76.7,
+            "error": 1.9,
+            "date": "2026-04-20"
+          }
+        ]
+      },
+      {
+        "id": "hle",
+        "name": "Humanity's Last Exam",
+        "blurb": "2,500 expert-written questions across dozens of fields, built to sit at the edge of human knowledge. Scores reported by the developers.",
+        "unit": "percent",
+        "href": "https://lastexam.ai/",
+        "rows": [
+          {
+            "model": "GPT-6 Astra",
+            "org": "OpenAI",
+            "score": 54.8,
+            "error": 1.9,
+            "date": "2026-09-03"
+          },
+          {
+            "model": "Claude Fable 5.1",
+            "org": "Anthropic",
+            "score": 46.5,
+            "error": 2,
+            "date": "2026-09-01",
+            "detail": "xhigh"
+          },
+          {
+            "model": "Gemini 3.1 Pro",
+            "org": "Google DeepMind",
+            "score": 46.4,
+            "error": 2,
+            "date": "2026-02-19"
+          },
+          {
+            "model": "Claude Sonnet 5.5",
+            "org": "Anthropic",
+            "score": 46.1,
+            "error": 1.9,
+            "date": "2026-09-28",
+            "detail": "xhigh"
+          },
+          {
+            "model": "Gemini 3.8 Flash",
+            "org": "Google DeepMind",
+            "score": 44.5,
+            "error": 2,
+            "date": "2026-09-02",
+            "detail": "unknown"
+          },
+          {
+            "model": "GPT-5.4 Pro",
+            "org": "OpenAI",
+            "score": 44.3,
+            "error": 1.9,
+            "date": "2026-03-05"
+          },
+          {
+            "model": "Muse Spark",
+            "org": "Meta AI",
+            "score": 40.6,
+            "error": 1.9,
+            "date": "2026-04-08"
+          },
+          {
+            "model": "Gemini 3 Pro",
+            "org": "Google DeepMind",
+            "score": 37.5,
+            "error": 1.9,
+            "date": "2025-11-18"
+          },
+          {
+            "model": "GPT-5.4",
+            "org": "OpenAI",
+            "score": 36.2,
+            "error": 1.9,
+            "date": "2026-03-05",
+            "detail": "xhigh"
+          },
+          {
+            "model": "Claude Opus 4.7",
+            "org": "Anthropic",
+            "score": 36.2,
+            "error": 1.9,
+            "date": "2026-04-16",
+            "detail": "unknown"
+          }
+        ]
+      },
+      {
+        "id": "arcagi2",
+        "name": "ARC-AGI-2",
+        "blurb": "Abstract grid puzzles that test learning a new rule from a few examples. Results from the ARC Prize semi-private set.",
+        "unit": "percent",
+        "href": "https://arcprize.org/leaderboard",
+        "rows": [
+          {
+            "model": "GPT-6 Astra",
+            "org": "OpenAI",
+            "score": 95,
+            "date": "2026-09-03",
+            "detail": "max"
+          },
+          {
+            "model": "GPT-6.1 Sol",
+            "org": "OpenAI",
+            "score": 94.2,
+            "date": "2026-09-29",
+            "detail": "max"
+          },
+          {
+            "model": "Claude Fable 5.2",
+            "org": "Anthropic",
+            "score": 93.8,
+            "date": "2026-11-09",
+            "detail": "xhigh"
+          },
+          {
+            "model": "Claude Opus 5.5",
+            "org": "Anthropic",
+            "score": 93.3,
+            "date": "2026-09-22",
+            "detail": "high"
+          },
+          {
+            "model": "GPT-5.6 Sol",
+            "org": "OpenAI",
+            "score": 92.5,
+            "date": "2026-07-09",
+            "detail": "max"
+          },
+          {
+            "model": "Gemini 4 Argon",
+            "org": "Google DeepMind",
+            "score": 91.3,
+            "date": "2026-09-30",
+            "detail": "high"
+          },
+          {
+            "model": "Claude Opus 5",
+            "org": "Anthropic",
+            "score": 90.4,
+            "date": "2026-07-24",
+            "detail": "max"
+          },
+          {
+            "model": "Claude Fable 5.1",
+            "org": "Anthropic",
+            "score": 90,
+            "date": "2026-09-01",
+            "detail": "max"
+          },
+          {
+            "model": "GPT-6 Sol",
+            "org": "OpenAI",
+            "score": 89.6,
+            "date": "2026-09-22",
+            "detail": "max"
+          },
+          {
+            "model": "Claude Fable 5",
+            "org": "Anthropic",
+            "score": 89.2,
+            "date": "2026-06-09",
+            "detail": "max"
+          }
+        ]
+      },
+      {
+        "id": "metr",
+        "name": "METR time horizon",
+        "blurb": "How long a software task (measured in skilled-human time) a model can finish with 50% reliability.",
+        "unit": "minutes",
+        "href": "https://metr.org/time-horizons",
+        "rows": [
+          {
+            "model": "Claude Mythos Preview",
+            "org": "Anthropic",
+            "score": 1044.8,
+            "low": 508.9,
+            "high": 3304.3,
+            "date": "2026-04-07",
+            "detail": "Early"
+          },
+          {
+            "model": "Claude Opus 4.6",
+            "org": "Anthropic",
+            "score": 718.8,
+            "low": 319.3,
+            "high": 3949.8,
+            "date": "2026-02-05"
+          },
+          {
+            "model": "Gemini 3.1 Pro",
+            "org": "Google DeepMind",
+            "score": 384.1,
+            "low": 233.5,
+            "high": 694.8,
+            "date": "2026-02-19"
+          },
+          {
+            "model": "GPT-5.2",
+            "org": "OpenAI",
+            "score": 352.2,
+            "low": 191.3,
+            "high": 862.3,
+            "date": "2025-12-11",
+            "detail": "high"
+          },
+          {
+            "model": "GPT-5.3 Codex",
+            "org": "OpenAI",
+            "score": 349.5,
+            "low": 192,
+            "high": 858.3,
+            "date": "2026-02-05"
+          },
+          {
+            "model": "GPT-5.4",
+            "org": "OpenAI",
+            "score": 341.7,
+            "low": 186.6,
+            "high": 768.8,
+            "date": "2026-03-05",
+            "detail": "xhigh"
+          },
+          {
+            "model": "Claude Opus 4.5",
+            "org": "Anthropic",
+            "score": 293,
+            "low": 160.5,
+            "high": 638.6,
+            "date": "2025-11-24",
+            "detail": "no thinking"
+          },
+          {
+            "model": "Gemini 3 Pro",
+            "org": "Google DeepMind",
+            "score": 224.3,
+            "low": 136.9,
+            "high": 387.5,
+            "date": "2025-11-18"
+          },
+          {
+            "model": "GPT-5.1-Codex-Max",
+            "org": "OpenAI",
+            "score": 223.7,
+            "low": 134.3,
+            "high": 396.2,
+            "date": "2025-11-19"
+          },
+          {
+            "model": "GPT-5",
+            "org": "OpenAI",
+            "score": 203,
+            "low": 114.2,
+            "high": 406.7,
+            "date": "2025-08-07",
+            "detail": "high"
+          }
+        ]
+      },
+      {
+        "id": "terminalbench",
+        "name": "Terminal-Bench 2.0",
+        "blurb": "Hard command-line tasks done end to end inside a sandbox. Each row is a model paired with an agent harness.",
+        "unit": "percent",
+        "href": "https://www.tbench.ai/leaderboard/terminal-bench/2.0",
+        "rows": [
+          {
+            "model": "GPT-5.5",
+            "org": "OpenAI",
+            "score": 84.7,
+            "error": 2.1,
+            "date": "2026-04-23",
+            "detail": "NexAU-AHE"
+          },
+          {
+            "model": "GPT-5.4",
+            "org": "OpenAI",
+            "score": 81.8,
+            "error": 2,
+            "date": "2026-03-05",
+            "detail": "ForgeCode"
+          },
+          {
+            "model": "Gemini 3.1 Pro",
+            "org": "Google DeepMind",
+            "score": 80.2,
+            "error": 2.6,
+            "date": "2026-02-19",
+            "detail": "TongAgents"
+          },
+          {
+            "model": "Claude Opus 4.7",
+            "org": "Anthropic",
+            "score": 80.2,
+            "error": 2.1,
+            "date": "2026-04-16",
+            "detail": "WOZCODE"
+          },
+          {
+            "model": "Claude Opus 4.6",
+            "org": "Anthropic",
+            "score": 79.8,
+            "error": 1.6,
+            "date": "2026-02-05",
+            "detail": "ForgeCode"
+          },
+          {
+            "model": "GPT-5.3 Codex",
+            "org": "OpenAI",
+            "score": 78.4,
+            "error": 2.2,
+            "date": "2026-02-05",
+            "detail": "SageAgent"
+          },
+          {
+            "model": "Gemini 3 Pro",
+            "org": "Google DeepMind",
+            "score": 69.4,
+            "error": 2.1,
+            "date": "2025-11-18",
+            "detail": "Ante"
+          },
+          {
+            "model": "GPT-5.2 Codex",
+            "org": "OpenAI",
+            "score": 66.5,
+            "error": 3.1,
+            "date": "2025-12-18",
+            "detail": "Deep Agents"
+          },
+          {
+            "model": "GPT-5.2",
+            "org": "OpenAI",
+            "score": 64.9,
+            "error": 2.8,
+            "date": "2025-12-11",
+            "detail": "Droid"
+          },
+          {
+            "model": "Gemini 3 Flash",
+            "org": "Google DeepMind",
+            "score": 64.3,
+            "error": 2.8,
+            "date": "2025-12-17",
+            "detail": "Junie CLI"
+          }
+        ]
+      }
+    ]
+  }
+}

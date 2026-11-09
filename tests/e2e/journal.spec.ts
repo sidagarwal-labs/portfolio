@@ -18,6 +18,14 @@ function launchPayload(net = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOStri
 }
 
 test.beforeEach(async ({ page }) => {
+  /* These tests cover the journal view; the homepage defaults to Lab OS. */
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem("site-view-v1", "journal");
+    } catch {
+      return;
+    }
+  });
   await page.route(quoteApi, (route) => route.fulfill({ json: {
     c: 230.36,
     dp: new URL(route.request().url()).searchParams.get("symbol") === "MSFT" ? -2.04 : 0.84,
@@ -536,7 +544,7 @@ test("blocked local storage does not prevent reading the ticker", async ({ page 
   await page.addInitScript(() => {
     Object.defineProperty(window, "localStorage", { get() { throw new DOMException("Storage blocked", "SecurityError"); } });
   });
-  await page.goto("./");
+  await page.goto("./?view=journal");
   await expect(page.getByRole("heading", { name: "Sid Agarwal", exact: true })).toBeVisible();
   await expect(page.locator(".ticker-track")).toHaveAttribute("data-state", "ready");
   await expect(page.locator(`${primaryTicker} .ticker-item--stock`)).toHaveCount(7);
