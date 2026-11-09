@@ -8,7 +8,7 @@ import { useScrollSpy } from "../useScrollSpy";
 import IntroCopy from "../IntroCopy";
 import { homeSectionIds } from "../siteViews";
 import { contactLinks, earlierProjects, emailLink, marketTracker, noteDateFormatter, roleLine, viewProjects } from "../viewData";
-import { epochLimit, learningRate, type Measurement } from "../model/tinyModel";
+import { attentionHeads, epochLimit, learningRate, type Measurement } from "../model/tinyModel";
 import { useTinyModel } from "../model/useTinyModel";
 import ModelControls from "../model/ModelControls";
 import "./training.css";
@@ -125,6 +125,7 @@ function TrainingRunPage() {
   const epochs = runtime.latest?.epoch ?? 0;
   const loss = runtime.latest?.loss.toFixed(3) ?? "--";
   const measurements = runtime.snapshot?.measurements ?? [];
+  const best = measurements.length ? measurements.reduce((lowest, point) => point.validationLoss < lowest.validationLoss ? point : lowest) : undefined;
   const features = Array.from(new Set(
     cells.filter((cell) => runs[cell.id]).sort((a, b) => runs[a.id].order - runs[b.id].order).flatMap((cell) => cell.features)
   ));
@@ -148,14 +149,17 @@ function TrainingRunPage() {
             <p className="tr-dash__title">Training run</p>
             <span className="tr-status" data-state={status}>{status}</span>
           </div>
-          <p className="tr-dash__run">Real next-token training on a fixed tiny corpus. Press Train in the first cell.</p>
+          <p className="tr-dash__run">Real next-word training of a one-block, {attentionHeads}-head transformer on fixed portfolio text. Press Train in the first cell.</p>
           <LossChart measurements={measurements} />
           <p className="tr-legend"><span className="tr-legend__train">train</span><span className="tr-legend__val">val</span></p>
           <dl className="tr-metrics">
             <div><dt>epoch</dt><dd>{epochs}/{epochLimit}</dd></div>
             <div><dt>loss</dt><dd>{loss}</dd></div>
             <div><dt>val_loss</dt><dd>{runtime.latest?.validationLoss.toFixed(3) ?? "--"}</dd></div>
+            <div><dt>best val_loss</dt><dd>{best ? `${best.validationLoss.toFixed(3)} @ e${best.epoch}` : "--"}</dd></div>
+            <div><dt>optimizer</dt><dd>AdamW</dd></div>
             <div><dt>lr</dt><dd>{learningRate.toExponential(1)}</dd></div>
+            <div><dt>parameters</dt><dd>{runtime.snapshot?.parameters.toLocaleString("en-US") ?? "--"}</dd></div>
             <div><dt>training targets seen</dt><dd>{runtime.latest?.tokens.toLocaleString("en-US") ?? "0"}</dd></div>
           </dl>
           <p className="tr-dash__label">Portfolio topics explored</p>
@@ -176,7 +180,7 @@ function TrainingRunPage() {
       </aside>
 
       <main className="tr-notebook" id="main" tabIndex={-1}>
-        <p className="tr-notebook__title"><span>agarwal-labs.ipynb</span><span>Notebook-style UI · JavaScript model worker</span></p>
+        <p className="tr-notebook__title"><span>agarwal-labs.ipynb</span><span>Notebook-style UI · in-browser transformer worker</span></p>
 
         <Cell id="intro" code={cells[0].code} run={runs.intro} selected={selectedId === "intro"}>
           <div className="tr-hero">

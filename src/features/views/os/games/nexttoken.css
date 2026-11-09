@@ -1,0 +1,89 @@
+/* Next Token: real model data, a live in-browser mode, and tabs. Extends the base .nexttoken rules in games.css. */
+.nexttoken__tabs { display: flex; gap: 4px; padding: 3px; border-radius: 10px; background: var(--g-panel); align-self: flex-start; max-width: 100%; }
+
+.nexttoken__tab { min-height: 30px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--g-muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+
+.nexttoken__tab:hover { color: var(--g-ink); }
+
+.nexttoken__tab[aria-selected="true"] { background: var(--g-bg); color: var(--g-ink); box-shadow: 0 1px 2px #0000001f, 0 0 0 1px var(--g-line); }
+
+html[data-os-style="retro"] .nexttoken__tabs { padding: 0; border-radius: 0; background: transparent; gap: 2px; }
+
+html[data-os-style="retro"] .nexttoken__tab { border-radius: 0; background: #c0c0c0; box-shadow: var(--bevel-out); color: #000; font-weight: 400; }
+
+html[data-os-style="retro"] .nexttoken__tab[aria-selected="true"] { box-shadow: var(--bevel-in); font-weight: 700; }
+
+.nexttoken__panel, .nexttoken__live { display: flex; flex: 1; flex-direction: column; gap: 12px; min-width: 0; }
+
+.nexttoken__panel[hidden] { display: none; }
+
+.nexttoken .nexttoken__prompt mark { white-space: pre-wrap; }
+
+.nexttoken .nexttoken__choice { white-space: pre; }
+
+/* Whitespace markers (␣ ↵ ⇥) look close to "_" in some fonts, so they get a lighter, distinct style. */
+.nexttoken__ws { color: var(--g-muted); font-weight: 400; opacity: 0.75; }
+
+.nexttoken__bar[data-pick] .nexttoken__ws { color: inherit; }
+
+/* Rows share one grid (subgrid) so tracks line up and the last column fits "z = 30.4" or a token count. */
+.nexttoken .nexttoken__bars { grid-template-columns: 96px minmax(0, 1fr) 58px max-content; column-gap: 10px; }
+
+.nexttoken .nexttoken__bar, .nexttoken__other, .nexttoken__append { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; font: 13px/1.3 var(--g-mono); }
+
+.nexttoken__other { color: var(--g-muted); }
+
+.nexttoken__other .nexttoken__track span { background: repeating-linear-gradient(135deg, #8a93a6 0 4px, #b4bccb 4px 8px); }
+
+.nexttoken__bars[data-stale] { opacity: 0.55; }
+
+.nexttoken .nexttoken__bar--live { padding: 0; }
+
+.nexttoken__append { width: 100%; min-height: 26px; margin: 0; padding: 2px 4px; border: 0; border-radius: 6px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+
+.nexttoken__append:hover:not(:disabled) { background: var(--g-panel); }
+
+.nexttoken__append:hover:not(:disabled) .nexttoken__track span { background: var(--g-accent); }
+
+.nexttoken__append:disabled { cursor: progress; }
+
+.nexttoken__copy { margin: 0; font-size: 13px; }
+
+.nexttoken__label { font-size: 13px; font-weight: 600; }
+
+.nexttoken__input { width: 100%; min-height: 64px; padding: 10px 12px; border: 1px solid var(--g-line); border-radius: 10px; background: #0f1420; color: #e6e9ef; font: 14px/1.5 var(--g-mono); resize: vertical; }
+
+.nexttoken__label + .nexttoken__input { margin-top: -6px; }
+
+.nexttoken__device { display: inline-flex; align-items: center; gap: 6px; }
+
+.nexttoken__progress { height: 10px; overflow: hidden; border-radius: 999px; background: var(--g-panel); }
+
+.nexttoken__progress span { display: block; height: 100%; border-radius: inherit; background: var(--g-accent); transition: width 0.2s ease; }
+
+.nexttoken__loading, .nexttoken__error { display: grid; gap: 10px; }
+
+.nexttoken__error { padding: 12px; border: 1px solid #d4a72c; border-radius: 10px; background: #fff8e1; }
+
+.nexttoken__detail { overflow-wrap: anywhere; font-family: var(--g-mono); font-size: 11.5px; }
+
+.nexttoken__source { display: block; margin-top: 2px; overflow-wrap: anywhere; }
+
+html[data-os-style="retro"] .nexttoken__input { border: 0; border-radius: 0; background: #fff; color: #000; box-shadow: var(--field); }
+
+html[data-os-style="retro"] .nexttoken__progress { border-radius: 0; background: #fff; box-shadow: var(--field); }
+
+html[data-os-style="retro"] .nexttoken__progress span { border-radius: 0; background: #000080; }
+
+html[data-os-style="retro"] .nexttoken__error { border-radius: 0; border-color: #808080; background: #ffffe1; }
+
+html[data-os-style="retro"] .nexttoken__append { border-radius: 0; }
+
+@container (max-width: 400px) {
+  .nexttoken .nexttoken__bars { grid-template-columns: 80px minmax(0, 1fr) 52px; }
+  .nexttoken__tab { padding: 0 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nexttoken__progress span { transition: none; }
+}

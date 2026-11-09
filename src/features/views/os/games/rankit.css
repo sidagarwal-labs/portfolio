@@ -1,0 +1,89 @@
+/* Rank It: "Beat my search engine" additions on top of the shared .rankit rules in games.css. */
+.rankit__hud { flex-wrap: wrap; row-gap: 2px; }
+
+.rankit__tally { flex-wrap: wrap; }
+
+.rankit__tally > span { white-space: nowrap; }
+
+.rankit .rankit__title { color: var(--g-link); font-size: 14.5px; font-weight: 600; line-height: 1.3; }
+
+.rankit strong.rankit__title { color: var(--g-ink); }
+
+.rankit a.rankit__title { text-decoration: none; }
+
+.rankit a.rankit__title:hover { text-decoration: underline; }
+
+.rankit__source { font-family: var(--g-mono); font-size: 11.5px; }
+
+.rankit .rankit__doc[data-grade] { grid-template-columns: 26px minmax(0, 1fr); }
+
+.rankit__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: 4px; }
+
+.rankit__ranks { color: var(--g-muted); font: 12px/1.3 var(--g-mono); }
+
+.rankit .rankit__doc[data-grade="2"] .rankit__grade { background: #d7f0df; color: #1d6b38; }
+
+.rankit .rankit__doc[data-grade="1"] .rankit__grade { background: #f9eed6; color: #855600; }
+
+.rankit .rankit__doc[data-grade="0"] .rankit__grade { background: #f7dcdc; color: #9c2b2b; }
+
+.rankit__versus { display: grid; gap: 6px; margin: 0; }
+
+.rankit__vs { display: grid; grid-template-columns: minmax(0, 11.5em) minmax(0, 1fr); align-items: center; gap: 10px; }
+
+.rankit__vs dt { font-size: 13px; }
+
+.rankit__vs dd { display: grid; grid-template-columns: minmax(0, 1fr) 3.4em; align-items: center; gap: 8px; margin: 0; }
+
+.rankit__vs b { font: 700 13.5px/1 var(--g-mono); text-align: right; }
+
+.rankit__track { height: 10px; overflow: hidden; border-radius: 5px; background: var(--g-panel); }
+
+.rankit__track span { display: block; height: 100%; border-radius: 5px; background: #8a93a6; transition: width 0.35s ease; }
+
+.rankit__vs[data-who="you"] dt { font-weight: 700; }
+
+.rankit__vs[data-who="you"] .rankit__track span { background: var(--g-accent); }
+
+.rankit__vs[data-who="reranker"] .rankit__track span { background: #1f8aa3; }
+
+.rankit__winner { margin: 0; font-weight: 600; }
+
+.rankit__try { display: inline-flex; align-items: center; gap: 5px; color: var(--g-link); font-size: 13px; }
+
+.rankit__final { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid var(--g-line); border-radius: 10px; background: var(--g-panel); }
+
+.rankit__final-scores { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0; font-size: 13px; }
+
+.rankit__final-scores b { font-family: var(--g-mono); font-variant-numeric: tabular-nums; }
+
+.rankit__fine { display: grid; gap: 4px; margin-top: auto; }
+
+.rankit__fine .game__fine { margin: 0; }
+
+.rankit__fine a { color: inherit; }
+
+.rankit__about { color: var(--g-muted); font-size: 11.5px; }
+
+.rankit__about summary { width: fit-content; cursor: pointer; }
+
+.rankit__about ul { display: grid; gap: 3px; margin: 6px 0 0; padding-left: 18px; }
+
+html[data-os-style="retro"] .rankit__track, html[data-os-style="retro"] .rankit__track span, html[data-os-style="retro"] .rankit__final { border-radius: 0; }
+
+html[data-os-style="retro"] .rankit__track { background: #fff; box-shadow: var(--field); }
+
+html[data-os-style="retro"] .rankit__vs[data-who="you"] .rankit__track span { background: #000080; }
+
+html[data-os-style="retro"] .rankit__vs[data-who="reranker"] .rankit__track span { background: #008080; }
+
+html[data-os-style="retro"] .rankit__source { color: #006000; }
+
+@container (max-width: 420px) {
+  .rankit__vs { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .rankit__ranks { font-size: 11.5px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rankit__track span { transition: none; }
+}

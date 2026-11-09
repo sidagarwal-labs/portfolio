@@ -102,6 +102,10 @@ html[data-view="forward"] {
 
 .fp-heads__status { min-height: 1.6em; margin: 10px 0 18px; color: var(--muted); font-size: 14px; line-height: 1.6; }
 
+.fp-heads--model { margin-top: 12px; gap: 6px; }
+
+.fp-heads--model button { padding: 1px 10px; font-size: 13px; }
+
 .fp-projects { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 
 .fp-project { display: grid; grid-template-columns: 4px minmax(0, 1fr); gap: 18px; padding: 12px 0; transition: opacity 0.3s ease; }

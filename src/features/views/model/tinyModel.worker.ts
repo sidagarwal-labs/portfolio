@@ -1,17 +1,22 @@
-import { createModel, epochLimit, measureLoss, modelDimension, trainEpoch, type Dataset, type Measurement, type ModelRequest, type ModelResponse, type TinyModel } from "./tinyModel";
+import { countParameters, createModel, epochLimit, measureLoss, trainEpoch, unigramLoss, type Dataset, type Measurement, type ModelRequest, type ModelResponse, type TinyModel } from "./tinyModel";
 
 let texts: string[] = [];
 let model: TinyModel;
 let data: Dataset;
 let measurements: Measurement[] = [];
+let baseline = 0;
 let goal = 0;
 let running = false;
 let generation = 0;
 const send = (message: ModelResponse) => self.postMessage(message);
-const snapshot = () => send({
-  type: "snapshot", running,
-  snapshot: { model, measurements, trainSize: data.train.length, validationSize: data.validation.length, parameters: model.vocabulary.length * (modelDimension * 2 + 1) }
-});
+/* Optimizer moments stay in the worker; the page only needs the weights. */
+const snapshot = () => {
+  const { optimizer: _optimizer, ...weights } = model;
+  send({
+    type: "snapshot", running,
+    snapshot: { model: weights, measurements, trainSize: data.train.length, validationSize: data.validation.length, parameters: countParameters(model), unigramLoss: baseline }
+  });
+};
 const measure = (epoch: number) => ({
   epoch, loss: measureLoss(model, data.train), validationLoss: measureLoss(model, data.validation), tokens: epoch * data.train.length
 });
@@ -19,6 +24,7 @@ const measure = (epoch: number) => ({
 function reset() {
   generation += 1;
   ({ model, data } = createModel(texts));
+  baseline = unigramLoss(model.vocabulary.length, data);
   goal = 0;
   running = false;
   measurements = [measure(0)];

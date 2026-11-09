@@ -32,6 +32,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
+        env:
+          # The site never runs onnxruntime-node; skip its CUDA download on Linux runners.
+          ONNXRUNTIME_NODE_INSTALL: skip
 
       - name: Refresh leaderboard data
         run: npm run data:leaderboards

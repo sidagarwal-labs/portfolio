@@ -1,0 +1,575 @@
+{
+  "schema": 1,
+  "generatedAt": "2026-11-09T23:01:59.965Z",
+  "meta": {
+    "repo": "https://github.com/sidagarwal-labs/arxiv-search",
+    "commit": "ffd60e206843976efd7d610f83ee27206b5d9906",
+    "commitDate": "2026-11-06T17:03:01-05:00",
+    "commitUrl": "https://github.com/sidagarwal-labs/arxiv-search/tree/ffd60e206843976efd7d610f83ee27206b5d9906",
+    "site": "https://arxiv.agarwal-labs.com/",
+    "siteQueryParam": "q",
+    "siteQueryNote": "The live site's web app reads ?q= and fills in the search box (web/app.js syncFromUrl); results may differ from the saved offline runs.",
+    "queries": {
+      "path": "data/eval/queries.jsonl",
+      "split": "data/eval/split.json (dev)",
+      "count": 100,
+      "generator": "Queries were written by gemma-4-31b-it from source papers (queries.jsonl model field)."
+    },
+    "judgments": {
+      "path": "data/results/top20-label-completion/labels.json",
+      "pairs": 3678,
+      "scale": {
+        "0": "Not relevant",
+        "1": "Partly relevant",
+        "2": "Highly relevant"
+      },
+      "rubric": "arxiv_search/evaluate/judge_prompts.py",
+      "description": "AI-graded, not human-validated: GPT-5.4 mini 0/1/2 grades with 100 ASTRA reference overrides, plus a top-20 completion layer of additional AI grades (arxiv-search README, 'Relevance labels').",
+      "gradesFromOriginalSnapshot": 30,
+      "originalSnapshot": {
+        "path": "data/results/score-fusion-dev/labels.json",
+        "pairs": 3294,
+        "note": "Every one of its grades is unchanged in the 3,678-pair pool (checked by this script)."
+      }
+    },
+    "systems": {
+      "bm25": {
+        "label": "Keyword baseline (BM25)",
+        "system": "bm25+exact+stems+authors+title2x+k1=0.8,b=0.75",
+        "description": "Tuned BM25 over titles (counted twice), abstracts and authors, exact terms plus stems, k1=0.8, b=0.75.",
+        "run": "data/results/dev/bm25+exact+stems+authors+title2x+k1=0.8,b=0.75.run.json",
+        "runDepth": 100,
+        "ndcg10": 0.5187,
+        "judgments": 3294,
+        "labels": "data/results/score-fusion-dev/labels.json",
+        "source": "docs/10-reproduction-guide.md#historical-retrieval-milestones (Tuned BM25)",
+        "recomputed": 0.5187
+      },
+      "reranker": {
+        "label": "AI reranker",
+        "system": "llm-gpt54-refine20+d=20+avg2+scores+pin1-d46",
+        "description": "Hybrid BM25 + OpenAI-embedding retrieval (Decision 36); two GPT-5.4 mini passes over the top 50, fused with retrieval order (Decision 46); then two GPT-5.4 passes re-score the top 20, ordered by the average score, keeping rank 1 (Decision 50).",
+        "run": "data/results/top20-confirm/llm-gpt54-refine20+d=20+avg2+scores+pin1-d46.run.json",
+        "runDepth": 100,
+        "ndcg10": 0.8418,
+        "judgments": 3678,
+        "labels": "data/results/top20-label-completion/labels.json",
+        "source": "docs/05-results.md (Stage 2, rank 1) and data/results/top20-confirm/dev100-summary.json",
+        "recomputed": 0.8418
+      }
+    },
+    "caveat": "Both nDCG@10 numbers use the same 100 dev queries but different judgment pools (3,294 vs 3,678), so the change is not a like-for-like gain. Settings were tuned on these queries, so scores are optimistic.",
+    "samePoolNdcg10": {
+      "judgments": 3678,
+      "bm25": 0.5026,
+      "reranker": 0.8418,
+      "note": "Recomputed by this script from the saved runs; not a published project number."
+    },
+    "metric": {
+      "name": "nDCG@5",
+      "gain": "linear: gain = grade (0, 1 or 2)",
+      "discount": "log2(rank + 1)",
+      "ideal": "the same 5 papers sorted by grade",
+      "source": "arxiv_search/evaluate/metrics.py"
+    },
+    "selection": {
+      "queries": "Six dev queries hand-picked for plain wording, a grade-2 and a grade-0 candidate, and different system orders.",
+      "candidates": "Alternate between the BM25 run and the reranker run, BM25 first, each time taking that system's highest-ranked judged paper not already chosen, until 5 papers.",
+      "systemOrder": "Each system's order is its own rank of the 5 papers in its saved run; papers missing from its saved top 100 go last, in ascending arXiv-id order.",
+      "start": "Seeded Fisher-Yates shuffle (FNV-1a of `<queryId>#<attempt>` into mulberry32); the first attempt that differs from both system orders and whose nDCG@5 (to 3 decimals) is no higher than either system's is used, so an unchanged submission never wins.",
+      "allDevQueries": {
+        "queries": 100,
+        "rerankerHigher": 75,
+        "bm25Higher": 11,
+        "tied": 14
+      }
+    },
+    "paperMetadata": {
+      "source": "https://export.arxiv.org/api/query (arXiv API)",
+      "license": "arXiv metadata is CC0 1.0",
+      "snippet": "First sentence of the abstract, or its first 28 words, when the abstract is longer than 30 words."
+    }
+  },
+  "rounds": [
+    {
+      "queryId": "q-question-089",
+      "query": "can machine learning help detect dementia in its first stages?",
+      "queryType": "question",
+      "selectionNote": "Plain-language health question; both systems put the same paper first, then disagree.",
+      "papers": [
+        {
+          "id": "2607.02142",
+          "title": "Predicting Early Stages Of Alzheimer's Disease And Identifying Key Biomarkers Using Deep Artificial Neural Network And Ensemble Of Machine Learning Methodologies",
+          "snippet": "Alzheimers disease (AD) is a brain disorder that develops slowly and mainly affects memory, thinking, language, and daily activities.",
+          "grade": 2,
+          "bm25Rank": 1,
+          "rerankerRank": 1
+        },
+        {
+          "id": "2610.20906",
+          "title": "Task-Centric Multimodal Learning for Cognitive Impairment Detection",
+          "snippet": "Dementia affects millions of older adults worldwide, yet early detection remains difficult outside clinical settings.",
+          "grade": 2,
+          "bm25Rank": 14,
+          "rerankerRank": 2
+        },
+        {
+          "id": "2610.21164",
+          "title": "Automatic Sentence Completion Using Bengali Audio Speech with a Transformer-Based Early Speech Recognition System",
+          "snippet": "Dementia severely impairs communication abilities and turns everyday conversations into challenging experiences.",
+          "grade": 1,
+          "bm25Rank": 2,
+          "rerankerRank": 18
+        },
+        {
+          "id": "2610.20877",
+          "title": "CogDrift-4D: Hierarchical Multimodal Modeling of Temporal Behavioral Decay for MCI Detection",
+          "snippet": "Early detection of mild cognitive impairment remains a critical bottleneck in dementia care, demanding scalable tools capable of capturing subtle behavioral decay.",
+          "grade": 2,
+          "bm25Rank": 23,
+          "rerankerRank": 3
+        },
+        {
+          "id": "2511.00246",
+          "title": "Melanoma Classification Through Deep Ensemble Learning and Explainable AI",
+          "snippet": "Melanoma is one of the most aggressive and deadliest skin cancers, leading to mortality if not detected and treated in the early stages.",
+          "grade": 0,
+          "bm25Rank": 3,
+          "rerankerRank": 22
+        }
+      ],
+      "start": [
+        "2610.20877",
+        "2511.00246",
+        "2610.20906",
+        "2610.21164",
+        "2607.02142"
+      ],
+      "startSeedAttempt": 0,
+      "bm25": [
+        "2607.02142",
+        "2610.21164",
+        "2511.00246",
+        "2610.20906",
+        "2610.20877"
+      ],
+      "reranker": [
+        "2607.02142",
+        "2610.20906",
+        "2610.20877",
+        "2610.21164",
+        "2511.00246"
+      ],
+      "ndcg5": {
+        "bm25": 0.9091,
+        "reranker": 1,
+        "start": 0.896
+      },
+      "fullNdcg10": {
+        "bm25": 0.6033,
+        "reranker": 1,
+        "judgments": 3678
+      }
+    },
+    {
+      "queryId": "q-question-085",
+      "query": "How does a person's writing style change over time or across different types of text?",
+      "queryType": "question",
+      "selectionNote": "Everyday question; BM25's top hit is off-topic while two highly relevant papers sit at its ranks 8-9.",
+      "papers": [
+        {
+          "id": "2609.38469",
+          "title": "The Backdrop Exposes What the World Around an Agent Costs It",
+          "snippet": "Agent benchmarks test agents in worlds that stay still.",
+          "grade": 0,
+          "bm25Rank": 1,
+          "rerankerRank": 34
+        },
+        {
+          "id": "2604.22142",
+          "title": "Voice Under Revision: Large Language Models and the Normalization of Personal Narrative",
+          "snippet": "This study examines how large language model rewriting alters the style and narrative texture of personal narratives.",
+          "grade": 2,
+          "bm25Rank": 9,
+          "rerankerRank": 1
+        },
+        {
+          "id": "2608.19746",
+          "title": "PersonalBench: Measuring the Authorship Gap in LLM Personalization",
+          "snippet": "Personalized text generation aims to make LLMs write in a specific individual's style, yet existing benchmarks measure task accuracy or preference alignment rather than whether the model's output…",
+          "grade": 1,
+          "bm25Rank": 2,
+          "rerankerRank": 10
+        },
+        {
+          "id": "2608.17979",
+          "title": "When Writing Style Drifts: Benchmarking Authorship Verification under Distribution Shifts in Genre, Time and the AI-Era",
+          "snippet": "Authorship verification (AV) assumes that an author's writing style remains sufficiently stable to distinguish it from that of other writers.",
+          "grade": 2,
+          "bm25Rank": 8,
+          "rerankerRank": 2
+        },
+        {
+          "id": "2610.19767",
+          "title": "Likelihood Is Not Authorship: Can We Reliably Measure Human Contribution in AI-Assisted Writing?",
+          "snippet": "AI-text detection generally asks whether a machine wrote a text.",
+          "grade": 1,
+          "bm25Rank": 3,
+          "rerankerRank": 24
+        }
+      ],
+      "start": [
+        "2609.38469",
+        "2610.19767",
+        "2608.19746",
+        "2608.17979",
+        "2604.22142"
+      ],
+      "startSeedAttempt": 6,
+      "bm25": [
+        "2609.38469",
+        "2608.19746",
+        "2610.19767",
+        "2608.17979",
+        "2604.22142"
+      ],
+      "reranker": [
+        "2604.22142",
+        "2608.17979",
+        "2608.19746",
+        "2610.19767",
+        "2609.38469"
+      ],
+      "ndcg5": {
+        "bm25": 0.6597,
+        "reranker": 1,
+        "start": 0.6597
+      },
+      "fullNdcg10": {
+        "bm25": 0.4173,
+        "reranker": 0.9105,
+        "judgments": 3678
+      }
+    },
+    {
+      "queryId": "q-keyword-079",
+      "query": "regional language social media",
+      "queryType": "keyword",
+      "selectionNote": "Short keyword query where the keyword baseline beats the reranker (the reranker's first pick is graded 0).",
+      "papers": [
+        {
+          "id": "2605.20960",
+          "title": "JobArabi: An Arabic Corpus and Analysis of Job Announcements from Social Media",
+          "snippet": "This paper introduces JobArabi, a large-scale corpus of Arabic job announcements collected from social media between January 2024 and October 2025.",
+          "grade": 2,
+          "bm25Rank": 1,
+          "rerankerRank": 12
+        },
+        {
+          "id": "2510.24096",
+          "title": "RegSpeech12: A Regional Corpus of Bengali Spontaneous Speech Across Dialects",
+          "snippet": "The Bengali language, spoken extensively across South Asia and among diasporic communities, exhibits considerable dialectal diversity shaped by geography, culture, and history.",
+          "grade": 0,
+          "bm25Rank": null,
+          "rerankerRank": 1
+        },
+        {
+          "id": "2604.15744",
+          "title": "Language, Place, and Social Media: Geographic Dialect Alignment in New Zealand",
+          "snippet": "This thesis investigates geographic dialect alignment in place-informed social media communities, focussing on New Zealand-related Reddit communities.",
+          "grade": 2,
+          "bm25Rank": 2,
+          "rerankerRank": 9
+        },
+        {
+          "id": "2605.09795",
+          "title": "cantnlp@DravidianLangTech 2026: organic domain adaptation improves multi-class hope speech detection in Tulu",
+          "snippet": "This paper presents our systems and results for the Hope Speech Detection in Code-Mixed Tulu Language shared task at the Sixth Workshop on Speech, Vision, and Language Technologies…",
+          "grade": 2,
+          "bm25Rank": 38,
+          "rerankerRank": 2
+        },
+        {
+          "id": "2604.18955",
+          "title": "Assessing Capabilities of Large Language Models in Social Media Analytics: A Multi-task Quest",
+          "snippet": "In this study, we present the first comprehensive evaluation of modern LLMs - including GPT-4, GPT-4o, GPT-3.5-Turbo, Gemini 1.5 Pro, DeepSeek-V3, Llama 3.2, and BERT - across three…",
+          "grade": 0,
+          "bm25Rank": 3,
+          "rerankerRank": 23
+        }
+      ],
+      "start": [
+        "2510.24096",
+        "2604.15744",
+        "2605.09795",
+        "2605.20960",
+        "2604.18955"
+      ],
+      "startSeedAttempt": 0,
+      "bm25": [
+        "2605.20960",
+        "2604.15744",
+        "2604.18955",
+        "2605.09795",
+        "2510.24096"
+      ],
+      "reranker": [
+        "2510.24096",
+        "2605.09795",
+        "2604.15744",
+        "2605.20960",
+        "2604.18955"
+      ],
+      "ndcg5": {
+        "bm25": 0.9675,
+        "reranker": 0.7328,
+        "start": 0.7328
+      },
+      "fullNdcg10": {
+        "bm25": 0.4063,
+        "reranker": 0.7325,
+        "judgments": 3678
+      }
+    },
+    {
+      "queryId": "q-question-019",
+      "query": "how does repeating training data affect model performance during pretraining?",
+      "queryType": "question",
+      "selectionNote": "Common ML question; BM25 ranks a graded-0 paper first.",
+      "papers": [
+        {
+          "id": "2512.03400",
+          "title": "Better World Models Can Lead to Better Post-Training Performance",
+          "snippet": "We study how explicit world-modeling objectives affect the internal representations and downstream capability of Transformers, using Rubik's Cubes as our training domain.",
+          "grade": 0,
+          "bm25Rank": 1,
+          "rerankerRank": 17
+        },
+        {
+          "id": "2606.24998",
+          "title": "Internal Data Repetition Destroys Language Models",
+          "snippet": "Language models are running out of high-quality training data, and even aggressively deduplicated corpora retain some amount of repetition.",
+          "grade": 2,
+          "bm25Rank": 8,
+          "rerankerRank": 1
+        },
+        {
+          "id": "2609.40295",
+          "title": "How Much Is an AI Token Worth? Scaling Laws for Wild AI-Generated Web Text",
+          "snippet": "Web text makes up the majority of pretraining data and is increasingly AI-generated.",
+          "grade": 1,
+          "bm25Rank": 2,
+          "rerankerRank": 5
+        },
+        {
+          "id": "2610.05591",
+          "title": "What Is a Repeated Token Worth? The Scaling Geometry of Multi-Epoch Pretraining",
+          "snippet": "As pretraining increasingly repeats data, every run faces three questions: how many epochs to take, how that number should change with model size, and whether anything besides the…",
+          "grade": 2,
+          "bm25Rank": 21,
+          "rerankerRank": 2
+        },
+        {
+          "id": "2605.11195",
+          "title": "How Does Differential Privacy Affect Social Bias in LLMs? A Systematic Evaluation",
+          "snippet": "Large language models (LLMs) trained on web-scale corpora can memorize sensitive training data, posing significant privacy risks.",
+          "grade": 0,
+          "bm25Rank": 3,
+          "rerankerRank": 30
+        }
+      ],
+      "start": [
+        "2605.11195",
+        "2609.40295",
+        "2512.03400",
+        "2606.24998",
+        "2610.05591"
+      ],
+      "startSeedAttempt": 3,
+      "bm25": [
+        "2512.03400",
+        "2609.40295",
+        "2605.11195",
+        "2606.24998",
+        "2610.05591"
+      ],
+      "reranker": [
+        "2606.24998",
+        "2610.05591",
+        "2609.40295",
+        "2512.03400",
+        "2605.11195"
+      ],
+      "ndcg5": {
+        "bm25": 0.6024,
+        "reranker": 1,
+        "start": 0.6024
+      },
+      "fullNdcg10": {
+        "bm25": 0.1763,
+        "reranker": 0.9205,
+        "judgments": 3678
+      }
+    },
+    {
+      "queryId": "q-paraphrase-030",
+      "query": "a way to suggest places to visit based on the idea that some spots require prior knowledge from other spots",
+      "queryType": "paraphrase",
+      "selectionNote": "Paraphrase with little word overlap; BM25's top 100 misses the best paper entirely.",
+      "papers": [
+        {
+          "id": "2610.17324",
+          "title": "Thinking Outside the Bots: Human Ideas in AI's Semantic Blind Spots Are Not Inferior",
+          "snippet": "AI-generated outputs are frequently perceived as highly creative, but also tend to be more similar to each other (homogenized) than human ideas.",
+          "grade": 0,
+          "bm25Rank": 1,
+          "rerankerRank": 18
+        },
+        {
+          "id": "2603.06624",
+          "title": "Exploration Space Theory: Formal Foundations for Prerequisite-Aware Location-Based Recommendation",
+          "snippet": "Location-based recommender systems have achieved considerable sophistication, yet none provides a formal, lattice-theoretic representation of prerequisite dependencies among points of interest -- the semantic reality that meaningfully experiencing…",
+          "grade": 2,
+          "bm25Rank": null,
+          "rerankerRank": 1
+        },
+        {
+          "id": "2602.09616",
+          "title": "With Argus Eyes: Assessing Retrieval Gaps via Uncertainty Scoring to Detect and Remedy Retrieval Blind Spots",
+          "snippet": "Reliable retrieval-augmented generation (RAG) systems depend fundamentally on the retriever's ability to find relevant information.",
+          "grade": 0,
+          "bm25Rank": 2,
+          "rerankerRank": 20
+        },
+        {
+          "id": "2608.30399",
+          "title": "SemPOI-RL: Aligning LLM Semantic Reasoning for Interpretable Out-of-Town POI Sequential Generation",
+          "snippet": "Large language models (LLMs) exhibit strong semantic reasoning and open-ended generation abilities, but aligning these abilities with structured sequential generation remains challenging.",
+          "grade": 1,
+          "bm25Rank": null,
+          "rerankerRank": 2
+        },
+        {
+          "id": "2602.02566",
+          "title": "A Comparative Simulation Study of the Fairness and Accuracy of Predictive Policing Systems in Baltimore City",
+          "snippet": "There are ongoing discussions about predictive policing systems, such as those deployed in Los Angeles, California and Baltimore, Maryland, being unfair, for example, by exhibiting racial bias.",
+          "grade": 0,
+          "bm25Rank": 3,
+          "rerankerRank": 22
+        }
+      ],
+      "start": [
+        "2602.09616",
+        "2602.02566",
+        "2610.17324",
+        "2608.30399",
+        "2603.06624"
+      ],
+      "startSeedAttempt": 8,
+      "bm25": [
+        "2610.17324",
+        "2602.09616",
+        "2602.02566",
+        "2603.06624",
+        "2608.30399"
+      ],
+      "reranker": [
+        "2603.06624",
+        "2608.30399",
+        "2610.17324",
+        "2602.09616",
+        "2602.02566"
+      ],
+      "ndcg5": {
+        "bm25": 0.4744,
+        "reranker": 1,
+        "start": 0.4578
+      },
+      "fullNdcg10": {
+        "bm25": 0.0543,
+        "reranker": 0.9223,
+        "judgments": 3678
+      }
+    },
+    {
+      "queryId": "q-paraphrase-049",
+      "query": "improving how ai follows complex rules by creating its own feedback without needing human labels",
+      "queryType": "paraphrase",
+      "selectionNote": "Paraphrase where the keyword baseline still edges out the reranker.",
+      "papers": [
+        {
+          "id": "2602.11549",
+          "title": "Native Reasoning Models: Training Language Models to Reason on Unverifiable Data",
+          "snippet": "The prevailing paradigm for training large reasoning models--combining Supervised Fine-Tuning (SFT) with Reinforcement Learning with Verifiable Rewards (RLVR)--is fundamentally constrained by its reliance on high-quality, human-annotated reasoning data…",
+          "grade": 2,
+          "bm25Rank": 1,
+          "rerankerRank": 6
+        },
+        {
+          "id": "2602.03094",
+          "title": "Test-time Recursive Thinking: Self-Improvement without External Feedback",
+          "snippet": "Modern Large Language Models (LLMs) have shown rapid improvements in reasoning capabilities, driven largely by reinforcement learning (RL) with verifiable rewards.",
+          "grade": 1,
+          "bm25Rank": null,
+          "rerankerRank": 1
+        },
+        {
+          "id": "2601.21464",
+          "title": "Conversation for Non-verifiable Learning: Self-Evolving LLMs through Meta-Evaluation",
+          "snippet": "Training large language models (LLMs) for non-verifiable tasks, such as creative writing, dialogue, and ethical reasoning, remains challenging due to the absence of ground-truth labels.",
+          "grade": 2,
+          "bm25Rank": 2,
+          "rerankerRank": 3
+        },
+        {
+          "id": "2510.14420",
+          "title": "Instructions are all you need: Self-supervised Reinforcement Learning for Instruction Following",
+          "snippet": "Language models often struggle to follow multi-constraint instructions that are crucial for real-world applications.",
+          "grade": 2,
+          "bm25Rank": null,
+          "rerankerRank": 2
+        },
+        {
+          "id": "2510.22500",
+          "title": "Towards Scalable Oversight via Partitioned Human Supervision",
+          "snippet": "As artificial intelligence (AI) systems approach and surpass expert human performance across a broad range of tasks, obtaining high-quality human supervision for evaluation and training becomes increasingly challenging.",
+          "grade": 0,
+          "bm25Rank": 3,
+          "rerankerRank": 15
+        }
+      ],
+      "start": [
+        "2510.22500",
+        "2602.11549",
+        "2510.14420",
+        "2601.21464",
+        "2602.03094"
+      ],
+      "startSeedAttempt": 4,
+      "bm25": [
+        "2602.11549",
+        "2601.21464",
+        "2510.22500",
+        "2510.14420",
+        "2602.03094"
+      ],
+      "reranker": [
+        "2602.03094",
+        "2510.14420",
+        "2601.21464",
+        "2602.11549",
+        "2510.22500"
+      ],
+      "ndcg5": {
+        "bm25": 0.9611,
+        "reranker": 0.8787,
+        "start": 0.748
+      },
+      "fullNdcg10": {
+        "bm25": 0.4725,
+        "reranker": 0.7903,
+        "judgments": 3678
+      }
+    }
+  ]
+}

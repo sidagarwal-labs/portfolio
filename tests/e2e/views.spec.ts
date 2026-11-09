@@ -213,6 +213,33 @@ test("Forward pass redraws actual learned attention and restores its seeded mode
   expect(await weights()).toEqual(initial);
 });
 
+test("Forward pass switches attention heads and loads the pretrained model only on request", async ({ page }) => {
+  const modelRequests: string[] = [];
+  page.on("request", (request) => { if (request.url().includes("/models/stories260K/")) modelRequests.push(request.url()); });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("./?view=forward");
+  await page.locator(".fp-token", { hasText: "retrieval" }).click();
+  const heads = page.getByRole("group", { name: "Model attention head" });
+  await expect(heads.getByRole("button", { name: "Average" })).toHaveAttribute("aria-pressed", "true");
+  const cells = () => page.locator(".fp-matrix__cell").evaluateAll((items) => items.map((item) => item.getAttribute("style")));
+  const average = await cells();
+  await heads.getByRole("button", { name: "Head 1" }).click();
+  await expect(page.locator(".fp-caption").first()).toContainText("in head 1");
+  const first = await cells();
+  await heads.getByRole("button", { name: "Head 2" }).click();
+  expect(await cells()).not.toEqual(first);
+  expect(first).not.toEqual(average);
+  await expect(page.locator(".fp-token[data-strong]")).toHaveCount(1);
+
+  await page.locator("#pretrained").scrollIntoViewIfNeeded();
+  expect(modelRequests).toEqual([]);
+  await page.getByRole("button", { name: /Load stories260K/ }).click();
+  await expect(page.locator("#pretrained .pt-chip").first()).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator("#pretrained .pt-probs li")).not.toHaveCount(0);
+  expect(modelRequests.some((url) => url.endsWith("stories260K.bin"))).toBe(true);
+  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
+});
+
 test("the terminal view runs commands and keeps the ticker on top", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("./?view=terminal");

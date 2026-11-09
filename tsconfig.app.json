@@ -17,5 +17,5 @@
     "jsx": "react-jsx",
     "types": ["vite/client"]
   },
-  "include": ["src/main.tsx", "src/vite-env.d.ts", "src/features/views/model/tinyModel.worker.ts"]
+  "include": ["src/main.tsx", "src/vite-env.d.ts", "src/features/views/model/tinyModel.worker.ts", "src/features/views/model/pretrained/pretrained.worker.ts"]
 }

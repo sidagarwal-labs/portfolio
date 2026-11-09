@@ -4,6 +4,8 @@ import react from "@vitejs/plugin-react-swc";
 export default defineConfig(({ mode }) => ({
   base: "/",
   plugins: [react()],
+  // transformers.js loads ONNX Runtime's WebAssembly from its CDN, so don't emit the unused 27 MB bundled copy.
+  resolve: { conditions: ["onnxruntime-web-use-extern-wasm"] },
   define: mode === "test" ? { "import.meta.env.VITE_FINNHUB_KEY": JSON.stringify("playwright-quote-fixture") } : undefined,
   server: {
     proxy: {

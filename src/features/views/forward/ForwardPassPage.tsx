@@ -1,14 +1,13 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { courseworkProjects, currentResearchNotes, earlierBuildoutEditions } from "../../../content/journalContent";
 import { profileContent } from "../../../content/siteContent";
 import { usePrefersReducedMotion } from "../../../hooks/usePrefersReducedMotion";
 import { useResearchNoteDates } from "../../../hooks/useResearchNoteDates";
 import { useScrollSpy } from "../useScrollSpy";
-import { homeSectionIds } from "../siteViews";
 import IntroCopy from "../IntroCopy";
 import { useScrollProgress } from "../useScrollProgress";
-import { attentionRows, predict, tokenId } from "../model/tinyModel";
+import { attentionHeads, attentionRows, predict, tokenId } from "../model/tinyModel";
 import { useTinyModel } from "../model/useTinyModel";
 import ModelControls from "../model/ModelControls";
 import {
@@ -17,14 +16,18 @@ import {
 } from "../viewData";
 import "./forward.css";
 
+const PretrainedAttention = lazy(() => import("../model/pretrained/PretrainedAttention"));
+
 const layers = [
   { id: "intro", op: "Tokenize", label: "Who I am" },
   { id: "lab", op: "Multi-head attention", label: "Projects" },
   { id: "writing", op: "Feed-forward", label: "Writing" },
   { id: "impact", op: "Residual stream", label: "Background" },
   { id: "library", op: "Context window", label: "Bookshelf" },
+  { id: "pretrained", op: "Pretrained weights", label: "Real model" },
   { id: "contact", op: "Next token", label: "Say hello" }
 ];
+const sectionIds = layers.map((layer) => layer.id);
 
 const tokenTexts = ["Senior", "Product", "Manager", "AI", "search", "&", "retrieval", "at", "Microsoft"];
 
@@ -46,6 +49,7 @@ function TokenAttention({ actions, children }: { actions: ReactNode; children: R
   const runtime = useTinyModel();
   const [focus, setFocus] = useState(6);
   const [touched, setTouched] = useState(false);
+  const [head, setHead] = useState<number>();
 
   useEffect(() => {
     if (touched || reducedMotion) return;
@@ -61,11 +65,11 @@ function TokenAttention({ actions, children }: { actions: ReactNode; children: R
   if (!runtime.snapshot) return <div className="fp-attention"><ModelControls runtime={runtime} />{actions}{children}</div>;
   const model = runtime.snapshot.model;
   const tokens = tokenTexts.map((text) => ({ text, id: tokenId(model, text) }));
-  const attention = attentionRows(model, tokenTexts);
+  const attention = attentionRows(model, tokenTexts, head);
   const weights = attention[focus];
   const strongest = focus === 0 ? -1 : weights.slice(0, focus).reduce((best, weight, index) => (weight > weights[best] ? index : best), 0);
   const predictions = predict(model, tokens.slice(0, focus + 1).map((token) => token.id)).distribution
-    .map((probability, id) => ({ word: model.vocabulary[id], probability }))
+    .map((probability, id) => ({ word: model.vocabulary[id] === "<unk>" ? "rare word" : model.vocabulary[id], probability }))
     .sort((a, b) => b.probability - a.probability).slice(0, 3);
 
   return (
@@ -81,7 +85,7 @@ function TokenAttention({ actions, children }: { actions: ReactNode; children: R
               className="fp-token"
               aria-pressed={index === focus}
               data-masked={index > focus || undefined}
-              data-strong={weight > 0.3 || undefined}
+              data-strong={index === strongest || undefined}
               style={weightStyle(weight)}
               onPointerEnter={(event) => { if (event.pointerType === "mouse") select(index); }}
               onFocus={() => select(index)}
@@ -93,10 +97,18 @@ function TokenAttention({ actions, children }: { actions: ReactNode; children: R
           );
         })}
       </div>
+      <div className="fp-heads fp-heads--model" role="group" aria-label="Model attention head">
+        <span className="fp-heads__label">Head</span>
+        {[undefined, ...Array.from({ length: attentionHeads }, (_, index) => index)].map((option) => (
+          <button key={option ?? "average"} type="button" aria-pressed={head === option} onClick={() => setHead(option)}>
+            {option === undefined ? "Average" : `Head ${option + 1}`}
+          </button>
+        ))}
+      </div>
       <p className="fp-caption" aria-live={touched ? "polite" : "off"}>
         {strongest < 0
           ? <>&ldquo;{tokens[focus].text}&rdquo; comes first, so it can only attend to itself.</>
-          : <>Looking back from &ldquo;{tokens[focus].text}&rdquo;, the strongest link is &ldquo;{tokens[strongest].text}&rdquo; ({weights[strongest].toFixed(2)}).</>}
+          : <>Looking back from &ldquo;{tokens[focus].text}&rdquo;, {head === undefined ? "averaged over both heads, " : `in head ${head + 1}, `}the strongest link is &ldquo;{tokens[strongest].text}&rdquo; ({weights[strongest].toFixed(2)}).</>}
         {" "}<span className="fp-caption__note">{runtime.latest?.epoch ? "Learned" : "Seeded, untrained"} embeddings, causal mask, real vocabulary IDs. These weights are not an explanation of a production LLM.</span>
       </p>
       <p className="fp-caption__note fp-predictions">Next-word predictions for this prefix: {predictions.map(({ word, probability }) => `${word} ${(probability * 100).toFixed(1)}%`).join(" · ")}</p>
@@ -250,7 +262,7 @@ function NextToken() {
   return (
     <div className="fp-next">
       <p className="fp-next__prompt fp-mono">p( next | &ldquo;you read this far&rdquo; )</p>
-      <p className="fp-caption__note">Illustrative contact-link sampler, separate from the language model above.</p>
+      <p className="fp-caption__note">Illustrative contact-link sampler with hand-set scores, separate from the language models above.</p>
       <ol className="fp-logits">
         {nextTokens.map((token, index) => (
           <li key={token.label} data-sampled={sampled === index || undefined} style={weightStyle(probabilities[index])}>
@@ -275,8 +287,28 @@ function NextToken() {
   );
 }
 
+function PretrainedSection() {
+  const [loaded, setLoaded] = useState(false);
+  return loaded ? (
+    <Suspense fallback={<p className="fp-caption__note" role="status">Loading the model viewer...</p>}>
+      <PretrainedAttention />
+    </Suspense>
+  ) : (
+    <>
+      <p className="fp-lede">
+        The mini model above learns from this page. This one is Andrej Karpathy&rsquo;s{" "}
+        <a href="https://huggingface.co/karpathy/tinyllamas/tree/main/stories260K">stories260K</a>: a 260,032-parameter
+        Llama 2 style model (5 layers, 8 query heads sharing 4 key/value heads) pretrained on simple children&rsquo;s stories.
+        A TypeScript port of <a href="https://github.com/karpathy/llama2.c">llama2.c</a> runs it in your browser, so every
+        attention map and probability is computed live.
+      </p>
+      <button type="button" className="fp-button" onClick={() => setLoaded(true)}>Load stories260K (1.06 MB)</button>
+    </>
+  );
+}
+
 function ForwardPassPage() {
-  const activeId = useScrollSpy(homeSectionIds, "intro");
+  const activeId = useScrollSpy(sectionIds, "intro");
   const progress = useScrollProgress();
   const noteDates = useResearchNoteDates();
   const activeIndex = Math.max(0, layers.findIndex((layer) => layer.id === activeId));
@@ -408,8 +440,14 @@ function ForwardPassPage() {
             <ContextWindow />
           </section>
 
+          <section className="fp-section fp-pretrained" id="pretrained" aria-labelledby="fp-pretrained-heading">
+            <p className="fp-kicker fp-mono">Layer 05 · Pretrained weights</p>
+            <h2 id="fp-pretrained-heading">A real pretrained transformer</h2>
+            <PretrainedSection />
+          </section>
+
           <section className="fp-section fp-contact" id="contact" aria-labelledby="fp-contact-heading">
-            <p className="fp-kicker fp-mono">Layer 05 · Next token</p>
+            <p className="fp-kicker fp-mono">Layer 06 · Next token</p>
             <h2 id="fp-contact-heading">Say hello</h2>
             <p>Always happy to talk about AI, products, markets, or a good book.</p>
             <NextToken />
