@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import type { ActivityStats } from "../analytics";
 import type { GitHubInsights } from "../contract";
@@ -99,11 +99,18 @@ const VISIBLE_REPOS = 8;
 export function TopRepos({ insights, stats, focus, unit }: { insights: GitHubInsights; stats: ActivityStats; focus: RepoFocus | null; unit: string }) {
   const [expanded, setExpanded] = useState(false);
   const listRef = useRef<HTMLOListElement>(null);
+  const legendId = useId();
   const focusName = focus?.repo.toLowerCase();
   const focusIndex = focusName ? stats.topRepos.findIndex((r) => r.name.toLowerCase() === focusName) : -1;
   const showAll = expanded || focusIndex >= VISIBLE_REPOS;
   const rows = showAll ? stats.topRepos : stats.topRepos.slice(0, VISIBLE_REPOS);
   const max = stats.topRepos[0]?.total ?? 1;
+  const rest = insights.source === "rest-events";
+  // GraphQL ranges are GitHub's contribution year (365-372 days); the REST fallback covers ~90 days.
+  const period = stats.days >= 360 ? "the last 12 months" : `the last ${plural(stats.days, "day")}`;
+  const counted = rest ? "events" : "commits";
+  const hasAllTime = stats.topRepos.some((r) => r.allTimeCommits !== undefined);
+  const aboveAllTime = stats.topRepos.some((r) => r.allTimeCommits !== undefined && r.total > r.allTimeCommits);
 
   useEffect(() => {
     if (!focus || focusIndex < 0) return;
@@ -129,25 +136,45 @@ export function TopRepos({ insights, stats, focus, unit }: { insights: GitHubIns
       {stats.topRepos.length === 0 ? (
         <p className="gh-muted">No repository-attributed {unit} in this range.</p>
       ) : (
-        <ol className="gh-repos" ref={listRef}>
-          {rows.map((repo) => {
-            const highlighted = focusName === repo.name.toLowerCase();
-            return (
-              <li key={repo.nameWithOwner} className={`gh-repo${highlighted ? " is-highlighted" : ""}`} data-repo={repo.name.toLowerCase()} aria-current={highlighted ? "true" : undefined}>
-                <a className="gh-repo__name" href={repo.url} target="_blank" rel="noreferrer">{repo.name}</a>
-                <span className="gh-repo__bar" aria-hidden="true"><span style={{ width: `${(repo.total / max) * 100}%` }} /></span>
-                <span className="gh-repo__value">
-                  {fmtInt(repo.total)} <span className="gh-muted">· {fmtPct(repo.share)} · {plural(repo.activeDays, "day")}</span>
-                </span>
-              </li>
-            );
-          })}
-        </ol>
+        <>
+          <p className="gh-fine gh-repos__legend" id={legendId}>
+            {rest ? "Public events" : "Commits"} in {period} · share of all repository {counted} · active days.
+            {hasAllTime && ` All-time: every commit by @${insights.login} on the default branch.`}
+          </p>
+          <ol className="gh-repos" ref={listRef} aria-describedby={legendId}>
+            {rows.map((repo) => {
+              const highlighted = focusName === repo.name.toLowerCase();
+              const allTime = repo.allTimeCommits;
+              return (
+                <li
+                  key={repo.nameWithOwner}
+                  className={`gh-repo${allTime === undefined ? "" : " has-total"}${highlighted ? " is-highlighted" : ""}`}
+                  data-repo={repo.name.toLowerCase()}
+                  aria-current={highlighted ? "true" : undefined}
+                >
+                  <a className="gh-repo__name" href={repo.url} target="_blank" rel="noreferrer">{repo.name}</a>
+                  <span className="gh-repo__bar" aria-hidden="true"><span style={{ width: `${(repo.total / max) * 100}%` }} /></span>
+                  <span className="gh-repo__value">
+                    {fmtInt(repo.total)}
+                    <span className="sr-only"> {rest ? "public events" : "commits"} in {period}</span> <span className="gh-muted">· {fmtPct(repo.share)} · {plural(repo.activeDays, "day")}</span>
+                  </span>
+                  {allTime !== undefined && <span className="gh-repo__total">{fmtInt(allTime)} all-time</span>}
+                </li>
+              );
+            })}
+          </ol>
+        </>
       )}
       {stats.topRepos.length > VISIBLE_REPOS && (
         <button type="button" className="gh-link-button" aria-expanded={showAll} onClick={() => setExpanded(!showAll)}>
           {showAll ? "Show fewer" : `Show all ${stats.topRepos.length}`}
         </button>
+      )}
+      {!rest && stats.topRepos.length > 0 && (
+        <p className="gh-fine gh-repos__note">
+          Only default-branch commits count, and a squash-merged pull request counts as one.
+          {aboveAllTime && " A 12-month count above the all-time one means GitHub still credits commits that are no longer on the branch, for example after a force-push."}
+        </p>
       )}
     </>
   );
