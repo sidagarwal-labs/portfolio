@@ -3,7 +3,7 @@ import { ExternalLink, LoaderCircle, Lock, RotateCw, Unplug } from "lucide-react
 import { arxivSearchOrigin } from "../../../../content/arxivSearch";
 
 /* How long the live site gets to say it is running before the window offers a new tab instead. */
-const readyTimeoutMs = 4000;
+const readyTimeoutMs = 6000;
 const readyType = "arxiv-search:ready";
 const host = new URL(arxivSearchOrigin).host;
 
@@ -11,8 +11,10 @@ type Phase = "loading" | "ready" | "blocked";
 
 const isReady = (data: unknown) => typeof data === "object" && data !== null && (data as { type?: unknown }).type === readyType;
 
-/* The live site in a frame. It only counts as running once the site posts its ready message: until it allows
-   framing, the browser shows an error page there, so the frame stays covered and a new-tab fallback appears. */
+/* The live site in a frame. It only counts as running once the site posts its ready message, which it sends to
+   agarwal-labs.com parents named by the frame's referrer, so the referrer policy must keep the origin. If the
+   message never comes (the site is down or slow, or this page runs elsewhere and framing is refused), the frame
+   stays covered and a new-tab fallback appears. A late message still reveals the site. */
 export function LivePanel({ path }: { path: string }) {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [attempt, setAttempt] = useState(0);
@@ -76,8 +78,8 @@ export function LivePanel({ path }: { path: string }) {
           {phase === "blocked" && (
             <div className="ax-fallback">
               <span className="ax-fallback__icon" aria-hidden="true"><Unplug size={22} strokeWidth={1.8} /></span>
-              <h3>arXiv Search can't run inside this window yet</h3>
-              <p>The live site hasn't enabled embedding in other pages, or it didn't answer in time. It works in its own tab.</p>
+              <h3>arXiv Search didn't load in this window</h3>
+              <p>The live site didn't respond in time or couldn't be shown here. You can try again, or open it in its own tab.</p>
               <div className="ax-actions">
                 <a className="os-button os-button--primary" href={src} target="_blank" rel="noreferrer">
                   Open arXiv Search in a new tab
