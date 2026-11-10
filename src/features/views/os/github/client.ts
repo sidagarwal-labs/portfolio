@@ -1,4 +1,4 @@
-import { GITHUB_INSIGHTS_VERSION, OWN_GITHUB_LOGIN, type DayCount, type GitHubInsights, type GitHubRepoInsight } from "./contract";
+import { GITHUB_INSIGHTS_VERSION, OWN_GITHUB_LOGIN, OWN_HIDDEN_REPOS, type DayCount, type GitHubInsights, type GitHubRepoInsight } from "./contract";
 
 const LOGIN_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -319,10 +319,18 @@ async function loadFromProxy(base: string, login: string, signal?: AbortSignal):
 
 let ownSnapshot: Promise<GitHubInsights> | undefined;
 
+/** Drops OWN_HIDDEN_REPOS from the owner's insights; anyone else's data passes through unchanged. */
+export function curateOwnInsights(insights: GitHubInsights): GitHubInsights {
+  if (insights.login.toLowerCase() !== OWN_GITHUB_LOGIN.toLowerCase()) return insights;
+  const hidden = new Set(OWN_HIDDEN_REPOS.map((name) => name.toLowerCase()));
+  const repos = insights.repos.filter((repo) => !hidden.has(repo.name.toLowerCase()));
+  return repos.length === insights.repos.length ? insights : { ...insights, repos };
+}
+
 /** The build-time snapshot written by `npm run data:github`, loaded on demand. */
 export function loadOwnInsights(): Promise<GitHubInsights> {
   ownSnapshot ??= import("../../../../content/generated/github-insights.json")
-    .then((module) => validateInsights(module.default))
+    .then((module) => curateOwnInsights(validateInsights(module.default)))
     .catch((error: unknown) => {
       ownSnapshot = undefined;
       throw error instanceof GitHubLookupError ? error : new GitHubLookupError("network", "The saved GitHub snapshot could not be loaded.");

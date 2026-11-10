@@ -53,7 +53,8 @@ test("Markets shows a linkable quote, watchlist, and TradingView fallbacks", asy
 
   await expect(page).toHaveTitle("MSFT · Markets | Sid Agarwal");
   await expect(page.getByRole("heading", { name: "Microsoft", exact: true })).toBeVisible();
-  await expect(page.locator(".mk-quote")).toContainText("$230.36");
+  // useStockQuotes waits for the whole watchlist batch (up to 8s) before showing any price.
+  await expect(page.locator(".mk-quote")).toContainText("$230.36", { timeout: 10_000 });
   await expect(page.locator(".mk-quote")).toContainText("+0.84% today");
   const watchlist = page.getByRole("navigation", { name: "Watchlist" });
   await expect(watchlist.getByRole("link")).toHaveCount(7);

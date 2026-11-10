@@ -1,11 +1,33 @@
-import type { ReactNode } from "react";
-import { TriangleAlert } from "lucide-react";
+import { useId, useState, type ReactNode } from "react";
+import { ChevronDown, TriangleAlert } from "lucide-react";
 
-export function LabSection({ title, children, className }: { title: "Method" | "Results" | "Caveats" | string; children: ReactNode; className?: string }) {
+/** Method and Caveats start folded so each lab leads with its charts; pass `foldable` to override. */
+export function LabSection({ title, children, className, foldable }: { title: "Method" | "Results" | "Caveats" | string; children: ReactNode; className?: string; foldable?: boolean }) {
+  const canFold = foldable ?? (title === "Method" || title === "Caveats");
+  const [open, setOpen] = useState(false);
+  const bodyId = useId();
+  const classes = `gh-lab__section${canFold ? " gh-lab__section--fold" : ""}${className ? ` ${className}` : ""}`;
+  if (!canFold) {
+    return (
+      <section className={classes} aria-label={title}>
+        <h4>{title}</h4>
+        {children}
+      </section>
+    );
+  }
   return (
-    <section className={`gh-lab__section${className ? ` ${className}` : ""}`} aria-label={title}>
-      <h4>{title}</h4>
-      {children}
+    <section className={classes} aria-label={title} data-open={open}>
+      <div className="gh-lab__fold-head">
+        <h4>{title}</h4>
+        <button type="button" className="gh-link-button gh-lab__fold" aria-expanded={open} aria-controls={bodyId} onClick={() => setOpen((value) => !value)}>
+          {open ? "Hide details" : "Show details"}
+          <span className="sr-only"> for {title}</span>
+          <ChevronDown size={14} strokeWidth={2} aria-hidden="true" />
+        </button>
+      </div>
+      <div className="gh-lab__fold-body" id={bodyId} hidden={!open}>
+        {children}
+      </div>
     </section>
   );
 }

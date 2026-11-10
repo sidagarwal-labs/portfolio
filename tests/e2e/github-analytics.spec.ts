@@ -301,7 +301,7 @@ test.describe("repo lab (k-means + PCA)", () => {
     expect("insufficient" in lab).toBe(false);
     expect(lab.k).toBe(3);
     expect(lab.silhouette).toBeGreaterThan(0.5);
-    expect(lab.silhouetteByK.map((s) => s.k)).toEqual([2, 3, 4, 5]);
+    expect(lab.silhouetteByK.map((s) => s.k)).toEqual([2, 3, 4, 5, 6, 7]);
     expect(Math.max(...lab.silhouetteByK.map((s) => s.score))).toBe(lab.silhouette);
     for (const prefix of ["ml-", "web-", "old-"]) {
       const clustersForGroup = new Set(lab.points.filter((p) => p.name.startsWith(prefix)).map((p) => p.cluster));
@@ -333,18 +333,115 @@ test.describe("repo lab (k-means + PCA)", () => {
 
   test("Lloyd iteration history is replayable and inertia never increases", () => {
     const lab = buildRepoLab(syntheticRepos(), { seed: 3 }) as RepoLab;
-    expect(lab.iterations.length).toBeGreaterThanOrEqual(2);
-    expect(lab.iterations[0].iteration).toBe(0);
-    for (const frame of lab.iterations) {
+    expect(lab.iterations.length).toBeGreaterThanOrEqual(lab.k + 1);
+    lab.iterations.forEach((frame, i) => {
+      expect(frame.iteration).toBe(i);
       expect(frame.assignments).toHaveLength(lab.points.length);
       expect(frame.centroids).toHaveLength(lab.k);
-    }
+      if (i > 0) expect(frame.changed).toBe(frame.assignments.filter((c, p) => c !== lab.iterations[i - 1].assignments[p]).length);
+    });
+    expect(lab.iterations[0].changed).toBe(0);
     for (let i = 1; i < lab.iterations.length; i++) expect(lab.iterations[i].inertia).toBeLessThanOrEqual(lab.iterations[i - 1].inertia + 1e-9);
     expect(lab.iterations[lab.iterations.length - 1].assignments).toEqual(lab.points.map((p) => p.cluster));
     expect(lab.restartInertias).toHaveLength(lab.restarts);
     expect(Math.min(...lab.restartInertias)).toBeCloseTo(lab.inertia, 9);
     expect(JSON.stringify(buildRepoLab(syntheticRepos(), { seed: 3 }))).toBe(JSON.stringify(lab));
     expectAllFinite(lab);
+  });
+
+  test("frames replay k-means++ seeding one seed at a time, then Lloyd updates to the result", () => {
+    for (const seed of [1, 3, 11]) {
+      const lab = buildRepoLab(syntheticRepos(), { seed }) as RepoLab;
+      const frames = lab.iterations;
+      const seeds = frames.slice(0, lab.k);
+      const updates = frames.slice(lab.k);
+      expect(seeds.map((f) => [f.phase, f.step])).toEqual(Array.from({ length: lab.k }, (_, i) => ["seed", i + 1]));
+      expect(updates.length).toBeGreaterThanOrEqual(1);
+      expect(updates.map((f) => [f.phase, f.step])).toEqual(updates.map((_, i) => ["update", i + 1]));
+      for (const f of seeds) {
+        expect(f.centroids.filter((c) => c !== null)).toHaveLength(f.step);
+        // Each repository sits with one of the seeds picked so far.
+        for (const c of f.assignments) expect(f.centroids[c]).not.toBeNull();
+      }
+      for (const f of updates) expect(f.centroids.every((c) => c !== null)).toBe(true);
+      // Lloyd stops once an update changes nothing, and only then.
+      expect(updates.at(-1)!.changed).toBe(0);
+      for (const f of updates.slice(0, -1)) expect(f.changed).toBeGreaterThan(0);
+      const last = frames.at(-1)!;
+      expect(last.assignments).toEqual(lab.points.map((p) => p.cluster));
+      expect(last.inertia).toBeCloseTo(lab.inertia, 9);
+    }
+  });
+
+  test("constant features are dropped and labels still map to the right feature", () => {
+    const POSITIVE: Record<string, [string, string]> = {
+      "log size (KB)": ["Large", "Small"],
+      "log contributions": ["Commit-heavy", "Few commits"],
+      "log active days": ["Sustained", "Sporadic"],
+      "log age (days)": ["Long-lived", "New"],
+      "log stars + forks": ["Starred", "Unstarred"],
+      "log days since push": ["Dormant", "Recently pushed"],
+      "python-like": ["Python-heavy", "Non-Python"],
+      web: ["Web", "Non-web"],
+      "other language": ["Other languages", "Python/web"]
+    };
+    const unstarred = syntheticRepos().map((r) => ({ ...r, stars: 0, forks: 0 }));
+    const lab = buildRepoLab(unstarred, { seed: 1, now: new Date("2025-12-31T00:00:00Z") }) as RepoLab;
+    expect(lab.droppedFeatures).toEqual(["log stars + forks"]);
+    expect(lab.featureNames).toHaveLength(8);
+    expect(lab.featureNames).not.toContain("log stars + forks");
+    expect(lab.loadings.map((l) => l.feature)).toEqual(lab.featureNames);
+    expect(lab.loadings.reduce((s, l) => s + l.pc1 ** 2, 0)).toBeCloseTo(1, 8);
+    for (const p of lab.points) expect(Object.keys(p.features)).toEqual(lab.featureNames);
+    for (const c of lab.clusters) {
+      expect(Object.keys(c.centroid)).toEqual(lab.featureNames);
+      const languages = new Set(["python-like", "web", "other language"]);
+      const top = Object.entries(c.centroid)
+        .filter(([f, z]) => !languages.has(f) || z > 0)
+        .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))[0];
+      expect(c.label.startsWith(POSITIVE[top[0]][top[1] >= 0 ? 0 : 1])).toBe(true);
+      expect(c.label).not.toMatch(/Starred|Unstarred/);
+    }
+    expect(lab.k).toBe(3);
+
+    const pythonOnly = syntheticRepos().map((r) => ({ ...r, primaryLanguage: "Python" }));
+    const py = buildRepoLab(pythonOnly, { seed: 1 }) as RepoLab;
+    expect(py.droppedFeatures).toEqual(["python-like", "web", "other language"]);
+    expect(py.featureNames).toEqual(["log size (KB)", "log contributions", "log active days", "log age (days)", "log stars + forks", "log days since push"]);
+    expectAllFinite(py);
+
+    const varied = buildRepoLab(syntheticRepos(), { seed: 1 }) as RepoLab;
+    expect(varied.droppedFeatures).toEqual([]);
+    expect(varied.featureNames).toHaveLength(9);
+
+    const identical = buildRepoLab(Array.from({ length: 5 }, (_, i) => repo(`same-${i}`)));
+    expect(identical).toHaveProperty("insufficient");
+  });
+
+  test("k search defaults to maxK = 7, capped at n - 1", () => {
+    const ks = (lab: ReturnType<typeof buildRepoLab>) => (lab as RepoLab).silhouetteByK.map((s) => s.k);
+    expect(ks(buildRepoLab(syntheticRepos()))).toEqual([2, 3, 4, 5, 6, 7]);
+    expect(ks(buildRepoLab(syntheticRepos().slice(0, 6)))).toEqual([2, 3, 4, 5]);
+    expect(ks(buildRepoLab(syntheticRepos().slice(0, 4)))).toEqual([2, 3]);
+    expect(ks(buildRepoLab(syntheticRepos(), { maxK: 3 }))).toEqual([2, 3]);
+    expect(ks(buildRepoLab(syntheticRepos().slice(0, 6), { maxK: 20 }))).toEqual([2, 3, 4, 5]);
+  });
+
+  test("flags a chosen k at the edge of the search range", () => {
+    for (const [repos, opts] of [
+      [syntheticRepos(), {}],
+      [syntheticRepos(), { maxK: 3 }],
+      [syntheticRepos(), { maxK: 2 }],
+      [syntheticRepos().slice(0, 9), {}],
+      [syntheticRepos().slice(0, 5), {}]
+    ] as const) {
+      const lab = buildRepoLab([...repos], { seed: 1, ...opts }) as RepoLab;
+      const largest = lab.silhouetteByK.at(-1)!.k;
+      expect(lab.atSearchLimit).toBe(lab.k === largest);
+      expect(lab.silhouette).toBe(Math.max(...lab.silhouetteByK.map((s) => s.score)));
+    }
+    expect((buildRepoLab(syntheticRepos(), { seed: 1 }) as RepoLab).atSearchLimit).toBe(false);
+    expect((buildRepoLab(syntheticRepos(), { seed: 1, maxK: 2 }) as RepoLab).atSearchLimit).toBe(true);
   });
 
   test("needs at least four repositories", () => {
@@ -448,8 +545,28 @@ test.describe("market", () => {
     for (let i = 1; i < 300; i++) walk.push(walk[i - 1] + (rand() - 0.5) * 10);
     for (const v of rsi(walk, 14)) if (v !== null) expect(v >= 0 && v <= 100).toBe(true);
     const m = macd(walk);
-    expect(m.macd.findIndex((v) => v !== null)).toBe(25);
-    expect(m.signal.findIndex((v) => v !== null)).toBe(33);
+    // Nothing is plotted during warm-up: slow EMA (26) + signal EMA (9) share one day, so the first value is at 26 + 9 − 2.
+    for (const series of [m.macd, m.signal, m.histogram]) {
+      expect(series).toHaveLength(walk.length);
+      expect(series.findIndex((v) => v !== null)).toBe(33);
+      expect(series.slice(33).every((v) => v !== null && Number.isFinite(v))).toBe(true);
+    }
+    const r = rsi(walk, 14);
+    expect(r.findIndex((v) => v !== null)).toBe(14);
+    expect(r.slice(14).every((v) => v !== null)).toBe(true);
+    expect(rsi(walk.slice(0, 14), 14).every((v) => v === null)).toBe(true);
+  });
+
+  test("buildMarket leaves RSI and MACD null during warm-up and keeps them daily-aligned", () => {
+    const market = buildMarket(makeDays(burstySeries(366, 14)));
+    if ("insufficient" in market) throw new Error(market.insufficient);
+    const { rsi14, macd: m } = market.indicators;
+    expect(rsi14).toHaveLength(market.daily.length);
+    expect(rsi14.findIndex((v) => v !== null)).toBe(14);
+    for (const series of [m.macd, m.signal, m.histogram]) {
+      expect(series).toHaveLength(market.daily.length);
+      expect(series.findIndex((v) => v !== null)).toBe(33);
+    }
   });
 
   test("candles, price index and summary are consistent", () => {
@@ -560,7 +677,16 @@ test("real snapshot: every module runs and yields finite numbers", () => {
   const market = buildMarket(insights.days);
   if (!("insufficient" in market)) expectAllFinite({ ...market, indicators: null });
   const lab = buildRepoLab(insights.repos);
-  if (!("insufficient" in lab)) expectAllFinite(lab);
+  if (!("insufficient" in lab)) {
+    expectAllFinite(lab);
+    const pool = insights.repos.filter((r) => !r.isFork);
+    const starsForks = new Set(pool.map((r) => Math.log1p(Math.max(0, (r.stars || 0) + (r.forks || 0)))));
+    expect(lab.droppedFeatures.includes("log stars + forks")).toBe(starsForks.size === 1);
+    expect(lab.featureNames.length + lab.droppedFeatures.length).toBe(9);
+    expect(lab.silhouetteByK.map((s) => s.k)).toEqual(Array.from({ length: Math.min(7, pool.length - 1) - 1 }, (_, i) => i + 2));
+    expect(lab.iterations.slice(0, lab.k).every((f) => f.phase === "seed")).toBe(true);
+    expect(lab.iterations.at(-1)!.assignments).toEqual(lab.points.map((p) => p.cluster));
+  }
   if (assessTrainingData(insights.days).ok) {
     const result = createTrainer(insights.days).finish();
     expectAllFinite({ ...result, model: { ...result.model, auc: result.model.auc ?? 0 } });

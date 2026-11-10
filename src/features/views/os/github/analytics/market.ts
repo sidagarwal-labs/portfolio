@@ -67,9 +67,9 @@ export interface MarketModel {
     ema8: IndicatorSeries;
     /** 8-week Bollinger bands on weekly closes, ±2 population σ. */
     bollinger: { middle: IndicatorSeries; upper: IndicatorSeries; lower: IndicatorSeries };
-    /** Daily index, Wilder RSI(14). */
+    /** Daily index, Wilder RSI(14); null for the first 14 days. */
     rsi14: IndicatorSeries;
-    /** Daily index, MACD(12, 26, 9). */
+    /** Daily index, MACD(12, 26, 9); all three series null for the first 33 days (warm-up). */
     macd: { macd: IndicatorSeries; signal: IndicatorSeries; histogram: IndicatorSeries };
   };
   momentum: MomentumTest;
@@ -130,7 +130,7 @@ export function bollinger(values: readonly number[], n: number, k = 2): { middle
   return { middle, upper, lower };
 }
 
-/** Wilder's RSI; 50 when the window is perfectly flat, 100 when there were no losses. */
+/** Wilder's RSI; null until there are n price changes (index n), 50 when the window is perfectly flat, 100 when there were no losses. */
 export function rsi(values: readonly number[], n = 14): IndicatorSeries {
   const out: IndicatorSeries = new Array(values.length).fill(null);
   if (values.length <= n) return out;
@@ -152,11 +152,17 @@ export function rsi(values: readonly number[], n = 14): IndicatorSeries {
   return out;
 }
 
+/**
+ * MACD(fast, slow, signal). All three series stay null until the signal line has full history: the slow EMA
+ * needs `slow` values and the signal EMA a further `signal` MACD values, so with all inputs present the first
+ * value is at index slow + signal − 2 (33 for 12/26/9). Earlier MACD values are dominated by EMA seeding.
+ */
 export function macd(values: readonly number[], fast = 12, slow = 26, signalN = 9): { macd: IndicatorSeries; signal: IndicatorSeries; histogram: IndicatorSeries } {
   const f = ema(values, fast);
   const s = ema(values, slow);
-  const line: IndicatorSeries = values.map((_, i) => (f[i] !== null && s[i] !== null ? (f[i] as number) - (s[i] as number) : null));
-  const signal = ema(line, signalN);
+  const raw: IndicatorSeries = values.map((_, i) => (f[i] !== null && s[i] !== null ? (f[i] as number) - (s[i] as number) : null));
+  const signal = ema(raw, signalN);
+  const line: IndicatorSeries = raw.map((v, i) => (signal[i] === null ? null : v));
   const histogram: IndicatorSeries = line.map((v, i) => (v !== null && signal[i] !== null ? v - (signal[i] as number) : null));
   return { macd: line, signal, histogram };
 }

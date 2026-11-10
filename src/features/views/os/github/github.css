@@ -113,7 +113,15 @@
 
 .gh-lab { display: grid; gap: 18px; min-width: 0; }
 .gh-lab__section { display: grid; gap: 10px; min-width: 0; }
-.gh-lab__section > h4 { padding-bottom: 4px; border-bottom: 1px solid #e3e6eb; color: #4f5664; font-size: 12px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; }
+.gh-lab__lead { font-weight: 600; }
+.gh-lab__section > h4, .gh-lab__fold-head > h4 { padding-bottom: 4px; border-bottom: 1px solid #e3e6eb; color: #4f5664; font-size: 12px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; }
+.gh-lab__fold-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; padding-bottom: 4px; border-bottom: 1px solid #e3e6eb; }
+.gh-lab__fold-head > h4 { padding-bottom: 0; border-bottom: 0; }
+.gh-lab__fold { display: inline-flex; align-items: center; gap: 4px; }
+.gh-lab__fold svg { transition: transform 0.15s ease; }
+.gh-lab__fold[aria-expanded="true"] svg { transform: rotate(180deg); }
+.gh-lab__fold-body { display: grid; gap: 10px; min-width: 0; }
+.gh-lab__fold-body[hidden] { display: none; }
 .gh-lab__section h5 { margin-top: 4px; font-size: 13.5px; }
 .gh-lab__section p { max-width: 78ch; overflow-wrap: anywhere; }
 .gh-caveats { display: grid; gap: 6px; margin: 0; padding-left: 18px; color: #3b4250; }
@@ -243,7 +251,9 @@
 .gh-centroid path { stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
 .gh-scatter__readout { min-height: 3em; color: #3b4250; font-size: 13px; overflow-wrap: anywhere; }
 .gh-frames { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.gh-frames__label { flex: 1 1 220px; color: #4f5664; font-size: 13px; font-variant-numeric: tabular-nums; }
+.gh-frames__label { flex: 1 1 220px; min-height: 2.6em; color: #4f5664; font-size: 13px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.gh-frames__count { display: block; color: #1f2328; font-weight: 600; }
+.gh-frames__step { display: block; }
 .gh-clusters { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
 .gh-clusters li { display: block; overflow-wrap: anywhere; }
 .gh-clusters .gh-dot { margin-right: 6px; vertical-align: baseline; }
@@ -275,6 +285,7 @@
 @media (prefers-reduced-motion: reduce) {
   .gh-spin { animation: none; }
   .gh-rocket.is-animated { transition: none; }
+  .gh-lab__fold svg { transition: none; }
 }
 
 /* Retro (Windows 95) style */

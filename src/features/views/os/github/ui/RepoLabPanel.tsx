@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pause, Play, StepBack, StepForward } from "lucide-react";
-import { buildRepoLab, type RepoLab } from "../analytics";
+import { buildRepoLab, type KMeansFrame, type RepoLab } from "../analytics";
 import type { GitHubInsights } from "../contract";
 import { usePrefersReducedMotion } from "../../../../../hooks/usePrefersReducedMotion";
 import { labMemo } from "./cache";
@@ -12,6 +12,8 @@ export const CLUSTER_COLORS = ["#2a4fbf", "#d1495b", "#2e9e6b", "#c98a12", "#7b4
 const color = (cluster: number) => CLUSTER_COLORS[cluster % CLUSTER_COLORS.length];
 const FRAME_MS = 900;
 
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
 function strength(score: number) {
   if (score > 0.7) return "strong structure";
   if (score > 0.5) return "reasonable structure";
@@ -19,18 +21,34 @@ function strength(score: number) {
   return "no substantial structure";
 }
 
+function listText(items: string[]) {
+  if (items.length < 2) return items.join("");
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
+function frameText(frame: KMeansFrame, k: number) {
+  if (frame.phase === "seed") {
+    return frame.step === 1
+      ? `Seed 1 of ${k}: one repository picked at random`
+      : `Seed ${frame.step} of ${k}: picked at random, favoring repositories far from earlier seeds`;
+  }
+  return `Update ${frame.step}: centroids move to cluster means, ${plural(frame.changed, "repository", "repositories")} changed cluster`;
+}
+
 function Method({ lab }: { lab: RepoLab | null }) {
   return (
     <LabSection title="Method">
       <p>
-        Each public, non-fork repository becomes a row of {lab?.featureNames.length ?? 9} features: log size, log contributions, log active days, log age,
-        log stars plus forks, log days since the last push, and the language family (Python-like, web, other) as one-hot columns. Features are
-        standardized (z-scores).
+        Each public, non-fork repository becomes a row of candidate features: log size, log contributions, log active days, log age, log stars plus
+        forks, log days since the last push, and the language family (Python-like, web, other) as one-hot columns. Features with no variation across
+        repositories are dropped
+        {lab ? `, which leaves ${lab.featureNames.length} features here${lab.droppedFeatures.length ? ` (${listText(lab.droppedFeatures)} dropped)` : ""}` : ""}.
+        The rest are standardized (z-scores).
       </p>
       <p>
-        k-means with k-means++ seeding and {lab?.restarts ?? 10} restarts per k, for k = 2 to {lab ? lab.silhouetteByK[lab.silhouetteByK.length - 1].k : 5}. k is
-        chosen by the highest mean silhouette. For the picture, PCA projects the standardized features onto their first two principal components; the
-        clustering itself runs in the full space.{lab ? ` Ages are measured to ${fmtDate(lab.referenceDate)}.` : ""}
+        k-means with k-means++ seeding and {lab?.restarts ?? 10} restarts per k, for k = 2 to {lab ? lab.silhouetteByK[lab.silhouetteByK.length - 1].k : 7} (at
+        most one less than the number of repositories). k is chosen by the highest mean silhouette. For the picture, PCA projects the standardized features
+        onto their first two principal components; the clustering itself runs in the full space.{lab ? ` Ages are measured to ${fmtDate(lab.referenceDate)}.` : ""}
       </p>
     </LabSection>
   );
@@ -62,11 +80,12 @@ function RepoLabView({ insights, lab }: { insights: GitHubInsights; lab: RepoLab
   }, [playing, frame, frames.length, reduced]);
 
   const current = frames[frame];
-  const updates = frames.length - 1;
-  const moved = frames.length > 1 ? frames[frames.length - 1].assignments.filter((c, i) => c !== frames[0].assignments[i]).length : 0;
+  const seedFrames = frames.filter((f) => f.phase === "seed");
+  const updates = frames.length - seedFrames.length;
+  const seeded = seedFrames[seedFrames.length - 1];
+  const moved = seeded ? frames[frames.length - 1].assignments.filter((c, i) => c !== seeded.assignments[i]).length : 0;
   const maxK = lab.silhouetteByK[lab.silhouetteByK.length - 1]?.k ?? lab.k;
-  const rising = lab.silhouetteByK.every((s, i, all) => i === 0 || s.score > all[i - 1].score);
-  const atCap = lab.k === maxK;
+  const singletons = lab.clusters.filter((cluster) => cluster.size === 1);
   const negatives = lab.points.filter((p) => p.silhouette < 0);
   const [ev1, ev2] = lab.explainedVariance;
   const bestInertia = Math.min(...lab.restartInertias);
@@ -80,11 +99,6 @@ function RepoLabView({ insights, lab }: { insights: GitHubInsights; lab: RepoLab
       .map((l) => `${l.feature} (${fmtSigned(l[pc])})`)
       .join(" and ");
 
-  const zeroVariance = useMemo(
-    () => lab.featureNames.filter((name) => lab.points.every((p) => Math.abs((p.features[name] ?? 0) - (lab.points[0].features[name] ?? 0)) < 1e-12)),
-    [lab]
-  );
-
   const activePoint = active === null ? null : lab.points[active];
 
   return (
@@ -95,7 +109,7 @@ function RepoLabView({ insights, lab }: { insights: GitHubInsights; lab: RepoLab
             { id: "k", label: "Clusters (k)", value: String(lab.k), note: `best silhouette of k = ${lab.silhouetteByK[0]?.k ?? 2}–${maxK}` },
             { id: "silhouette", label: "Mean silhouette", value: fmtNum(lab.silhouette), note: strength(lab.silhouette), tone: lab.silhouette > 0.5 ? "good" : "neutral" },
             { id: "variance", label: "Variance shown", value: fmtPct(ev1 + ev2, 1), note: `PC1 ${fmtPct(ev1, 1)}, PC2 ${fmtPct(ev2, 1)}` },
-            { id: "updates", label: "Lloyd updates", value: String(updates), note: `${plural(lab.points.length, "repository", "repositories")}` }
+            { id: "updates", label: "Lloyd updates", value: String(updates), note: `after ${plural(seedFrames.length, "seeding frame")}` }
           ]}
         />
         <div className="gh-scatter-wrap">
@@ -130,15 +144,23 @@ function RepoLabView({ insights, lab }: { insights: GitHubInsights; lab: RepoLab
           <button type="button" className="os-button" onClick={() => setFrame((f) => Math.min(frames.length - 1, f + 1))} disabled={frame >= frames.length - 1} aria-label="Next frame">
             <StepForward size={14} strokeWidth={2} aria-hidden="true" />
           </button>
-          <p className="gh-frames__label" data-frame={frame + 1} data-frames={frames.length}>
-            Frame {frame + 1} of {frames.length}: {frame === 0 ? "k-means++ seeds and first assignment" : `after update ${frame}`}, inertia {fmtNum(current.inertia)}
+          <p className="gh-frames__label" data-frame={frame + 1} data-frames={frames.length} data-phase={current.phase}>
+            <span className="gh-frames__count">Frame {frame + 1} of {frames.length}</span>
+            <span className="gh-frames__step">
+              {frameText(current, lab.k)}; inertia {fmtNum(current.inertia)}
+            </span>
           </p>
         </div>
         <p>
-          The animated run is the best of {lab.restarts} restarts. It stopped after {plural(updates, "update")}
-          {updates === 1 && moved === 0
-            ? ": the seeding already produced the final assignment, so the one update only moved the centroids and no repository changed cluster."
-            : `; ${plural(moved, "repository", "repositories")} changed cluster between the first and last frame.`}{" "}
+          The animation replays the best of {lab.restarts} restarts. First, k-means++ picks {lab.k} seeds one at a time; each repository takes the color of
+          its nearest seed so far. Then each Lloyd update moves every centroid (✕) to the mean of its cluster and reassigns repositories, until none
+          changes cluster. Inertia is the sum of squared distances from repositories to their centroids; lower is tighter.
+        </p>
+        <p>
+          This run needed {plural(updates, "update")}
+          {moved === 0
+            ? `: the seeding already found the final grouping, so ${updates === 1 ? "the update" : "the updates"} only moved the centroids.`
+            : `; ${plural(moved, "repository", "repositories")} changed cluster after seeding.`}{" "}
           Final inertia across restarts ranged from {fmtNum(bestInertia)} to {fmtNum(worstInertia)}; {matchedBest} of {lab.restartInertias.length} reached the best.
         </p>
         <ul className="gh-clusters">
@@ -154,10 +176,7 @@ function RepoLabView({ insights, lab }: { insights: GitHubInsights; lab: RepoLab
           <SilhouetteChart lab={lab} />
           <div>
             <p>
-              Silhouette picks k = {lab.k} ({fmtNum(lab.silhouette)}).
-              {atCap && rising
-                ? ` Scores rose with every k tried (${lab.silhouetteByK.map((s) => `${s.k}: ${fmtNum(s.score)}`).join(", ")}), so a larger k might score higher; with ${lab.points.length} repositories that would mean clusters of one or two.`
-                : ` Scores by k: ${lab.silhouetteByK.map((s) => `${s.k}: ${fmtNum(s.score)}`).join(", ")}.`}
+              Silhouette picks k = {lab.k} ({fmtNum(lab.silhouette)}). Scores by k: {lab.silhouetteByK.map((s) => `${s.k}: ${fmtNum(s.score)}`).join(", ")}.
             </p>
             <p>
               The two components shown explain {fmtPct(ev1 + ev2, 1)} of the standardized variance. PC1 is driven mostly by {drivers("pc1")}; PC2 by {drivers("pc2")}.
@@ -175,8 +194,14 @@ function RepoLabView({ insights, lab }: { insights: GitHubInsights; lab: RepoLab
         <Caveats
           items={[
             `A mean silhouette of ${fmtNum(lab.silhouette)} is ${strength(lab.silhouette)} by the usual rule of thumb (above 0.5 reasonable, above 0.7 strong)${lab.silhouette <= 0.5 ? ", so the groups overlap" : ""}.`,
-            ...(zeroVariance.length
-              ? [`${zeroVariance.join(", ")} ${zeroVariance.length === 1 ? "is" : "are"} identical for every repository here, so ${zeroVariance.length === 1 ? "it carries" : "they carry"} no information.`]
+            ...(singletons.length
+              ? [`${singletons.length} of the ${lab.k} clusters ${singletons.length === 1 ? "holds" : "hold"} a single repository (${listText(singletons.map((c) => c.members[0]))}), so ${singletons.length === 1 ? "it marks an outlier" : "they mark outliers"} rather than a group. Silhouette scores a lone repository as 0.`]
+              : []),
+            ...(lab.atSearchLimit
+              ? [`The score was still rising at k = ${maxK}, the largest k tried, so the "best" k may be an artifact of the search range rather than a natural number of groups.`]
+              : []),
+            ...(lab.droppedFeatures.length
+              ? [`${capitalize(listText(lab.droppedFeatures))} ${lab.droppedFeatures.length === 1 ? "was" : "were"} left out because ${lab.droppedFeatures.length === 1 ? "it is" : "they are"} the same for every repository here.`]
               : []),
             `${plural(lab.points.length, "repository", "repositories")} is a small sample; one new repository can reshuffle the clusters.`,
             `The scatter shows ${fmtPct(ev1 + ev2, 0)} of the variance. Points that look close here can be far apart in the full ${lab.featureNames.length}-dimensional space.`,
@@ -194,8 +219,9 @@ function Scatter({ lab, frame, width, active, setActive }: { lab: RepoLab; frame
   const H = 300;
   const pad = { left: 36, right: 14, top: 14, bottom: 26 };
   const extent = useMemo(() => {
-    const xs = [...lab.points.map((p) => p.x), ...lab.iterations.flatMap((f) => f.centroids.map((c) => c[0]))];
-    const ys = [...lab.points.map((p) => p.y), ...lab.iterations.flatMap((f) => f.centroids.map((c) => c[1]))];
+    const centroids = lab.iterations.flatMap((f) => f.centroids.filter((c): c is [number, number] => c !== null));
+    const xs = [...lab.points.map((p) => p.x), ...centroids.map((c) => c[0])];
+    const ys = [...lab.points.map((p) => p.y), ...centroids.map((c) => c[1])];
     const span = (v: number[]) => {
       const lo = Math.min(...v);
       const hi = Math.max(...v);
@@ -213,11 +239,13 @@ function Scatter({ lab, frame, width, active, setActive }: { lab: RepoLab; frame
       <XLabels ticks={niceTicks(extent.x[0], extent.x[1], 5).map((t) => ({ x: x(t), label: String(t) }))} y={H - 10} />
       <text className="gh-axis gh-axis__title" x={width - pad.right} y={H - 10 - 12} textAnchor="end">PC1</text>
       <text className="gh-axis gh-axis__title" x={pad.left + 4} y={pad.top + 10}>PC2</text>
-      {frame.centroids.map((c, id) => (
-        <g key={id} className="gh-centroid" style={{ color: color(id) }} transform={`translate(${x(c[0]).toFixed(1)} ${y(c[1]).toFixed(1)})`}>
-          <path d="M-6 -6L6 6M-6 6L6 -6" />
-        </g>
-      ))}
+      {frame.centroids.map((c, id) =>
+        c ? (
+          <g key={id} className="gh-centroid" style={{ color: color(id) }} transform={`translate(${x(c[0]).toFixed(1)} ${y(c[1]).toFixed(1)})`}>
+            <path d="M-6 -6L6 6M-6 6L6 -6" />
+          </g>
+        ) : null
+      )}
       {lab.points.map((p, i) => {
         const cluster = frame.assignments[i];
         return (

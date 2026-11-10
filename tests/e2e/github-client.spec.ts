@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 import {
-  GitHubLookupError, isValidLogin, loadInsights, normalizeLogin, normalizeRestEvents, validateInsights, type RestEvent, type RestRepo
+  GitHubLookupError, curateOwnInsights, isValidLogin, loadInsights, normalizeLogin, normalizeRestEvents, validateInsights, type RestEvent, type RestRepo
 } from "../../src/features/views/os/github/client";
-import type { GitHubInsights } from "../../src/features/views/os/github/contract";
+import { OWN_HIDDEN_REPOS, type GitHubInsights } from "../../src/features/views/os/github/contract";
 
 const snapshot = JSON.parse(readFileSync(new URL("../../src/content/generated/github-insights.json", import.meta.url), "utf8")) as GitHubInsights;
 const nextDay = (date: string) => new Date(Date.parse(`${date}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
@@ -190,4 +190,22 @@ test("the committed snapshot is a full public GraphQL year", () => {
     expect(item.url).toBe(`https://github.com/${item.nameWithOwner}`);
     expect(item.nameWithOwner.endsWith(`/${item.name}`)).toBe(true);
   }
+});
+
+test("tutorial repositories are hidden for the owner only", () => {
+  const hidden = new Set(OWN_HIDDEN_REPOS.map((name) => name.toLowerCase()));
+  const curated = curateOwnInsights(snapshot);
+  expect(curated.repos.length).toBeGreaterThan(0);
+  expect(curated.repos.filter((item) => hidden.has(item.name.toLowerCase()))).toEqual([]);
+  expect(curated.repos).toEqual(snapshot.repos.filter((item) => !hidden.has(item.name.toLowerCase())));
+  expect(curated.days).toBe(snapshot.days);
+  expect(curated.totals).toBe(snapshot.totals);
+
+  const hiddenName = OWN_HIDDEN_REPOS[0];
+  const ownRepo = { ...snapshot.repos[0], name: hiddenName, nameWithOwner: `${snapshot.login}/${hiddenName}` };
+  const shouted = { ...snapshot, login: snapshot.login.toUpperCase(), repos: [...snapshot.repos, ownRepo] };
+  expect(curateOwnInsights(shouted).repos.some((item) => item.name === hiddenName)).toBe(false);
+
+  const other = { ...snapshot, login: "octo", repos: [{ ...ownRepo, nameWithOwner: `octo/${hiddenName}` }] };
+  expect(curateOwnInsights(other)).toBe(other);
 });

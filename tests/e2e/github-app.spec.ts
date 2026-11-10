@@ -1,10 +1,13 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Locator, type Page, type Route } from "@playwright/test";
 import { buildLaunch, buildMarket, buildRepoLab, computeStats, createTrainer } from "../../src/features/views/os/github/analytics";
-import type { GitHubInsights } from "../../src/features/views/os/github/contract";
+import { curateOwnInsights } from "../../src/features/views/os/github/client";
+import { OWN_HIDDEN_REPOS, type GitHubInsights } from "../../src/features/views/os/github/contract";
 import { fmtDate, fmtInt, fmtNum, fmtP, fmtPct, plural } from "../../src/features/views/os/github/ui/format";
 
-const snapshot = JSON.parse(readFileSync(new URL("../../src/content/generated/github-insights.json", import.meta.url), "utf8")) as GitHubInsights;
+const rawSnapshot = JSON.parse(readFileSync(new URL("../../src/content/generated/github-insights.json", import.meta.url), "utf8")) as GitHubInsights;
+// The app shows the owner's snapshot with tutorial repositories removed.
+const snapshot = curateOwnInsights(rawSnapshot);
 const stats = computeStats(snapshot);
 const githubWin = '.os-win[data-app="github"]';
 
@@ -124,7 +127,11 @@ test("opens from the desktop on the owner's snapshot with an accessible heatmap 
     await expect(win.locator(".gh-repo__name")).toHaveCount(stats.topRepos.length);
   }
   const repoNames = new Set(snapshot.repos.map((repo) => repo.name));
-  for (const name of await win.locator(".gh-repo__name").allTextContents()) expect(repoNames.has(name)).toBe(true);
+  const hidden = new Set(OWN_HIDDEN_REPOS.map((name) => name.toLowerCase()));
+  for (const name of await win.locator(".gh-repo__name").allTextContents()) {
+    expect(repoNames.has(name)).toBe(true);
+    expect(hidden.has(name.toLowerCase()), `${name} should be hidden`).toBe(false);
+  }
   await expect(win.locator(".gh-langs li").first()).toContainText(stats.languages[0].name);
 });
 
@@ -152,6 +159,19 @@ test("lab tabs follow the ARIA tabs pattern and show model output", async ({ pag
   await expect(marketPanel.locator('[data-metric="momentum"]')).toContainText(`p = ${fmtP(market.momentum.pValue)}, ${market.momentum.significant ? "significant" : "not significant"}`);
   await expect(metric(marketPanel, "trend")).toHaveText(fmtPct(market.trendBacktest.accuracy, 1));
   await expect(marketPanel.locator("g.gh-candle")).toHaveCount(market.candles.length);
+  const priceFigure = marketPanel.locator("figure").first();
+  await expect(priceFigure.locator("figcaption")).toContainText("log scale");
+  await expect(priceFigure.locator("svg")).toHaveAttribute("aria-label", /log scale/);
+  // Log-axis ticks are doublings, so each is twice the one below it.
+  const priceTicks = (await priceFigure.locator("svg > g.gh-axis").first().locator("text").allTextContents()).map((t) => Number(t.replace(/,/g, "")));
+  expect(priceTicks.length).toBeGreaterThanOrEqual(3);
+  for (let i = 1; i < priceTicks.length; i++) expect(priceTicks[i] / priceTicks[i - 1]).toBeCloseTo(2, 9);
+  const paths = await marketPanel.locator("svg path, svg rect, svg line").evaluateAll((els) =>
+    els.flatMap((el) => ["d", "x", "y", "width", "height", "x1", "x2", "y1", "y2"].map((name) => el.getAttribute(name) ?? ""))
+  );
+  expect(paths.filter((v) => /NaN|Infinity/.test(v))).toEqual([]);
+  await expect(marketPanel.getByRole("img", { name: /MACD\(12, 26, 9\).*after a 33-day warm-up/ })).toBeVisible();
+  await expect(marketPanel.getByRole("img", { name: /RSI\(14\).*after a 14-day warm-up/ })).toBeVisible();
 
   await page.keyboard.press("ArrowRight");
   await expect(tab("Launch")).toBeFocused();
@@ -176,8 +196,32 @@ test("lab tabs follow the ARIA tabs pattern and show model output", async ({ pag
   await expect(labPanel.locator("circle.gh-point")).toHaveCount(lab.points.length);
   const frames = lab.iterations.length;
   await expect(labPanel.locator(".gh-frames__label")).toContainText(`Frame ${frames} of ${frames}`);
+  const updates = frames - lab.k;
+  const last = lab.iterations[frames - 1];
+  await expect(labPanel.locator(".gh-frames__label")).toContainText(`Update ${updates}: centroids move to cluster means, ${plural(last.changed, "repository", "repositories")} changed cluster; inertia ${fmtNum(last.inertia)}`);
+  await expect(metric(labPanel, "updates")).toHaveText(String(updates));
   await labPanel.getByRole("button", { name: "Previous frame" }).click();
   await expect(labPanel.locator(".gh-frames__label")).toContainText(`Frame ${frames - 1} of ${frames}`);
+  for (let i = frames - 1; i > 1; i--) await labPanel.getByRole("button", { name: "Previous frame" }).click();
+  await expect(labPanel.locator(".gh-frames__count")).toHaveText(`Frame 1 of ${frames}`);
+  await expect(labPanel.locator(".gh-frames__step")).toHaveText(`Seed 1 of ${lab.k}: one repository picked at random; inertia ${fmtNum(lab.iterations[0].inertia)}`);
+  await expect(labPanel.getByRole("button", { name: "Previous frame" })).toBeDisabled();
+  await expect(labPanel.locator(".gh-centroid")).toHaveCount(1);
+  await labPanel.getByRole("button", { name: "Next frame" }).click();
+  await expect(labPanel.locator(".gh-frames__label")).toContainText(`Seed 2 of ${lab.k}: picked at random, favoring repositories far from earlier seeds`);
+  await expect(labPanel.locator(".gh-centroid")).toHaveCount(2);
+
+  const caveats = labPanel.getByRole("region", { name: "Caveats" });
+  const largestK = lab.silhouetteByK.at(-1)!.k;
+  await expect(caveats.getByText("the largest k tried", { exact: false })).toHaveCount(lab.k === largestK ? 1 : 0);
+  await expect(labPanel.locator(".gh-figure rect.gh-bar")).toHaveCount(lab.silhouetteByK.length);
+  const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  for (const feature of lab.droppedFeatures) await expect(caveats).toContainText(new RegExp(escape(feature), "i"));
+  if (lab.droppedFeatures.length === 1) await expect(caveats).toContainText("was left out because it is the same for every repository here.");
+  const singletons = lab.clusters.filter((cluster) => cluster.size === 1);
+  await expect(caveats.getByText(/clusters? holds? a single repository/)).toHaveCount(singletons.length ? 1 : 0);
+  for (const cluster of singletons) await expect(caveats).toContainText(cluster.members[0]);
+  await expect(labPanel).toContainText(`which leaves ${lab.featureNames.length} features here`);
   await labPanel.locator("circle.gh-point").first().focus();
   await expect(labPanel.locator(".gh-scatter__readout")).toContainText(lab.points[0].name);
 
@@ -190,6 +234,28 @@ test("lab tabs follow the ARIA tabs pattern and show model output", async ({ pag
   await expect(tab("Training run")).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("ArrowLeft");
   await expect(tab("Data science lab")).toBeFocused();
+});
+
+test("method and caveat notes start folded and expand on demand", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const win = await openGitHub(page);
+  const panel = win.getByRole("tabpanel", { name: "Training run", exact: true });
+  await expect(panel.getByRole("region", { name: "Results", exact: true }).getByRole("button", { name: /details/ })).toHaveCount(0);
+  for (const title of ["Caveats", "Method"]) {
+    const section = panel.getByRole("region", { name: title, exact: true });
+    const body = section.locator(".gh-lab__fold-body");
+    const show = section.getByRole("button", { name: `Show details for ${title}` });
+    await expect(show).toHaveAttribute("aria-expanded", "false");
+    await expect(show).toHaveAttribute("aria-controls", (await body.getAttribute("id"))!);
+    await expect(body).toBeHidden();
+    await show.click();
+    await expect(section.getByRole("button", { name: `Hide details for ${title}` })).toHaveAttribute("aria-expanded", "true");
+    await expect(body).toBeVisible();
+  }
+  await expect(panel.locator(".gh-caveats li").first()).toBeVisible();
+  await panel.getByRole("button", { name: "Hide details for Method" }).click();
+  await expect(panel.getByRole("region", { name: "Method", exact: true }).locator(".gh-lab__fold-body")).toBeHidden();
+  await expect(panel.getByRole("button", { name: "Show details for Method" })).toBeFocused();
 });
 
 test("training animates epoch by epoch, pauses, and skips to the trainer's result", async ({ page }) => {
@@ -209,16 +275,27 @@ test("training animates epoch by epoch, pauses, and skips to the trainer's resul
   await panel.getByRole("button", { name: "Skip to result" }).click();
   const result = createTrainer(snapshot.days).finish();
   await expect(epoch).toHaveText(`Epoch ${result.config.epochs} of ${result.config.epochs}`);
+  const results = panel.getByRole("region", { name: "Results", exact: true });
+  // Lead with the classifier, then count error against every simple predictor (always-0 included).
+  await expect(results.locator("[data-metric]").first()).toHaveAttribute("data-metric", "auc");
+  await expect(metric(panel, "auc")).toHaveText(result.model.auc === null ? "n/a" : fmtNum(result.model.auc));
+  await expect(metric(panel, "log-loss")).toContainText(`${fmtNum(result.model.logLoss, 3)} vs `);
+  if (result.model.auc !== null) await expect(results.locator(".gh-lab__lead")).toContainText(`AUC ${fmtNum(result.model.auc)}`);
   await expect(metric(panel, "model-mae")).toHaveText(fmtNum(result.model.mae));
   await expect(metric(panel, "best-baseline")).toHaveText(fmtNum(result.bestBaseline.mae));
   await expect(metric(panel, "zero-mae")).toHaveText(fmtNum(result.referenceZeroMae));
-  await expect(metric(panel, "auc")).toHaveText(result.model.auc === null ? "n/a" : fmtNum(result.model.auc));
+  const zeroWins = result.referenceZeroMae <= result.model.mae;
+  const beatsAll = result.beatsBaselines && !zeroWins;
+  await expect(panel.locator('[data-metric="model-mae"]')).toHaveClass(beatsAll ? /gh-metric--good/ : result.beatsBaselines ? /gh-metric--neutral/ : /gh-metric--bad/);
+  if (zeroWins) {
+    await expect(results).toContainText(`always predicting 0 scores ${fmtNum(result.referenceZeroMae)}, lower still`);
+    await expect(results).not.toContainText("lower than all");
+  }
   const bt = result.backtestSummary;
   await expect(metric(panel, "backtest")).toHaveText(`${fmtNum(bt.modelMae)} vs ${fmtNum(bt.baselineMae)}`);
   await expect(metric(panel, "forecast")).toHaveText(fmtNum(result.forecastWeeks[0].expected, 1));
   await expect(panel.locator('[data-metric="forecast"]')).toContainText(`${fmtInt(result.forecastWeeks[0].low)}–${fmtInt(result.forecastWeeks[0].high)}`);
   await expect(panel).toContainText(bt.modelMae < bt.baselineMae ? "the model wins" : "the model loses");
-  if (result.referenceZeroMae <= result.model.mae) await expect(panel).toContainText("Always predicting 0 scores");
   await expect(panel.getByRole("button", { name: "Train again" })).toBeVisible();
   await expect(panel.getByRole("button", { name: "Pause" })).toHaveCount(0);
 });
@@ -347,7 +424,11 @@ test("fits a phone without horizontal overflow", async ({ page }) => {
   await page.addStyleTag({ content: "*, *::before, *::after { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }" });
   for (const name of ["Training run", "Market", "Launch", "Data science lab"]) {
     await win.getByRole("tab", { name, exact: true }).click();
-    await expect(win.getByRole("tabpanel", { name, exact: true }).locator(".gh-lab__section").first()).toBeVisible();
+    const panel = win.getByRole("tabpanel", { name, exact: true });
+    await expect(panel.locator(".gh-lab__section").first()).toBeVisible();
+    // Folded notes are checked too.
+    const show = panel.getByRole("button", { name: /^Show details for / });
+    while (await show.count()) await show.first().click();
     expect(await overflow()).toEqual({ page: 0, body: 0 });
   }
 });
