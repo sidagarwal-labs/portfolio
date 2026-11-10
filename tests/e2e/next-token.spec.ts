@@ -47,11 +47,8 @@ async function openNextToken(page: Page, width = 1440, style: "modern" | "retro"
 }
 
 async function launchNextToken(page: Page, width = 1440) {
-  if (width < 600) await page.locator(".os-home .os-icon", { hasText: "Next Token" }).click();
-  else {
-    await page.locator(".os-icons .os-icon", { hasText: "Games" }).click();
-    await page.locator(".os-folder .os-icon", { hasText: "Next Token" }).click();
-  }
+  await page.locator(width < 600 ? ".os-home .os-icon" : ".os-icons .os-icon", { hasText: "Games" }).click();
+  await page.locator(".os-folder .os-icon", { hasText: "Next Token" }).click();
   return page.locator(".nexttoken");
 }
 
