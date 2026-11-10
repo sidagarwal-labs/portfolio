@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { canonicalMarketsPath } from "../../live/marketsPath";
-import { embeddedView, isOsMessage, isReplaceState, isResumeUrl, openInNewTab, postToOs, replaceHistoryState, routerPath } from "./embed";
+import { embeddedView, isOsMessage, isReplaceState, isResumeUrl, openInNewTab, osRunsThisBuild, postToOs, replaceHistoryState, routerPath } from "./embed";
 import { pageApp, routeLink, type PageApp } from "./linkRoutes";
 
 const embedded = embeddedView !== undefined;
@@ -48,7 +48,7 @@ export function useFrameBridge() {
       event.preventDefault();
       if (url.origin !== window.location.origin) {
         const route = routeLink(url.href);
-        if (route) postToOs({ type: "labos:link", ...route });
+        if (route && osRunsThisBuild()) postToOs({ type: "labos:link", ...route });
         else openInNewTab(url.href);
       } else if (isResumeUrl(url)) postToOs({ type: "labos:open", app: "resume" });
       else {

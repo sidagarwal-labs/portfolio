@@ -281,7 +281,10 @@ test("research notes link to the verified source documents", async ({ page }) =>
     ["AI adoption", "ai-adoption"],
     ["Cloud growth", "cloud-growth"]
   ]) {
-    await expect(page.getByRole("link", { name: title, exact: true })).toHaveAttribute("href", `https://github.com/sidagarwal-labs/models/blob/main/notes/${slug}.md`);
+    const link = page.getByRole("link", { name: title, exact: true });
+    await expect(link).toHaveAttribute("href", `https://github.com/sidagarwal-labs/models/blob/main/notes/${slug}.md`);
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(link).toHaveAttribute("rel", "noopener noreferrer");
   }
 });
 

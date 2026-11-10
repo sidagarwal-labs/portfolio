@@ -83,7 +83,7 @@ function JournalHomePage() {
             <ul className="writing-list">
               {currentResearchNotes.map((note) => (
                 <li key={note.slug}>
-                  <a href={note.href}>{note.title}</a>
+                  <a href={note.href} target="_blank" rel="noopener noreferrer">{note.title}</a>
                   <NoteDate value={noteDates[note.slug]} />
                 </li>
               ))}
@@ -100,7 +100,7 @@ function JournalHomePage() {
                 <ul>
                   {earlierBuildoutEditions.map((note) => (
                     <li key={note.slug}>
-                      <a href={note.href}>{note.title}</a> <NoteDate value={noteDates[note.slug]} />
+                      <a href={note.href} target="_blank" rel="noopener noreferrer">{note.title}</a> <NoteDate value={noteDates[note.slug]} />
                     </li>
                   ))}
                 </ul>
