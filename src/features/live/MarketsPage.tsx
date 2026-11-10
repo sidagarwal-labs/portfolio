@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type RefObject } from "react";
+import { useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 import { Link, Navigate, useLocation, useSearchParams, type To } from "react-router-dom";
 import { marketCompanies } from "../../content/journalContent";
 import {
@@ -99,13 +99,21 @@ function StackView() {
   const tables = useRef<HTMLDivElement>(null);
   const previous = useRef(symbol);
 
-  /* Picking a ticker moves focus (and the view) to its details; closing them returns focus to that ticker's row. */
-  useEffect(() => {
+  /* Picking a company brings its details up under the sticky header and moves focus to them. The browser's own focus
+     scroll would center the heading, and this close to the page top that lands back at the top of the page.
+     Closing the details returns focus to that company's row. */
+  useLayoutEffect(() => {
     const last = previous.current;
     previous.current = symbol;
     if (symbol === last) return;
-    if (symbol) heading.current?.focus();
-    else if (last) tables.current?.querySelector<HTMLElement>(`tr[data-symbol="${CSS.escape(last)}"] a`)?.focus();
+    if (symbol) {
+      const detail = heading.current?.closest<HTMLElement>(".mk-detail");
+      if (detail) {
+        const margin = parseFloat(getComputedStyle(detail).scrollMarginTop) || 0;
+        window.scrollTo({ top: detail.getBoundingClientRect().top + window.scrollY - margin, behavior: "auto" });
+      }
+      heading.current?.focus({ preventScroll: true });
+    } else if (last) tables.current?.querySelector<HTMLElement>(`tr[data-symbol="${CSS.escape(last)}"] a`)?.focus();
   }, [symbol]);
 
   return (

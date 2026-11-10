@@ -87,8 +87,7 @@
 .mk-status[data-source="live"]::before { background: var(--positive); }
 .mk-status[data-source="snapshot"]::before { background: #c58a1e; }
 
-.mk-detail { margin-bottom: 44px; }
-.mk-detail #mk-quote-title { scroll-margin-top: 120px; }
+.mk-detail { margin-bottom: 44px; scroll-margin-top: 76px; }
 .mk-detail #mk-quote-title:focus { outline: none; }
 .mk-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 0; }
 .mk-stats div { padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
