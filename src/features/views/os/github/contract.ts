@@ -1,5 +1,10 @@
 export const GITHUB_INSIGHTS_VERSION = 1;
 export const OWN_GITHUB_LOGIN = "sidagarwal-labs";
+/**
+ * Old tutorial and duplicate repositories left out of the owner's repository views and models.
+ * The contribution calendar and totals still count their activity.
+ */
+export const OWN_HIDDEN_REPOS: readonly string[] = ["odin-recipes", "html-boilerplate", "git-test", "gdp-dashboard-1"];
 
 /** One calendar day (YYYY-MM-DD) and a non-negative integer count. */
 export interface DayCount {

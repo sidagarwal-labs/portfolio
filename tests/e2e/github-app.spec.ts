@@ -1,10 +1,13 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Locator, type Page, type Route } from "@playwright/test";
 import { buildLaunch, buildMarket, buildRepoLab, computeStats, createTrainer } from "../../src/features/views/os/github/analytics";
-import type { GitHubInsights } from "../../src/features/views/os/github/contract";
+import { curateOwnInsights } from "../../src/features/views/os/github/client";
+import { OWN_HIDDEN_REPOS, type GitHubInsights } from "../../src/features/views/os/github/contract";
 import { fmtDate, fmtInt, fmtNum, fmtP, fmtPct, plural } from "../../src/features/views/os/github/ui/format";
 
-const snapshot = JSON.parse(readFileSync(new URL("../../src/content/generated/github-insights.json", import.meta.url), "utf8")) as GitHubInsights;
+const rawSnapshot = JSON.parse(readFileSync(new URL("../../src/content/generated/github-insights.json", import.meta.url), "utf8")) as GitHubInsights;
+// The app shows the owner's snapshot with tutorial repositories removed.
+const snapshot = curateOwnInsights(rawSnapshot);
 const stats = computeStats(snapshot);
 const githubWin = '.os-win[data-app="github"]';
 
@@ -124,7 +127,11 @@ test("opens from the desktop on the owner's snapshot with an accessible heatmap 
     await expect(win.locator(".gh-repo__name")).toHaveCount(stats.topRepos.length);
   }
   const repoNames = new Set(snapshot.repos.map((repo) => repo.name));
-  for (const name of await win.locator(".gh-repo__name").allTextContents()) expect(repoNames.has(name)).toBe(true);
+  const hidden = new Set(OWN_HIDDEN_REPOS.map((name) => name.toLowerCase()));
+  for (const name of await win.locator(".gh-repo__name").allTextContents()) {
+    expect(repoNames.has(name)).toBe(true);
+    expect(hidden.has(name.toLowerCase()), `${name} should be hidden`).toBe(false);
+  }
   await expect(win.locator(".gh-langs li").first()).toContainText(stats.languages[0].name);
 });
 
