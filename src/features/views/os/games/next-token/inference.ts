@@ -23,6 +23,9 @@ export function logSumExp(logits: ArrayLike<number>, temperature: number, skip?:
 }
 
 export function verifyPrediction(logits: ArrayLike<number>, tokens: number, reference: ReferencePrediction) {
+  if (!reference.top.length || !Number.isFinite(reference.lse) || reference.top.some(({ id, logit }) => !Number.isInteger(id) || id < 0 || id >= reference.vocabSize || !Number.isFinite(logit))) {
+    throw new InferenceValidationError("The reference prediction has an invalid probability or token.");
+  }
   if (tokens !== reference.tokens || logits.length !== reference.vocabSize) {
     throw new InferenceValidationError("The model returned an unexpected input or vocabulary size.");
   }

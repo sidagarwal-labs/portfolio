@@ -42,6 +42,26 @@ Before enabling live inference, the worker checks two saved prompts with differe
 
 Set `NEXT_TOKEN_DEVICE=webgpu` to test an actual available GPU, or `NEXT_TOKEN_DTYPE=q4` to compare float32 computation with `q4f16`. A requested GPU must actually run; falling back does not count as passing a GPU check. The model-parity workflow runs these network-dependent checks separately from the mocked UI suite. On the tested Qualcomm Adreno 7xx GPU, the old `q4f16` path disagreed with the CPU top choice on six of seven prompts; WebAssembly matched all seven. `q4` also restored those rankings on that GPU but increases the download from about 120 MB to 184 MB, so it is a diagnostic alternative, not a silent default-model replacement.
 
+### Larger-model investigation
+
+On 2026-11-10, the actual browser worker was used to probe these configurations on a Qualcomm Adreno 7xx. Each measured pass used the seven saved prompts, top 8 results, and the same temperature grid. These are observed single-step times after startup, including probability calculation and any first-shape shader compilation, not a standardized throughput benchmark. Probabilities below are at T = 1; different tokenizers also make these unsuitable as a cross-model accuracy score.
+
+| Model / backend | Model files | Step time | First token after "The capital of France is" | First token after the Eiffel Tower prompt |
+|---|---:|---:|---|---|
+| Current SmolLM2-135M q4f16 / verified WASM | 120 MB | 328-383 ms | ` the` (39.9%) | ` Paris` (27.2%) |
+| [SmolLM2-360M q4](https://huggingface.co/onnx-community/SmolLM2-360M-ONNX/tree/539c1088be2dcd673c39059d25a6bc4aec625504) / WebGPU | 390 MB | 138-564 ms | ` the` (20.1%) | ` Paris` (81.4%) |
+| [Qwen2.5-0.5B q4](https://huggingface.co/onnx-community/Qwen2.5-0.5B/tree/bae5ceaee026f0d0592858b2bd27645a06f19c42) / WebGPU | 793 MB | 303-578 ms | ` Paris` (34.2%) | ` Paris` (46.7%) |
+
+Cold download/startup took about 151 seconds for 360M and 311 seconds for Qwen on that connection. Both larger, single-file ONNX weight files failed Cache Storage writes in this browser: their tokenizer/configuration files were cached, but the weights were absent. Neither larger model has yet passed the native CPU/browser parity and cached-reopening acceptance checks.
+
+Ten-token greedy continuations also exposed limits that the first-token table hides:
+
+- The current 135M model continued the France prompt with "the capital of the United States." Correct inference does not make this small model factually reliable.
+- 360M repeated "the capital of France, which is the capital of" for France, although it produced Tokyo for Japan and Au for gold.
+- Qwen started with Paris for France, then repeated itself. For Japan and gold, it continued in multiple-choice-question format rather than giving direct answers within the ten-token limit.
+
+The default therefore remains 120 MB; there is no silent model upgrade or extra download. A larger optional model needs reliable caching, its own matching reference predictions, explicit download consent, and broader completion evaluation first. These limited probes are not evidence of chatbot-level quality.
+
 ## Content
 
 - `src/content/journalContent.ts`: selected projects, earlier coursework, research links, verified fallback commit dates, stock symbols with the company names and blurbs shown on `/markets`, and the dated Arena leader shown in the ticker. When a selected project includes a `websiteHref`, its title opens the website and a small GitHub pill opens its repository; arXiv Search links to https://arxiv.agarwal-labs.com/. Projects without a website keep their GitHub-linked title. The repository list is curated; note dates refresh from GitHub.

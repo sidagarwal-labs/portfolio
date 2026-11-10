@@ -19,6 +19,14 @@ test("the calculation check rejects an incorrect top token even at similar confi
   expect(() => verifyPrediction(scores([0.2, 0.7, 0.1]), 2, reference)).toThrow(/top token/);
 });
 
+test("the calculation check cannot silently accept an invalid reference", () => {
+  const logits = scores([0.7, 0.2, 0.1]);
+  expect(() => verifyPrediction(logits, 2, { ...reference, lse: NaN })).toThrow(/invalid probability/);
+  expect(() => verifyPrediction(logits, 2, { ...reference, top: [] })).toThrow(/invalid probability/);
+  expect(() => verifyPrediction(logits, 2, { ...reference, top: [...reference.top, { id: 3, logit: 0 }] })).toThrow(/invalid probability/);
+  expect(() => verifyPrediction(logits, 2, { ...reference, top: [...reference.top, { id: 2, logit: NaN }] })).toThrow(/invalid probability/);
+});
+
 test("the calculation check rejects unexpected shapes and non-finite scores", () => {
   expect(() => verifyPrediction(scores([0.7, 0.2, 0.1]), 3, reference)).toThrow(/size/);
   expect(() => verifyPrediction(scores([0.7, 0.3]), 2, reference)).toThrow(/size/);
