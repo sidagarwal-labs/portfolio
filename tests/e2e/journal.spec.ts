@@ -1,9 +1,11 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
 const quoteApi = "https://finnhub.io/api/v1/quote?*";
 const primaryTicker = ".ticker-track__group:not([aria-hidden])";
 const noteCommitsApi = "https://api.github.com/repos/sidagarwal-labs/models/commits?*";
 const launchApi = "https://ll.thespacedevs.com/2.3.0/launches/upcoming/**";
+const avatarImage = readFileSync(new URL("../../public/apple-touch-icon.png", import.meta.url));
 
 function launchPayload(net = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString()) {
   return {
@@ -106,6 +108,8 @@ for (const width of [1440, 390, 320]) {
 
   test(`enlarged portrait aligns with the header without crowding navigation at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
+    // Serve the avatar locally so the layout check never waits on GitHub's CDN.
+    await page.route("https://avatars.githubusercontent.com/**", (route) => route.fulfill({ contentType: "image/png", body: avatarImage }));
     await page.goto("./");
     const portrait = page.locator(".portrait");
     await expect(portrait).toBeVisible();
