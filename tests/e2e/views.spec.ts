@@ -57,7 +57,20 @@ for (const view of alternateViews) {
       await page.setViewportSize({ width, height: 800 });
       await page.goto(`./?view=${view}`);
       await expect(page.locator("#contact")).toBeAttached();
-      expect(await horizontalOverflow(page), `${view} at ${width}px`).toBeLessThanOrEqual(0);
+      const overflow = await horizontalOverflow(page);
+      if (overflow > 0) {
+        const layout = await page.evaluate(() => Array.from(document.querySelectorAll("body *")).flatMap((element) => {
+          const rect = element.getBoundingClientRect();
+          if (rect.right <= innerWidth && element.scrollWidth <= element.clientWidth) return [];
+          return [{
+            tag: element.tagName, class: element.className, text: element.textContent?.slice(0, 100),
+            right: rect.right, width: rect.width, scrollWidth: element.scrollWidth, clientWidth: element.clientWidth,
+            overflowX: getComputedStyle(element).overflowX
+          }];
+        }));
+        console.log(`${view} overflow at ${width}px: ${JSON.stringify(layout)}`);
+      }
+      expect(overflow, `${view} at ${width}px`).toBeLessThanOrEqual(0);
     }
   });
 }
