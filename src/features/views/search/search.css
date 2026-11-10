@@ -114,7 +114,7 @@ html.se-booting { overflow: hidden; }
 
 .se-source__url { overflow: hidden; color: var(--muted); font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
 
-.se-result h3 { margin: 0; font-size: 20px; font-weight: 400; line-height: 1.35; }
+.se-result :is(h3, h4) { margin: 0; font-size: 20px; font-weight: 400; line-height: 1.35; }
 
 .se-result__head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; }
 
@@ -268,6 +268,82 @@ html.se-booting { overflow: hidden; }
 
 .se-section .disclaimer { margin-top: 18px; }
 
+.se-subhead { margin: 36px 0 14px; font-size: 18px; font-weight: 500; line-height: 1.35; }
+
+/* Robotics */
+.se-team { padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+
+.se-team__head { display: flex; align-items: center; gap: 16px; }
+
+.se-team__badge { display: grid; flex: 0 0 auto; place-items: center; width: 64px; height: 64px; border-radius: 14px; background: var(--se-tint); color: var(--link); font-family: var(--se-mono); font-size: 18px; font-weight: 700; }
+
+.se-team h3 { margin: 0; font-size: 22px; font-weight: 500; line-height: 1.25; }
+
+.se-team__head p { margin-top: 2px; color: var(--muted); font-size: 14.5px; line-height: 1.4; }
+
+.se-team__about { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--se-body); font-size: 15px; line-height: 1.6; }
+
+.se-results--seasons { gap: 26px; }
+
+.se-note { margin-top: 22px; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
+
+.se-images { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 12px; margin: 0; padding: 0; list-style: none; }
+
+.se-image { margin: 0; }
+
+.se-image__thumb { display: grid; place-items: center; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 12px; background: #f1f3f4; color: var(--muted); font-size: 13px; text-decoration: none; }
+
+.se-image__thumb img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s ease; }
+
+.se-image__thumb:hover img { transform: scale(1.03); }
+
+.se-image figcaption { display: grid; gap: 1px; margin-top: 8px; font-size: 13px; line-height: 1.4; }
+
+.se-image__caption { color: var(--ink); }
+
+.se-image__source { width: fit-content; max-width: 100%; color: var(--muted); text-decoration: none; }
+
+.se-image__source:hover { color: var(--muted); text-decoration: underline; }
+
+.se-videos { display: grid; gap: 26px; margin: 0; padding: 0; list-style: none; }
+
+.se-video { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 12px 18px; align-items: start; }
+
+.se-video.is-playing { grid-template-columns: minmax(0, 1fr); }
+
+.se-video__player { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 12px; background: #e8eaed; }
+
+.se-video__player iframe, .se-video__play { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+.se-video__play { display: grid; place-items: center; padding: 0; background: transparent; cursor: pointer; }
+
+/* The player clips its corners, so the focus ring is drawn inside it. */
+.se-video__play:focus-visible { outline: 3px solid var(--link); outline-offset: -3px; }
+
+.se-video__play img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+.se-video__icon { z-index: 1; display: grid; place-items: center; width: 54px; height: 38px; border-radius: 10px; background: rgba(32, 33, 36, 0.8); color: #fff; transition: background 0.2s ease; }
+
+.se-video__play:hover .se-video__icon, .se-video__play:focus-visible .se-video__icon { background: var(--link); }
+
+.se-video h4 { margin: 0; font-size: 18px; font-weight: 400; line-height: 1.35; }
+
+.se-video__meta { margin-top: 2px; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+
+.se-video .se-result__snippet { margin-top: 4px; font-size: 14.5px; }
+
+.se-video__record { display: inline-block; margin-top: 6px; font-size: 14px; }
+
+.se-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 32px; margin: 0; padding: 0; list-style: none; }
+
+.se-links li { display: grid; align-content: start; gap: 1px; min-width: 0; }
+
+.se-links a { width: fit-content; max-width: 100%; font-size: 16px; line-height: 1.4; text-decoration: none; }
+
+.se-links a:hover { text-decoration: underline; }
+
+.se-links span { color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+
 .se-books { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 22px 16px; margin: 0; padding: 0; list-style: none; }
 
 .se-books li { display: grid; align-content: start; gap: 2px; }
@@ -330,7 +406,7 @@ html.se-booting { overflow: hidden; }
   /* Adds to the global 28px scroll-padding; clears the 44px pinned tabs row. */
   .se-hero, .se-matches, .se-panel, .se-section { scroll-margin-top: 36px; }
   .se-hero h1 { font-size: 24px; }
-  .se-result h3 { font-size: 18px; }
+  .se-result :is(h3, h4) { font-size: 18px; }
   .se-matches { padding: 16px; }
 }
 
@@ -338,6 +414,11 @@ html.se-booting { overflow: hidden; }
   .se-chrome { gap: 8px; padding: 0 140px 0 10px; }
   .se-chrome__dots { display: none; }
   .se-chrome__address { padding: 0 10px; font-size: 12px; }
+  .se-team { padding: 16px; }
+  .se-images { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .se-images li:first-child { grid-column: 1 / -1; }
+  .se-video { grid-template-columns: minmax(0, 1fr); }
+  .se-links { grid-template-columns: minmax(0, 1fr); gap: 14px; }
 }
 
 @media (max-width: 420px) {

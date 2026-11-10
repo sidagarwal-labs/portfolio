@@ -45,6 +45,32 @@ test("Microsoft links in Sid Search open their summaries in one Reader window", 
   expect(opened).toEqual([]);
 });
 
+test("Pitt Pirates links stay in Sid Search and its match videos play in the window", async ({ page }) => {
+  const opened = trackNewTabs(page);
+  await page.route("https://www.youtube-nocookie.com/embed/**", (route) => route.fulfill({ contentType: "text/html", body: "<p>Player</p>" }));
+  await page.route(/^https:\/\/(i\.ytimg\.com|www\.pittpiratesrobotics\.com)\//, (route) => route.abort());
+  const frame = await openSearch(page);
+  const address = page.locator(`${searchWin} .os-address__text`);
+  const windows = await page.locator(".os-win").count();
+
+  await frame.locator(".se-panel").getByRole("link", { name: "the Pitt Pirates, FRC Team 2642", exact: true }).click();
+  await expect(address).toHaveText(/#robotics$/);
+  await expect(frame.getByRole("heading", { name: "Robotics", exact: true, level: 2 })).toBeInViewport();
+  await expect(frame.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Robotics", exact: true })).toHaveAttribute("aria-current", "location");
+
+  await frame.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "About", exact: true }).click();
+  await expect(address).toHaveText(/#impact$/);
+  await frame.locator("#impact").getByRole("link", { name: "the Pitt Pirates, FRC Team 2642", exact: true }).click();
+  await expect(address).toHaveText(/#robotics$/);
+  await expect(frame.locator("#robotics")).toBeInViewport();
+
+  await frame.getByRole("button", { name: "Play 2017 Raleigh District, Final 3" }).click();
+  await expect(frame.locator("#robotics iframe")).toHaveAttribute("src", "https://www.youtube-nocookie.com/embed/VzhwTXsN2io?autoplay=1&rel=0");
+  await expect(page.locator(".os-win")).toHaveCount(windows);
+  await expect(page.locator(searchWin)).toHaveClass(/is-active/);
+  expect(opened).toEqual([]);
+});
+
 test("book and podcast links open the Library on that title", async ({ page }) => {
   const opened = trackNewTabs(page);
   const frame = await openSearch(page);

@@ -157,7 +157,7 @@ test("the search box ranks portfolio content with BM25 and explains the ranking"
 
 test("the search tabs jump to each section and highlight it on desktop and phones", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  const tabs = [["Projects", "lab"], ["Writing", "writing"], ["About", "impact"], ["Books", "library"], ["All", "intro"]];
+  const tabs = [["Projects", "lab"], ["Writing", "writing"], ["About", "impact"], ["Robotics", "robotics"], ["Books", "library"], ["All", "intro"]];
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 800 });
     await page.goto("./?view=search");
@@ -173,6 +173,82 @@ test("the search tabs jump to each section and highlight it on desktop and phone
   }
   await expect(page.locator("#impact")).toContainText("UNC Charlotte");
   await expect(page.locator("#impact")).toContainText("People also ask");
+});
+
+test("Sid Search keeps Pitt Pirates links on its Robotics section and plays matches inline", async ({ page }) => {
+  await page.route("https://www.youtube-nocookie.com/embed/**", (route) => route.fulfill({ contentType: "text/html", body: "<p>Player</p>" }));
+  await page.route(/^https:\/\/(i\.ytimg\.com|www\.pittpiratesrobotics\.com)\//, (route) => route.abort());
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("./?view=search");
+
+  const robotics = page.locator("#robotics");
+  await expect(page.locator("#impact").getByRole("link", { name: "the Pitt Pirates, FRC Team 2642", exact: true })).toHaveAttribute("href", "#robotics");
+  await page.locator(".se-panel").getByRole("link", { name: "the Pitt Pirates, FRC Team 2642", exact: true }).click();
+  await expect(page).toHaveURL(/\?view=search#robotics$/);
+  await expect(page.getByRole("heading", { name: "Robotics", exact: true, level: 2 })).toBeInViewport();
+  await expect(page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Robotics", exact: true })).toHaveAttribute("aria-current", "location");
+
+  const team = robotics.getByRole("article", { name: "Pitt Pirates" });
+  await expect(team).toContainText("FRC Team 2642");
+  await expect(team).toContainText("2013-2018");
+  await expect(team).toContainText("Team captain in 2017");
+  await expect(team).toContainText("5 official events");
+  await expect(team).toContainText("2014, 2016, 2017, 2018");
+  await expect(team.getByRole("link", { name: "The Blue Alliance" })).toHaveAttribute("href", "https://www.thebluealliance.com/team/2642/history");
+
+  const seasons = robotics.locator(".se-results--seasons .se-result__title");
+  await expect(seasons).toHaveText(["2013 season: Ashley Whippet", "2014 season: JoJo", "2016 season: Excalibot", "2017 season: Gemini", "2018 season: Riptide"]);
+  await expect(seasons.nth(3)).toHaveAttribute("href", "https://www.thebluealliance.com/team/2642/2017");
+
+  const images = robotics.locator(".se-image");
+  await expect(images).toHaveCount(3);
+  await images.last().scrollIntoViewIfNeeded();
+  await expect(images.getByText("Photo unavailable")).toHaveCount(3);
+  await expect(images.first().getByRole("link", { name: /^Original photo: Gemini/ })).toHaveAttribute("href", /pittpiratesrobotics\.com\/wp-content\/uploads\//);
+
+  await expect(robotics.locator(".se-video iframe")).toHaveCount(0);
+  await robotics.getByRole("button", { name: "Play 2017 Houston Championship, Roebling Qualification 14" }).click();
+  const player = robotics.locator(".se-video").first().locator("iframe");
+  await expect(player).toHaveAttribute("src", "https://www.youtube-nocookie.com/embed/23Ge6Ods51A?autoplay=1&rel=0");
+  await expect(player).toHaveAttribute("title", "2017 Houston Championship, Roebling Qualification 14");
+  await expect(robotics.locator(".se-video").first()).toHaveClass(/is-playing/);
+  await expect(robotics.getByRole("button", { name: "Play 2017 Raleigh District, Final 3" })).toBeVisible();
+  await expect(robotics.getByRole("link", { name: "2017 robot code" })).toHaveAttribute("href", "https://github.com/FRC2642/2017Robot");
+
+  await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "All", exact: true }).click();
+  await page.getByLabel("Search Sid's work").fill("robotics");
+  const result = page.locator(".se-matches .se-result__title").first();
+  await expect(result).toHaveAttribute("href", "#robotics");
+  await expect(page.locator(".se-matches .se-source__site").first()).toHaveText("Agarwal Labs");
+  await page.getByLabel("Search Sid's work").fill("riptide");
+  await expect(result).toHaveText("Pitt Pirates, FRC Team 2642");
+  await result.click();
+  await expect(page).toHaveURL(/\?view=search#robotics$/);
+  await expect(robotics).toBeInViewport();
+});
+
+test("Sid Search's Robotics section fits a phone", async ({ page }) => {
+  await page.route(/^https:\/\/(i\.ytimg\.com|www\.pittpiratesrobotics\.com)\//, (route) => route.abort());
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("./?view=search#robotics");
+    await expect(page.locator("#robotics")).toBeInViewport();
+    const section = await page.locator("#robotics").boundingBox();
+    for (const box of [".se-team", ".se-video__player", ".se-image__thumb", ".se-links a"]) {
+      for (const element of await page.locator(`#robotics ${box}`).all()) {
+        const rect = await element.boundingBox();
+        expect(rect!.x + rect!.width, `${box} at ${width}px`).toBeLessThanOrEqual(section!.x + section!.width + 0.5);
+      }
+    }
+    /* Videos stack above their details, and the lead photo spans the image grid. */
+    const video = await page.locator("#robotics .se-video__player").first().boundingBox();
+    expect(video!.width).toBeGreaterThan(section!.width - 1);
+    const lead = await page.locator("#robotics .se-image__thumb").first().boundingBox();
+    expect(lead!.width).toBeGreaterThan(section!.width - 1);
+    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
+  }
 });
 
 for (const embedded of [false, true]) {
