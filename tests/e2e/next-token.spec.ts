@@ -39,10 +39,10 @@ test.beforeEach(async ({ page }) => {
   for (const host of MODEL_HOSTS) await page.context().route(host, (route) => route.abort("internetdisconnected"));
 });
 
-async function openNextToken(page: Page, width = 1440) {
+async function openNextToken(page: Page, width = 1440, style: "modern" | "retro" = "modern") {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width, height: width < 600 ? 760 : 900 });
-  await page.goto("./");
+  await page.goto(`./?view=os&style=${style}`);
   return launchNextToken(page, width);
 }
 
@@ -93,7 +93,7 @@ async function expectLoad(worker: Worker, cacheOnly: boolean) {
 }
 
 async function finishLoading(worker: Worker) {
-  await worker.evaluate(() => self.postMessage({ type: "ready", device: "wasm" }));
+  await worker.evaluate(() => self.postMessage({ type: "ready", device: "wasm", validated: true }));
 }
 
 async function barPercents(page: Page) {
@@ -157,7 +157,7 @@ test("Next Token plays real precomputed predictions, with a temperature slider a
   await page.keyboard.press("ArrowUp");
   await page.keyboard.press("ArrowLeft");
   await expect(choices.nth(4)).toBeFocused();
-  const fine = game.getByRole("tabpanel", { name: "Real predictions" }).locator(".game__fine");
+  const fine = game.getByRole("tabpanel", { name: "Guess the next token" }).locator(".game__fine");
   await expect(fine).toContainText("Real next-token probabilities from SmolLM2-135M (Hugging Face, Apache 2.0), computed ahead of time.");
   await expect(fine).toContainText(meta.revision.slice(0, 7));
   await expect(game).not.toContainText(/toy logits|written by hand/i);
@@ -208,18 +208,27 @@ test("Next Token plays real precomputed predictions, with a temperature slider a
   expect(errors).toEqual([]);
 });
 
-test("Next Token fits a phone screen", async ({ page }) => {
-  const game = await openNextToken(page, 390);
-  await page.getByRole("group", { name: "Next token choices" }).getByRole("button").first().click();
-  await expect(page.locator(".nexttoken__bar")).toHaveCount(meta.topK);
-  await expect(game.locator(".nexttoken__other")).toBeVisible();
-  expect(await game.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
-  await game.getByRole("tab", { name: "Try it live" }).click();
-  await expect(game.getByRole("button", { name: /^Load model \(~\d+ MB\)$/ })).toBeVisible();
-  expect(await game.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
-});
+for (const style of ["modern", "retro"] as const) {
+  for (const width of [320, 390]) {
+    test(`Next Token modes fit ${width}px in ${style} style`, async ({ page }) => {
+      const game = await openNextToken(page, width, style);
+      await expect(page.locator("html")).toHaveAttribute("data-os-style", style);
+      await expect(game.getByRole("tabpanel", { name: "Guess the next token" })).toContainText("No model download needed");
+      await page.getByRole("group", { name: "Next token choices" }).getByRole("button").first().click();
+      await expect(page.locator(".nexttoken__bar")).toHaveCount(meta.topK);
+      await expect(game.locator(".nexttoken__other")).toBeVisible();
+      expect(await game.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
+      await game.getByRole("tab", { name: "Try your own prompt" }).click();
+      await expect(game.getByRole("button", { name: /^Load model \(~\d+ MB\)$/ })).toBeVisible();
+      await expect(game.getByRole("tabpanel", { name: "Try your own prompt" })).toContainText("not a chatbot");
+      expect(await game.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
+      expect(await game.locator(".nexttoken__tabs").evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+    });
+  }
+}
 
-test("Try it live downloads nothing until asked, can cancel, and fails clearly when model hosts are blocked", async ({ page }) => {
+test("Try your own prompt downloads nothing until asked, can cancel, and fails clearly when model hosts are blocked", async ({ page }) => {
   const errors: string[] = [];
   const modelRequests: string[] = [];
   const delivered: string[] = [];
@@ -240,12 +249,12 @@ test("Try it live downloads nothing until asked, can cancel, and fails clearly w
 
   const game = await openNextToken(page);
   const tabs = game.getByRole("tab");
-  await expect(tabs).toHaveText(["Real predictions", "Try it live"]);
+  await expect(tabs).toHaveText(["Guess the next token", "Try your own prompt"]);
   await tabs.first().click();
   await page.keyboard.press("ArrowRight");
   await expect(tabs.nth(1)).toBeFocused();
   await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true");
-  const panel = game.getByRole("tabpanel", { name: "Try it live" });
+  const panel = game.getByRole("tabpanel", { name: "Try your own prompt" });
   const load = panel.getByRole("button", { name: `Load model (~${Math.round(meta.downloadBytes / 1e6)} MB)` });
   await expect(load).toBeVisible();
   await expect(panel).toContainText(`${Math.round(meta.downloadBytes / 1e6)} MB of model files from Hugging Face`);
@@ -282,7 +291,7 @@ test("a downloaded model reopens at the live prompt and survives a page reload",
   page.on("pageerror", (error) => errors.push(error.message));
   await mockLiveWorker(page);
   const game = await openNextToken(page);
-  await game.getByRole("tab", { name: "Try it live" }).click();
+  await game.getByRole("tab", { name: "Try your own prompt" }).click();
   const firstWorker = page.waitForEvent("worker", (worker) => worker.url().includes("nextToken.worker"));
   await game.getByRole("button", { name: /^Load model/ }).click();
   const first = await firstWorker;
@@ -299,7 +308,7 @@ test("a downloaded model reopens at the live prompt and survives a page reload",
   await launchNextToken(page);
   const second = await secondWorker;
   await expectLoad(second, true);
-  await expect(game.getByRole("tab", { name: "Try it live" })).toHaveAttribute("aria-selected", "true");
+  await expect(game.getByRole("tab", { name: "Try your own prompt" })).toHaveAttribute("aria-selected", "true");
   await expect(game.getByRole("button", { name: /^Load model/ })).toHaveCount(0);
   await expect(game.getByRole("progressbar", { name: "Model download" })).toHaveCount(0);
   await expect(game.getByLabel("Prompt", { exact: true })).toHaveValue("The capital of France is");
@@ -330,7 +339,7 @@ test("an existing cached model opens directly on a phone and can pause and resum
   const game = await openNextToken(page, 320);
   const worker = await workerStarted;
   await expectLoad(worker, true);
-  await expect(game.getByRole("tab", { name: "Try it live" })).toHaveAttribute("aria-selected", "true");
+  await expect(game.getByRole("tab", { name: "Try your own prompt" })).toHaveAttribute("aria-selected", "true");
   await expect(game.getByLabel("Prompt", { exact: true })).toHaveValue("The capital of France is");
   await expect(game).toContainText("Your model is saved in this browser");
   expect(await game.evaluate((element) => element.scrollWidth - element.clientWidth)).toBe(0);
@@ -365,7 +374,7 @@ for (const state of ["partial", "older revision", "cleared", "failed response"] 
       }, meta);
     }
     const game = await openNextToken(page);
-    await game.getByRole("tab", { name: "Try it live" }).click();
+    await game.getByRole("tab", { name: "Try your own prompt" }).click();
     await expect(game.getByRole("button", { name: /^Load model/ })).toBeVisible();
     await expect(game.getByLabel("Prompt", { exact: true })).toHaveCount(0);
     expect(workers).toHaveLength(0);
@@ -379,7 +388,7 @@ test("unavailable cache storage explains the problem and allows manual loading",
     Object.defineProperty(window, "caches", { get() { throw new DOMException("Storage access denied", "SecurityError"); } });
   });
   const game = await openNextToken(page);
-  await game.getByRole("tab", { name: "Try it live" }).click();
+  await game.getByRole("tab", { name: "Try your own prompt" }).click();
   await expect(game.getByRole("status")).toContainText("Saved model files could not be checked");
   const load = game.getByRole("button", { name: /^Load model/ });
   await expect(load).toBeVisible();
@@ -398,7 +407,7 @@ test("the real worker never redownloads files evicted between cache inspection a
     await route.continue();
   });
   const game = await openNextToken(page);
-  await expect(game.getByRole("tab", { name: "Try it live" })).toHaveAttribute("aria-selected", "true");
+  await expect(game.getByRole("tab", { name: "Try your own prompt" })).toHaveAttribute("aria-selected", "true");
   await expect(game.getByRole("status")).toContainText("Some saved model files are no longer available", { timeout: 15_000 });
   const load = game.getByRole("button", { name: /^Load model/ });
   await expect(load).toBeVisible();
@@ -460,12 +469,47 @@ test("a delayed cache check does not override an explicitly selected game tab", 
   });
   const game = await openNextToken(page);
   await expect(page.locator("html")).toHaveAttribute("data-checking-model-cache", "true");
-  await game.getByRole("tab", { name: "Real predictions", exact: true }).click();
+  await game.getByRole("tab", { name: "Guess the next token", exact: true }).click();
   const workerStarted = page.waitForEvent("worker", (worker) => worker.url().includes("nextToken.worker"));
   await page.evaluate(() => window.dispatchEvent(new Event("release-model-cache")));
   const worker = await workerStarted;
   await expectLoad(worker, true);
-  await expect(game.getByRole("tab", { name: "Real predictions", exact: true })).toHaveAttribute("aria-selected", "true");
-  await game.getByRole("tab", { name: "Try it live" }).click();
+  await expect(game.getByRole("tab", { name: "Guess the next token", exact: true })).toHaveAttribute("aria-selected", "true");
+  await game.getByRole("tab", { name: "Try your own prompt" }).click();
   await expect(game.getByLabel("Prompt", { exact: true })).toHaveValue("The capital of France is");
 });
+
+test("the live prompt explains a verified CPU fallback instead of claiming the GPU worked", async ({ page }) => {
+  await mockLiveWorker(page);
+  const game = await openNextToken(page);
+  await game.getByRole("tab", { name: "Try your own prompt" }).click();
+  const started = page.waitForEvent("worker", (worker) => worker.url().includes("nextToken.worker"));
+  await game.getByRole("button", { name: /^Load model/ }).click();
+  const worker = await started;
+  await expectLoad(worker, false);
+  await worker.evaluate(() => self.postMessage({
+    type: "ready", device: "wasm", validated: true,
+    fallback: "WebGPU did not pass the calculation check. Using verified WebAssembly instead."
+  }));
+  await expect(game.getByRole("status")).toContainText("WebGPU did not pass the calculation check");
+  await expect(game.locator(".nexttoken__device")).toContainText("WebAssembly (CPU)");
+  await expect(game.getByRole("button", { name: "Sample", exact: true })).toBeEnabled();
+});
+
+for (const response of [
+  { type: "ready", device: "webgpu", validated: false },
+  { type: "error", kind: "inference", message: "The top token did not match the reference on either backend." }
+] satisfies LiveResponse[]) {
+  test(`a failed calculation check cannot enable live inference (${response.type})`, async ({ page }) => {
+    await mockLiveWorker(page);
+    const game = await openNextToken(page);
+    await game.getByRole("tab", { name: "Try your own prompt" }).click();
+    const started = page.waitForEvent("worker", (worker) => worker.url().includes("nextToken.worker"));
+    await game.getByRole("button", { name: /^Load model/ }).click();
+    const worker = await started;
+    await expectLoad(worker, false);
+    await worker.evaluate((message) => self.postMessage(message), response);
+    await expect(game.getByRole("alert")).toContainText("The model did not pass its calculation check");
+    await expect(game.getByRole("button", { name: "Sample", exact: true })).toHaveCount(0);
+  });
+}
