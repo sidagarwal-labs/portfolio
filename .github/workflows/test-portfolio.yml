@@ -1,4 +1,4 @@
-name: Test live pages
+name: Test portfolio
 
 on:
   pull_request:
@@ -30,13 +30,13 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Build and test live pages
-        run: npm run test:e2e -- live-pages.spec.ts
+      - name: Build and test portfolio
+        run: npm run test:e2e
 
       - name: Upload failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: live-pages-test-results
+          name: portfolio-test-results
           path: test-results/
           retention-days: 7

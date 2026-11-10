@@ -87,7 +87,7 @@ With the Vite dev server running, open `/?launch-preview=soon` for a labeled moc
 
 The launch schedule and recent launches show loading messages while requests are pending, including when rechecking an expired empty cache or retrying a failed request. Previously loaded launch details stay visible during refreshes. An empty-state message appears only after a successful empty response; failed requests (including the 20-second timeout) show an unavailable message when no saved response exists.
 
-The **Test live pages** GitHub Actions workflow builds and runs `live-pages.spec.ts` in Chromium on pull requests to `main` and on manual dispatch. Failed runs upload Playwright's screenshots, traces, and videos for seven days. This focused check does not run the full browser suite or deploy the site.
+The **Test portfolio** GitHub Actions workflow builds and runs the full Playwright suite in Chromium on pull requests to `main` and on manual dispatch. Failed runs upload Playwright's screenshots, traces, and videos for seven days. This check does not deploy the site.
 
 ## Verification
 
