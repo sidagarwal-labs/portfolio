@@ -1,13 +1,14 @@
+import { arxivSearchOrigin } from "../../../content/arxivSearch";
 import { findLibraryItem } from "../../../content/library";
 import { findReaderArticle } from "../../../content/readerLinks";
 import { OWN_GITHUB_LOGIN } from "./github/contract";
 import { fileTargetFromUrl } from "./github/fileTarget";
 
 /* Native Lab OS apps that outside links can open in place of a new tab. */
-export type LinkApp = "library" | "reader" | "github";
+export type LinkApp = "library" | "reader" | "github" | "arxiv";
 export type LinkRoute = { app: LinkApp; target: string };
 
-const linkApps = new Set<string>(["library", "reader", "github"] satisfies LinkApp[]);
+const linkApps = new Set<string>(["library", "reader", "github", "arxiv"] satisfies LinkApp[]);
 
 export const isLinkApp = (app: unknown): app is LinkApp => typeof app === "string" && linkApps.has(app);
 
@@ -42,6 +43,7 @@ export function routeLink(href: string): LinkRoute | undefined {
   if (item) return { app: "library", target: item.slug };
   const article = findReaderArticle(url.href);
   if (article) return { app: "reader", target: article };
+  if (url.origin === arxivSearchOrigin) return { app: "arxiv", target: `${url.pathname}${url.search}${url.hash}` };
   const github = githubTarget(url);
   if (github) return { app: "github", target: github };
   return undefined;

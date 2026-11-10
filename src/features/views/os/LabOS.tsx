@@ -199,11 +199,15 @@ function DesktopShell() {
     });
   }, []);
 
-  const open = useCallback((app: AppId, targetValue?: string) => {
+  const open = useCallback((requested: AppId, requestedTarget?: string) => {
     setMenuOpen(false);
     setCalendarOpen(false);
     setDesktopWindows([]);
     const { windows: current, desk: size, phone: onPhone } = live.current;
+    const shortcut = apps[requested];
+    /* Shortcuts (such as a project's repository) open the app they point to. */
+    const app = shortcut.kind === "link" ? shortcut.opens.app : requested;
+    const targetValue = shortcut.kind === "link" ? shortcut.opens.target : requestedTarget;
     if (app === "resume" && onPhone) {
       openInNewTab(profileContent.resumeHref);
       return;

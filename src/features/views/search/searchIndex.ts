@@ -1,3 +1,4 @@
+import { arxivSearchRepoHref } from "../../../content/arxivSearch";
 import { courseworkProjects, currentResearchNotes, earlierBuildoutEditions } from "../../../content/journalContent";
 import { libraryCategories, podcasts, spotifyShowUrl } from "../../../content/library";
 import { robotNames } from "../../../content/robotics";
@@ -44,6 +45,9 @@ export function describeSource(href: string, route = false) {
     return { site: href, url: href };
   }
 }
+
+/* arXiv Search is the featured project, so searches about papers and retrieval should find it. */
+const arxivKeywords = "arxiv papers search engine hybrid retrieval semantic retrieval reranking ndcg mrr recall live demo";
 
 const background: SearchDoc[] = [
   {
@@ -103,7 +107,7 @@ export const searchDocs: SearchDoc[] = [
     title: project.title,
     href: project.websiteHref ?? project.href,
     snippet: project.description,
-    keywords: [project.focus, ...project.stack, ...project.concepts, "project build code"].join(" ")
+    keywords: [project.focus, ...project.stack, ...project.concepts, project.href === arxivSearchRepoHref ? arxivKeywords : "", "project build code"].join(" ")
   })),
   ...(marketTracker?.href ? [{
     id: "project-tracker",
