@@ -10,7 +10,7 @@ function FeaturedArxiv({ id, level }: { id: string; level: 2 | 3 }) {
       <Heading id={id}><a className="se-featured__title" href={arxivSearchHref}>arXiv Search</a></Heading>
       <p className="se-featured__snippet">
         An AI research assistant for {formatCount(stats.papers)} recent arXiv papers in information retrieval, language,
-        and machine learning. Hybrid BM25 and semantic retrieval build a shortlist, then an LLM reranks it.
+        and machine learning. Hybrid BM25 and semantic retrieval build a shortlist that an LLM reranks.
       </p>
       <dl className="se-featured__stats">
         <div>

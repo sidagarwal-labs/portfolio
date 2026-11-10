@@ -39,9 +39,9 @@ export function Overview({ actions, onTryLive }: { actions: OsActions; onTryLive
       <section className="ax-hero" aria-labelledby="ax-hero-title">
         <h3 id="ax-hero-title">An AI research assistant for arXiv papers</h3>
         <p className="ax-lede">
-          arXiv Search covers {formatCount(stats.papers)} recent arXiv papers in information retrieval, computation and language, and machine
-          learning (cs.IR, cs.CL, and cs.LG). BM25 keyword search and semantic embedding search build a shortlist, and an LLM reranks it. Each
-          search gets an AI summary with citations, and any paper opens as a PDF beside a chat about that paper.
+          arXiv Search covers {formatCount(stats.papers)} recent arXiv papers in information retrieval, language, and machine learning (cs.IR,
+          cs.CL, cs.LG). BM25 and semantic search build a shortlist, and an LLM reranks it. Each search gets an AI summary with citations, and
+          each paper opens as a PDF beside a chat about it.
         </p>
         <div className="ax-actions">
           <a className="os-button os-button--primary" href={arxivSearchHref} target="_blank" rel="noreferrer">
