@@ -7,11 +7,11 @@ const embedded = embeddedView !== undefined;
 
 /* Runs inside a Lab OS window. Outside links to books, podcasts, Microsoft pages, Sid's GitHub, and the arXiv Search
    site open in the OS's Library, Reader, GitHub, and arXiv Search apps; other outside sites open in a new tab (most
-   refuse to load in frames). The
-   decision is made here, during the click, so the new-tab fallback keeps the user gesture popup blockers require.
-   The resume opens in the OS's PDF window, and links to Markets, Launches, or AI leaderboards from another page open
-   that app's window. Other in-site links replace the frame's URL instead of pushing browser
-   history: frames share the tab's history, so the OS keeps a separate back/forward stack for each window. */
+   refuse to load in frames). The decision is made here, during the click, so the new-tab fallback keeps the user
+   gesture popup blockers require. The resume opens in the OS's PDF window, and links to Markets, Launches, or AI
+   leaderboards from another page open that app's window. Other in-site links replace the frame's URL instead of
+   pushing browser history: frames share the tab's history, so the OS keeps a separate back/forward stack for each
+   window. */
 export function useFrameBridge() {
   const location = useLocation();
   const navigate = useNavigate();

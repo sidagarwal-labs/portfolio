@@ -9,8 +9,8 @@ function FeaturedArxiv({ id, level }: { id: string; level: 2 | 3 }) {
       <p className="se-featured__eyebrow"><b>Featured project</b><span>arxiv.agarwal-labs.com</span></p>
       <Heading id={id}><a className="se-featured__title" href={arxivSearchHref}>arXiv Search</a></Heading>
       <p className="se-featured__snippet">
-        An AI research assistant for {formatCount(stats.papers)} recent arXiv papers on information retrieval. Hybrid
-        BM25 and semantic retrieval build a shortlist, then an LLM reranks it.
+        An AI research assistant for {formatCount(stats.papers)} recent arXiv papers in information retrieval, language,
+        and machine learning. Hybrid BM25 and semantic retrieval build a shortlist, then an LLM reranks it.
       </p>
       <dl className="se-featured__stats">
         <div>

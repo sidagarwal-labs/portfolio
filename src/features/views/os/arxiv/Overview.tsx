@@ -39,8 +39,9 @@ export function Overview({ actions, onTryLive }: { actions: OsActions; onTryLive
       <section className="ax-hero" aria-labelledby="ax-hero-title">
         <h3 id="ax-hero-title">An AI research assistant for arXiv papers</h3>
         <p className="ax-lede">
-          arXiv Search finds papers among {formatCount(stats.papers)} recent arXiv cs.IR papers with hybrid retrieval, BM25 keyword search plus semantic
-          embedding search, and then lets an LLM rerank the shortlist. Each paper gets a cited summary and its own chat.
+          arXiv Search covers {formatCount(stats.papers)} recent arXiv papers in information retrieval, computation and language, and machine
+          learning (cs.IR, cs.CL, and cs.LG). BM25 keyword search and semantic embedding search build a shortlist, and an LLM reranks it. Each
+          search gets an AI summary with citations, and any paper opens as a PDF beside a chat about that paper.
         </p>
         <div className="ax-actions">
           <a className="os-button os-button--primary" href={arxivSearchHref} target="_blank" rel="noreferrer">
@@ -81,7 +82,7 @@ export function Overview({ actions, onTryLive }: { actions: OsActions; onTryLive
           <div className="ax-stat">
             <dt>Papers</dt>
             <dd className="ax-stat__value">{formatCount(stats.papers)}</dd>
-            <dd className="ax-stat__note">Recent arXiv cs.IR papers, searchable</dd>
+            <dd className="ax-stat__note">Recent cs.IR, cs.CL, and cs.LG papers</dd>
           </div>
         </dl>
       </section>
