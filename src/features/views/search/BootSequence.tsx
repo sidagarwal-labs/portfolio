@@ -19,7 +19,7 @@ const postLines = [
   "Memory check ............ OK",
   "Mounting /projects ...... OK",
   "Mounting /writing ....... OK",
-  "Mounting /bookshelf ..... OK",
+  "Mounting /library ....... OK",
   "Network ................. agarwal-labs.com",
   "Starting Lab OS"
 ];

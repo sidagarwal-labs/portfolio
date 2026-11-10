@@ -10,6 +10,7 @@ import { useScrollSpy } from "../useScrollSpy";
 import { contactLinks, earlierProjects, emailLink, marketTracker, noteDateFormatter, viewProjects } from "../viewData";
 import BootSequence, { labLogo } from "./BootSequence";
 import { hasBooted, rememberBoot } from "./bootState";
+import LibrarySection from "./LibrarySection";
 import RoboticsSection from "./RoboticsSection";
 import { matchesTerm, phraseBoost, queryTerms, runSearch, searchDocs, type SearchDoc } from "./searchIndex";
 import Source from "./Source";
@@ -20,16 +21,16 @@ import "./search.css";
 const embedded = embeddedView === "search";
 
 const defaultQuery = "Sid Agarwal";
-const suggestions = ["RAG", "retrieval", "resume", "AI buildout", "robotics", "books"];
+const suggestions = ["RAG", "retrieval", "resume", "AI buildout", "robotics", "podcasts"];
 const tabs = [
   { id: "intro", label: "All" },
   { id: "lab", label: "Projects" },
   { id: "writing", label: "Writing" },
   { id: "impact", label: "About" },
   { id: "robotics", label: "Robotics" },
-  { id: "library", label: "Books" }
+  { id: "library", label: "Library" }
 ];
-/* Contact sits below Books but has no tab, so the spy stops at Books. */
+/* Contact sits below Library but has no tab, so the spy stops at Library. */
 const spyIds = tabs.map((tab) => tab.id);
 
 function DocLink({ doc, className, children }: { doc: SearchDoc; className?: string; children: ReactNode }) {
@@ -247,7 +248,7 @@ function SearchPage() {
                   <li><a href="#writing">Writing</a><span>AI buildout notes and essays</span></li>
                   <li><a href="#impact">About</a><span>Microsoft, Amazon, education</span></li>
                   <li><a href="#robotics">Robotics</a><span>Pitt Pirates, FRC Team 2642</span></li>
-                  <li><a href="#library">Bookshelf</a><span>Books I recommend</span></li>
+                  <li><a href="#library">Library</a><span>Books and podcasts I recommend</span></li>
                   <li><a href={profileContent.resumeHref}>Resume</a><span>PDF</span></li>
                   {emailLink && <li><a href={emailLink.href}>Email</a><span>{emailLink.href.replace("mailto:", "")}</span></li>}
                 </ul>
@@ -395,30 +396,7 @@ function SearchPage() {
 
               <RoboticsSection />
 
-              <section className="se-section" id="library" aria-labelledby="se-library-heading">
-                <h2 id="se-library-heading">On my bookshelf</h2>
-                <ul className="se-books">
-                  {profileContent.books.map((book) => (
-                    <li key={book.slug}>
-                      <a href={book.href}>
-                        <span className="se-books__cover">
-                          <img
-                            src={book.cover}
-                            alt=""
-                            width="72"
-                            height="108"
-                            loading="lazy"
-                            decoding="async"
-                            onError={(event) => { event.currentTarget.style.visibility = "hidden"; }}
-                          />
-                        </span>
-                        <span className="se-books__title">{book.title}</span>
-                      </a>
-                      <span className="se-books__author">{book.author}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+              <LibrarySection />
 
               <section className="se-section se-contact" id="contact" aria-labelledby="se-contact-heading">
                 <h2 id="se-contact-heading">Say hello</h2>
