@@ -57,6 +57,8 @@ test.describe("REST events fallback", () => {
     expect(alpha).toMatchObject({ diskUsageKb: 42, stars: 3, forks: 1, isFork: false, primaryLanguage: "TypeScript" });
     expect(gamma).toMatchObject({ primaryLanguage: null, languages: [] });
     expect(gamma.activity.map((day) => day.date)).toEqual(["2026-08-13", "2026-08-14", "2026-09-01"]);
+    // Public events cannot count commits, so there is no all-time count.
+    expect(out.repos.every((item) => !("allTimeCommits" in item))).toBe(true);
   });
 
   test("never includes private repositories", () => {
@@ -80,6 +82,16 @@ test.describe("validateInsights", () => {
     expect(JSON.stringify(clean)).not.toContain("isPrivate");
   });
 
+  test("keeps allTimeCommits when present and accepts data without it", () => {
+    const counted = { ...snapshot, repos: snapshot.repos.map((item, i) => ({ ...item, allTimeCommits: i * 7 })) };
+    expect(validateInsights(counted).repos.map((item) => item.allTimeCommits)).toEqual(snapshot.repos.map((_, i) => i * 7));
+    // Snapshots written before the field existed, and REST data, have no all-time counts.
+    const older = { ...snapshot, repos: snapshot.repos.map(({ allTimeCommits: _, ...item }) => item) };
+    const out = validateInsights(older);
+    expect(out.repos).toHaveLength(snapshot.repos.length);
+    expect(out.repos.every((item) => !("allTimeCommits" in item))).toBe(true);
+  });
+
   test("rejects broken payloads", () => {
     const broken: unknown[] = [
       null,
@@ -100,7 +112,8 @@ test.describe("validateInsights", () => {
       { ...snapshot, repos: [{ ...snapshot.repos[0], stars: -1 }] },
       { ...snapshot, repos: [{ ...snapshot.repos[0], isFork: "no" }] },
       { ...snapshot, repos: [{ ...snapshot.repos[0], activity: [{ date: "1999-01-01", count: 1 }] }] },
-      { ...snapshot, repos: [{ ...snapshot.repos[0], activity: [{ date: snapshot.range.to, count: 1 }, { date: snapshot.range.from, count: 1 }] }] }
+      { ...snapshot, repos: [{ ...snapshot.repos[0], activity: [{ date: snapshot.range.to, count: 1 }, { date: snapshot.range.from, count: 1 }] }] },
+      ...[-1, 1.5, "99", null, Number.NaN].map((allTimeCommits) => ({ ...snapshot, repos: [{ ...snapshot.repos[0], allTimeCommits }] }))
     ];
     for (const payload of broken) {
       let error: unknown;
@@ -184,9 +197,11 @@ test("the committed snapshot is a full public GraphQL year", () => {
   expect(new Set(snapshot.repos.map((item) => item.nameWithOwner.toLowerCase())).size).toBe(snapshot.repos.length);
   for (const item of snapshot.repos) {
     // Only contract fields: nothing that could carry privacy metadata.
-    expect(Object.keys(item).sort()).toEqual(
-      ["activity", "createdAt", "description", "diskUsageKb", "forks", "isFork", "languages", "name", "nameWithOwner", "primaryLanguage", "pushedAt", "stars", "url"]
-    );
+    const keys = ["activity", "createdAt", "description", "diskUsageKb", "forks", "isFork", "languages", "name", "nameWithOwner", "primaryLanguage", "pushedAt", "stars", "url"];
+    // Every repository with commits in the year also has its all-time count.
+    if (item.activity.length) keys.push("allTimeCommits");
+    expect(Object.keys(item).sort()).toEqual(keys.sort());
+    if (item.allTimeCommits !== undefined) expect(Number.isInteger(item.allTimeCommits) && item.allTimeCommits >= 0).toBe(true);
     expect(item.url).toBe(`https://github.com/${item.nameWithOwner}`);
     expect(item.nameWithOwner.endsWith(`/${item.name}`)).toBe(true);
   }
