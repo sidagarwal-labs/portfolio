@@ -16,8 +16,15 @@
 .ax-head__id { display: grid; flex: 1 1 220px; min-width: 0; }
 .ax-head__name { font-size: 15px; font-weight: 650; line-height: 1.3; }
 .ax-head__sub { color: #6b7383; font-size: 12.5px; overflow-wrap: anywhere; }
+.ax-tabs { display: flex; flex: none; gap: 4px; max-width: 100%; margin-left: auto; overflow-x: auto; padding: 3px; border-radius: 999px; background: #eef1f5; }
+.ax-tab { flex: none; height: 30px; padding: 0 14px; border: 0; border-radius: 999px; background: transparent; color: #3b4250; font: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; }
+.ax-tab:hover { color: #1f2328; }
+.ax-tab[aria-selected="true"] { background: #fff; color: #1f2328; font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14); }
 
-.ax-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.ax-panel { flex: 1 1 auto; min-height: 0; }
+.ax-panel[hidden] { display: none; }
+.ax-panel:focus-visible { outline-offset: -2px; }
+.ax-scroll { overflow: auto; }
 .ax-overview { display: grid; gap: 26px; max-width: 1000px; padding: 20px 24px 32px; }
 
 /* Hero and headline numbers */
@@ -104,9 +111,32 @@
 .ax-card p { color: #4f5664; font-size: 13px; }
 .ax-card .os-button { justify-self: start; }
 
+/* Try it live */
+.ax-panel--live { display: flex; flex-direction: column; }
+.ax-live { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+.ax-live__bar .os-address { margin-right: 4px; }
+.ax-live__stage { position: relative; flex: 1 1 auto; min-height: 0; background: #fff; }
+.ax-live__frame { position: absolute; inset: 0; }
+.ax-live__cover { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; background: #f7f8fa; overflow: auto; }
+.ax-live__cover[hidden] { display: none; }
+.ax-live__loading { display: inline-flex; align-items: center; gap: 8px; color: #4f5664; font-size: 13.5px; }
+.ax-spin { animation: ax-spin 0.9s linear infinite; }
+@keyframes ax-spin { to { transform: rotate(360deg); } }
+.ax-fallback { display: grid; justify-items: center; gap: 10px; max-width: 460px; text-align: center; }
+.ax-fallback__icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; background: #fdecea; color: var(--ax-stage2); }
+.ax-fallback h3 { font-size: 17px; line-height: 1.3; }
+.ax-fallback p { color: #4f5664; font-size: 13.5px; }
+.ax-fallback .ax-actions { justify-content: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ax-spin { animation: none; }
+}
+
 /* Narrow windows and phones */
 @container (max-width: 760px) {
   .ax-head { padding: 10px 14px; }
+  .ax-tabs { flex: 1 1 100%; margin-left: 0; }
+  .ax-tab { flex: 1 1 0; }
   .ax-overview { gap: 22px; padding: 16px 14px 24px; }
   .ax-hero h3 { font-size: 19px; }
   .ax-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -125,7 +155,11 @@
 /* Retro (Windows 95) style */
 .os--retro .ax, .os--retro .ax button { font-family: var(--os-retro-font); }
 .os--retro .ax-head { border-bottom-color: #808080; background: #c0c0c0; }
-.os--retro .ax-head__tile, .os--retro .ax-stat, .os--retro .ax-stagecard, .os--retro .ax-caveats, .os--retro .ax-card, .os--retro .ax-card__tile { border-radius: 0; }
+.os--retro .ax-head__tile, .os--retro .ax-tabs, .os--retro .ax-tab, .os--retro .ax-stat, .os--retro .ax-stagecard, .os--retro .ax-caveats, .os--retro .ax-card, .os--retro .ax-card__tile, .os--retro .ax-fallback__icon { border-radius: 0; }
+.os--retro .ax-tabs { background: #c0c0c0; box-shadow: var(--bevel-in); }
+.os--retro .ax-tab[aria-selected="true"] { background: #000080; color: #fff; box-shadow: none; }
+.os--retro .ax-live__cover { background: #c0c0c0; }
+.os--retro .ax-fallback { padding: 18px 20px; border: 1px solid #808080; background: #fff; }
 .os--retro .ax-stat, .os--retro .ax-stagecard, .os--retro .ax-caveats, .os--retro .ax-card { border-color: #808080; background: #fff; }
 .os--retro .ax-stat--wide { border-left-color: var(--ax-stage2); }
 .os--retro .ax-stagecard { border-left-color: var(--ax-stage); }
