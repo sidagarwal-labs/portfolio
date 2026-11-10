@@ -104,9 +104,14 @@ function initialRect(app: AppId, desk: DeskSize, count: number): Rect & { maximi
 }
 
 /* A site app reported a new location: push it onto the window's history unless it is the back/forward target. */
-function withLocation(win: OsWin, path: string): OsWin {
+function withLocation(win: OsWin, path: string, replace = false): OsWin {
   if (win.pending !== undefined && path === win.pending) return { ...win, pending: undefined };
   if (win.history[win.index] === path) return win;
+  /* An in-page change replaces the current entry; returning to the entry just behind it steps back instead. */
+  if (replace) {
+    if (win.index > 0 && win.history[win.index - 1] === path) return { ...win, index: win.index - 1, pending: undefined };
+    return { ...win, history: win.history.map((entry, index) => (index === win.index ? path : entry)), pending: undefined };
+  }
   const history = [...win.history.slice(0, win.index + 1), path];
   return { ...win, history, index: history.length - 1, pending: undefined };
 }
@@ -318,7 +323,7 @@ function DesktopShell() {
         setMenuOpen(false);
         setCalendarOpen(false);
       } else if (message.type === "labos:location") {
-        setWindows((current) => current.map((win) => (win.id === windowId ? withLocation(win, message.path) : win)));
+        setWindows((current) => current.map((win) => (win.id === windowId ? withLocation(win, message.path, message.replace === true) : win)));
       } else if (message.type === "labos:query") {
         setWindows((current) => current.map((win) => (win.id === windowId && win.query !== message.query ? { ...win, query: message.query } : win)));
       }
