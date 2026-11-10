@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { courseworkProjects, currentResearchNotes, earlierBuildoutEditions } from "../../../content/journalContent";
+import { archivedResearchNotes, courseworkProjects, featuredResearchNotes, marketsInsightsPath } from "../../../content/journalContent";
 import { profileContent } from "../../../content/siteContent";
 import { usePrefersReducedMotion } from "../../../hooks/usePrefersReducedMotion";
 import { useResearchNoteDates } from "../../../hooks/useResearchNoteDates";
@@ -244,7 +244,7 @@ function TrainingRunPage() {
           <table className="tr-table">
             <thead><tr><th scope="col"><span className="sr-only">Row</span></th><th scope="col">title</th><th scope="col">updated</th></tr></thead>
             <tbody>
-              {currentResearchNotes.map((note, index) => (
+              {featuredResearchNotes.map((note, index) => (
                 <tr key={note.slug}>
                   <td className="tr-table__index">{index}</td>
                   <td><a href={note.href} target="_blank" rel="noopener noreferrer">{note.title}</a></td>
@@ -253,18 +253,23 @@ function TrainingRunPage() {
               ))}
               {profileContent.writing.map((entry, index) => (
                 <tr key={entry.slug}>
-                  <td className="tr-table__index">{currentResearchNotes.length + index}</td>
+                  <td className="tr-table__index">{featuredResearchNotes.length + index}</td>
                   <td><Link to={`/writing/${entry.slug}`}>{entry.title}</Link></td>
                   <td className="tr-table__date">{entry.date}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {earlierBuildoutEditions.length > 0 && (
+          <p className="notes-insights tr-insights">
+            <span className="tr-insights__prompt" aria-hidden="true">→</span>
+            Charts and deep dives built from these notes live in{" "}
+            <Link to={marketsInsightsPath}>Markets › Insights</Link>.
+          </p>
+          {archivedResearchNotes.length > 0 && (
             <details className="project-archive tr-archive">
-              <summary>Earlier AI buildout editions</summary>
+              <summary>All research notes</summary>
               <ul>
-                {earlierBuildoutEditions.map((note) => (
+                {archivedResearchNotes.map((note) => (
                   <li key={note.slug}>
                     <a href={note.href} target="_blank" rel="noopener noreferrer">{note.title}</a>{" "}
                     <time className="entry-meta" dateTime={noteDates[note.slug]}>{noteDateFormatter.format(new Date(noteDates[note.slug]))}</time>

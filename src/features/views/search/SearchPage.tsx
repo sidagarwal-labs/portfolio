@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import { Link } from "react-router-dom";
 import { Lock, Power, Search, X } from "lucide-react";
 import { arxivSearchRepoHref } from "../../../content/arxivSearch";
-import { courseworkProjects, currentResearchNotes, earlierBuildoutEditions } from "../../../content/journalContent";
+import { archivedResearchNotes, courseworkProjects, featuredResearchNotes, marketsInsightsPath } from "../../../content/journalContent";
 import { profileContent } from "../../../content/siteContent";
 import { usePrefersReducedMotion } from "../../../hooks/usePrefersReducedMotion";
 import { useResearchNoteDates } from "../../../hooks/useResearchNoteDates";
@@ -335,7 +335,7 @@ function SearchPage() {
                   </p>
                 )}
                 <ul className="se-stories">
-                  {currentResearchNotes.map((note) => (
+                  {featuredResearchNotes.map((note) => (
                     <li key={note.slug}>
                       <a href={note.href} target="_blank" rel="noopener noreferrer">
                         <span className="se-stories__source">GitHub · research notes</span>
@@ -354,11 +354,15 @@ function SearchPage() {
                     </li>
                   ))}
                 </ol>
-                {earlierBuildoutEditions.length > 0 && (
+                <p className="notes-insights se-insights">
+                  Charts and deep dives built from these notes live in{" "}
+                  <Link to={marketsInsightsPath}>Markets › Insights</Link>.
+                </p>
+                {archivedResearchNotes.length > 0 && (
                   <details className="project-archive se-archive">
-                    <summary>Earlier AI buildout editions</summary>
+                    <summary>All research notes</summary>
                     <ul>
-                      {earlierBuildoutEditions.map((note) => (
+                      {archivedResearchNotes.map((note) => (
                         <li key={note.slug}>
                           <a href={note.href} target="_blank" rel="noopener noreferrer">{note.title}</a>{" "}
                           <time className="entry-meta" dateTime={noteDates[note.slug]}>{noteDateFormatter.format(new Date(noteDates[note.slug]))}</time>

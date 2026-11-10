@@ -46,7 +46,7 @@ test("homepage presents real writing and projects without the scene runtime", as
 
   await expect(page.getByRole("heading", { name: "Sid Agarwal", exact: true })).toBeVisible();
   await expect(page.locator("canvas, .glass-card, .scene-canvas")).toHaveCount(0);
-  await expect(page.locator("#writing .writing-list > li > a")).toHaveCount(7);
+  await expect(page.locator("#writing .writing-list > li > a")).toHaveCount(3);
   await expect(page.locator(".project-list .project-title").first()).toHaveText("arXiv Search");
   await expect(page.getByRole("link", { name: "arXiv Search", exact: true })).toHaveAttribute("href", "https://arxiv.agarwal-labs.com/");
   await expect(page.getByRole("link", { name: "Financial models", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/models");
@@ -249,22 +249,25 @@ test("coursework sits under earlier projects and links to public repos with clea
   await expect(archive.locator("li").filter({ hasText: "Text Analytics" })).toContainText("source attribution");
 });
 
-test("writing features the newest AI buildout edition and keeps earlier editions one click away", async ({ page }) => {
+test("writing features the three latest notes, links to Markets Insights, and keeps the rest one click away", async ({ page }) => {
   await page.goto("./");
   const writing = page.locator("#writing");
-  await expect(writing.locator(".writing-list > li > a")).toHaveText([
-    "AI buildout: October 2026", "Foundation labs", "AI memory & storage", "GPU & memory prices",
-    "AI capital expenditure", "AI adoption", "Cloud growth"
-  ]);
+  await expect(writing.locator(".writing-list > li > a")).toHaveText(["AI buildout: October 2026", "Foundation labs", "AI memory & storage"]);
   await expect(page.getByRole("heading", { name: "Following the AI buildout" })).toHaveCount(0);
   await expect(writing.getByRole("link", { name: "AI / LLM Stack Tracker", exact: true })).toHaveAttribute("href", "/markets");
+  const insights = writing.locator(".notes-insights");
+  await expect(insights).toHaveText("Charts and deep dives built from these notes live in Markets › Insights.");
+  await expect(insights.getByRole("link", { name: "Markets › Insights", exact: true })).toHaveAttribute("href", "/markets?tab=insights");
   await expect(writing.locator(".disclaimer")).toHaveText("Research for my own learning, not investment advice.");
-  const editions = writing.locator(".note-archive");
-  await expect(editions.locator("summary")).toHaveText("Earlier AI buildout editions");
-  await expect(editions).not.toHaveAttribute("open", "");
-  await editions.locator("summary").click();
-  await expect(editions).toHaveAttribute("open", "");
-  await expect(editions.getByRole("link", { name: "AI buildout: September 2026", exact: true })).toBeVisible();
+  const archive = writing.locator(".note-archive");
+  await expect(archive.locator("summary")).toHaveText("All research notes");
+  await expect(archive).not.toHaveAttribute("open", "");
+  await archive.locator("summary").click();
+  await expect(archive).toHaveAttribute("open", "");
+  await expect(archive.locator("li > a")).toHaveText([
+    "GPU & memory prices", "AI capital expenditure", "AI adoption", "Cloud growth", "AI buildout: September 2026"
+  ]);
+  await expect(archive.getByRole("link", { name: "AI buildout: September 2026", exact: true })).toBeVisible();
 });
 
 test("research notes link to the verified source documents", async ({ page }) => {
@@ -585,15 +588,16 @@ test("introduction links to shipped Copilot launches", async ({ page }) => {
 
 test.describe("GitHub note dates", () => {
   test.use({ timezoneId: "America/Los_Angeles" });
-  const fallbackDates = Array(7).fill("Oct 4, 2026");
+  const fallbackDates = Array(3).fill("Oct 4, 2026");
 
   test("verified commit dates remain visible when GitHub is unavailable", async ({ page }) => {
     await page.goto("./");
     const dates = page.locator(".writing-list time");
-    await expect(dates).toHaveCount(7);
+    await expect(dates).toHaveCount(3);
     await expect(dates).toHaveText(fallbackDates);
     await expect(dates.first()).toHaveAttribute("datetime", "2026-10-04T04:17:48Z");
-    const earlierEdition = page.locator(".note-archive time");
+    await expect(page.locator(".note-archive time")).toHaveText([...Array(4).fill("Oct 4, 2026"), "Sep 9, 2026"]);
+    const earlierEdition = page.locator(".note-archive li").filter({ hasText: "AI buildout: September 2026" }).locator("time");
     await expect(earlierEdition).toHaveAttribute("datetime", "2026-09-09T02:36:56Z");
     await expect(earlierEdition).toHaveText("Sep 9, 2026");
   });

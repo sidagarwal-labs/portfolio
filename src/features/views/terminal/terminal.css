@@ -218,6 +218,10 @@ html[data-view="terminal"] .skip-link:focus { top: calc(var(--tm-ticker, 47px) +
 /* News wire */
 .tm-lede { margin-bottom: 16px; }
 
+.tm-insights { margin-top: 14px; color: var(--tm-ink-2); font-size: 14px; line-height: 1.6; }
+
+.tm-insights__code { display: inline-block; margin-right: 8px; padding: 0 6px; border: 1px solid var(--line); color: var(--link); font: 700 11px/1.6 var(--tm-mono); letter-spacing: 0.06em; }
+
 .tm-wire__head, .tm-wire li { display: grid; grid-template-columns: 112px minmax(0, 1fr) 56px; gap: 16px; }
 
 .tm-wire { margin: 0; padding: 0; list-style: none; }

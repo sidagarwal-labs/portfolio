@@ -90,6 +90,10 @@ html[data-view="forward"] {
 
 .fp-archive { margin-top: 18px; }
 
+.fp-insights { margin-top: 18px; }
+
+.fp-insights__label { margin-right: 8px; color: var(--muted); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+
 .fp-heads { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 
 .fp-heads__label { margin-right: 4px; color: var(--muted); font-family: "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }

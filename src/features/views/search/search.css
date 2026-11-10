@@ -297,6 +297,8 @@ html.se-booting { overflow: hidden; }
 
 .se-section .disclaimer { margin-top: 18px; }
 
+.se-insights { margin-top: 24px; color: var(--se-body); font-size: 15px; line-height: 1.6; }
+
 .se-subhead { margin: 36px 0 14px; font-size: 18px; font-weight: 500; line-height: 1.35; }
 
 /* Robotics */

@@ -278,8 +278,15 @@ async function bringSearchForward(page: Page) {
   await expect(win).toHaveClass(/is-active/);
 }
 
-const clickNote = (page: Page, slug: string) =>
-  page.frameLocator(`${searchWin} iframe`).locator(`#writing a[href="${noteUrl(`${slug}.md`)}"]`).first().click();
+/* Opens the collapsed "All research notes" list first when the note is not one of the three featured notes. */
+const clickNote = async (page: Page, slug: string) => {
+  const link = page.frameLocator(`${searchWin} iframe`).locator(`#writing a[href="${noteUrl(`${slug}.md`)}"]`).first();
+  await link.evaluate((anchor) => {
+    const details = anchor.closest("details");
+    if (details) details.open = true;
+  });
+  await link.click();
+};
 
 /* Opens Lab OS with Sid Search, then a research note from its Writing section. */
 async function openNote(page: Page, files: NoteFiles, { phone = false, slug = "ai-capex" } = {}) {

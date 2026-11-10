@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import JournalLayout from "../../components/JournalLayout";
-import { courseworkProjects, currentResearchNotes, earlierBuildoutEditions, selectedProjects } from "../../content/journalContent";
+import { archivedResearchNotes, courseworkProjects, featuredResearchNotes, marketsInsightsPath, selectedProjects } from "../../content/journalContent";
 import { profileContent } from "../../content/siteContent";
 import { useResearchNoteDates } from "../../hooks/useResearchNoteDates";
 
@@ -81,7 +81,7 @@ function JournalHomePage() {
               </p>
             )}
             <ul className="writing-list">
-              {currentResearchNotes.map((note) => (
+              {featuredResearchNotes.map((note) => (
                 <li key={note.slug}>
                   <a href={note.href} target="_blank" rel="noopener noreferrer">{note.title}</a>
                   <NoteDate value={noteDates[note.slug]} />
@@ -94,11 +94,15 @@ function JournalHomePage() {
                 </li>
               ))}
             </ul>
-            {earlierBuildoutEditions.length > 0 && (
+            <p className="notes-insights">
+              Charts and deep dives built from these notes live in{" "}
+              <Link to={marketsInsightsPath}>Markets › Insights</Link>.
+            </p>
+            {archivedResearchNotes.length > 0 && (
               <details className="project-archive note-archive">
-                <summary>Earlier AI buildout editions</summary>
+                <summary>All research notes</summary>
                 <ul>
-                  {earlierBuildoutEditions.map((note) => (
+                  {archivedResearchNotes.map((note) => (
                     <li key={note.slug}>
                       <a href={note.href} target="_blank" rel="noopener noreferrer">{note.title}</a> <NoteDate value={noteDates[note.slug]} />
                     </li>

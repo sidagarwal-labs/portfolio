@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { courseworkProjects, currentResearchNotes, earlierBuildoutEditions } from "../../../content/journalContent";
+import { archivedResearchNotes, courseworkProjects, featuredResearchNotes, marketsInsightsPath } from "../../../content/journalContent";
 import { profileContent } from "../../../content/siteContent";
 import { usePrefersReducedMotion } from "../../../hooks/usePrefersReducedMotion";
 import { useResearchNoteDates } from "../../../hooks/useResearchNoteDates";
@@ -136,7 +136,7 @@ function TerminalPage() {
   const [command, setCommand] = useState("");
   const [status, setStatus] = useState<Status>(readyStatus);
   const [shortcutsOn, setShortcutsOn] = useState(readShortcutsEnabled);
-  const wireCount = currentResearchNotes.length + profileContent.writing.length;
+  const wireCount = featuredResearchNotes.length + profileContent.writing.length;
 
   // Publishes the ticker and sticky-header heights so anchors and focus land below them.
   useLayoutEffect(() => {
@@ -392,7 +392,7 @@ function TerminalPage() {
                 <span>Updated</span><span>Headline</span><span>Type</span>
               </div>
               <ul className="tm-wire">
-                {currentResearchNotes.map((note) => (
+                {featuredResearchNotes.map((note) => (
                   <li key={note.slug}>
                     <NoteDate value={noteDates[note.slug]} />
                     <a href={note.href} target="_blank" rel="noopener noreferrer">{note.title}</a>
@@ -407,11 +407,16 @@ function TerminalPage() {
                   </li>
                 ))}
               </ul>
-              {earlierBuildoutEditions.length > 0 && (
+              <p className="notes-insights tm-insights">
+                <span className="tm-insights__code" aria-hidden="true">MKTS</span>
+                Charts and deep dives built from these notes live in{" "}
+                <Link to={marketsInsightsPath}>Markets › Insights</Link>.
+              </p>
+              {archivedResearchNotes.length > 0 && (
                 <details className="project-archive tm-archive tm-archive--wire">
-                  <summary>Earlier AI buildout editions</summary>
+                  <summary>All research notes</summary>
                   <ul>
-                    {earlierBuildoutEditions.map((note) => (
+                    {archivedResearchNotes.map((note) => (
                       <li key={note.slug}>
                         <a href={note.href} target="_blank" rel="noopener noreferrer">{note.title}</a> <NoteDate value={noteDates[note.slug]} />
                       </li>
