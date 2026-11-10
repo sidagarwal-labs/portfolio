@@ -1,10 +1,12 @@
-import { Activity, Blocks, Bomb, BookOpen, BrainCircuit, ChartCandlestick, FileText, Folder, GitGraph, LibraryBig, ListOrdered, MessageSquareText, Newspaper, NotebookText, Rocket, Search, SquareTerminal, Trophy, Worm, type LucideIcon } from "lucide-react";
+import { Activity, Blocks, Bomb, BookOpen, BrainCircuit, BriefcaseBusiness, Calculator, ChartCandlestick, Database, FileText, Folder, GitGraph, LibraryBig, ListOrdered, MessageSquareText, Newspaper, NotebookText, Rocket, ScanSearch, Search, SquareTerminal, Trophy, Worm, type LucideIcon } from "lucide-react";
+import { selectedProjects } from "../../../content/journalContent";
 import type { SiteView } from "../siteViews";
 
 export type AppId =
   | "search" | "library" | "github" | "reader" | "journal" | "forward" | "training" | "terminal"
   | "resume" | "readme" | "designs" | "games" | "markets" | "launches" | "leaderboards"
-  | "snake" | "mines" | "rankit" | "nexttoken" | "blocks";
+  | "snake" | "mines" | "rankit" | "nexttoken" | "blocks"
+  | "projects" | "arxiv" | "nvdocs" | "hireme" | "finmodels";
 
 export type AppDef = {
   id: AppId;
@@ -23,16 +25,27 @@ export type AppDef = {
   size: { w: number; h: number } | "fill";
 } & (
   | { kind: "folder"; children: AppId[] }
+  /* "link": a shortcut with no window of its own; it opens another app on a target, like a repository in GitHub. */
+  | { kind: "link"; opens: { app: AppId; target: string } }
   /* "app": a native React app inside the OS (no iframe), which links can open on a specific item. */
   | { kind: "site" | "pdf" | "note" | "game" | "app" }
 );
 
 const app = (def: AppDef) => def;
 
+const githubSize = { w: 1180, h: 820 };
+
+/* A selected project from the Journal, as a shortcut to its repository in the GitHub app. */
+function repoLink(id: AppId, title: string, icon: LucideIcon, tint: string): AppDef {
+  const project = selectedProjects.find((item) => item.title === title);
+  const repo = project ? new URL(project.href).pathname.replace(/^\/|\/$/g, "") : "";
+  return { id, title, label: title, blurb: project?.description ?? "", icon, tint, kind: "link", opens: { app: "github", target: repo }, size: githubSize };
+}
+
 export const apps: Record<AppId, AppDef> = {
   search: app({ id: "search", title: "Sid Search", label: "Sid Search", blurb: "Projects, writing, and background as a search engine.", icon: Search, tint: "linear-gradient(145deg, #4c7df0, #2a4fbf)", kind: "site", view: "search", size: "fill" }),
   library: app({ id: "library", title: "Library", label: "Library", blurb: "Books and podcasts I keep coming back to, grouped by topic.", icon: LibraryBig, tint: "linear-gradient(145deg, #d9825b, #9c4a2c)", kind: "app", size: { w: 1060, h: 780 } }),
-  github: app({ id: "github", title: "GitHub", label: "GitHub", blurb: "My GitHub year as data: contribution heatmap, stats, and four models of the activity. Look up any user.", icon: GitGraph, tint: "linear-gradient(145deg, #5b6bd6, #2b347f)", kind: "app", size: { w: 1180, h: 820 } }),
+  github: app({ id: "github", title: "GitHub", label: "GitHub", blurb: "My GitHub year as data: contribution heatmap, stats, and four models of the activity. Look up any user.", icon: GitGraph, tint: "linear-gradient(145deg, #5b6bd6, #2b347f)", kind: "app", size: githubSize }),
   reader: app({ id: "reader", title: "Reader", label: "Reader", blurb: "Short summaries of the Microsoft 365 Copilot, Power BI, Viva Engage, and connector work I've shipped, with links to the originals.", icon: Newspaper, tint: "linear-gradient(145deg, #5f8fb4, #2d5674)", kind: "app", size: { w: 900, h: 760 } }),
   journal: app({ id: "journal", title: "Journal", label: "Journal", blurb: "The original site: quiet and text-first.", icon: BookOpen, tint: "linear-gradient(145deg, #3f8f74, #245b4b)", kind: "site", view: "journal", size: { w: 980, h: 780 } }),
   forward: app({ id: "forward", title: "Forward pass", label: "Forward pass", blurb: "The site as a transformer: tokens, attention, next token.", icon: BrainCircuit, tint: "linear-gradient(145deg, #a66bf0, #6b3fc4)", kind: "site", view: "forward", size: { w: 1100, h: 800 } }),
@@ -42,6 +55,11 @@ export const apps: Record<AppId, AppDef> = {
   readme: app({ id: "readme", title: "README.txt", label: "README.txt", blurb: "What this is and where to start.", icon: NotebookText, tint: "linear-gradient(145deg, #f1c053, #c99418)", kind: "note", size: { w: 540, h: 520 } }),
   designs: app({ id: "designs", title: "Other designs", label: "Other designs", blurb: "Training run, Terminal, and Journal: other ways to explore the portfolio.", icon: Folder, tint: "linear-gradient(145deg, #f1c053, #c99418)", kind: "folder", children: ["training", "terminal", "journal"], size: { w: 580, h: 350 } }),
   games: app({ id: "games", title: "Games", label: "Games", blurb: "Snake, Mines, Blocks, and two machine-learning games.", icon: Folder, tint: "linear-gradient(145deg, #5dbf78, #2f8a4b)", kind: "folder", children: ["snake", "mines", "blocks", "rankit", "nexttoken"], size: { w: 580, h: 350 } }),
+  projects: app({ id: "projects", title: "Projects", label: "Projects", blurb: "arXiv Search, NVDocs RAG, HireMe.AI, Financial models, and Reader.", icon: Folder, tint: "linear-gradient(145deg, #e0699f, #a63a6e)", kind: "folder", children: ["arxiv", "nvdocs", "hireme", "finmodels", "reader"], size: { w: 700, h: 420 } }),
+  arxiv: app({ id: "arxiv", title: "arXiv Search", label: "arXiv Search", blurb: "Hybrid search with LLM reranking over 23,304 arXiv papers: nDCG@10 from 0.51 to 0.84.", icon: ScanSearch, tint: "linear-gradient(145deg, #d6453d, #9c1f1f)", kind: "app", size: { w: 1080, h: 820 } }),
+  nvdocs: repoLink("nvdocs", "NVDocs RAG", Database, "linear-gradient(145deg, #86c34a, #4a8a1c)"),
+  hireme: repoLink("hireme", "HireMe.AI", BriefcaseBusiness, "linear-gradient(145deg, #8f7ae6, #5540b0)"),
+  finmodels: repoLink("finmodels", "Financial models", Calculator, "linear-gradient(145deg, #3fa889, #1f6e57)"),
   blocks: app({ id: "blocks", title: "Blocks", label: "Blocks", blurb: "A Tetris-style falling-block puzzle with original visuals.", icon: Blocks, tint: "linear-gradient(145deg, #a487de, #5d428c)", kind: "game", size: { w: 440, h: 820 } }),
   markets: app({ id: "markets", title: "Markets", label: "Markets", blurb: "Charts, volume, financials, and news for the AI companies I follow.", icon: ChartCandlestick, tint: "linear-gradient(145deg, #4cb5ba, #22616f)", kind: "site", view: "journal", path: "/markets", size: { w: 1180, h: 820 } }),
   launches: app({ id: "launches", title: "SpaceX launches", label: "Launches", blurb: "A SpaceX launch tracker with countdowns, live streams, and replays.", icon: Rocket, tint: "linear-gradient(145deg, #4f5b86, #1b2140)", kind: "site", view: "journal", path: "/launches", size: { w: 1120, h: 820 } }),
@@ -53,7 +71,7 @@ export const apps: Record<AppId, AppDef> = {
 };
 
 export const desktopRows: AppId[][] = [
-  ["search", "library", "github"],
+  ["search", "projects", "library", "github"],
   ["forward", "designs"],
   ["games", "markets", "launches", "leaderboards"]
 ];
@@ -62,8 +80,8 @@ export const desktopApps: AppId[] = [...desktopRows.flat(), ...desktopDocuments]
 
 export type MenuSection = { label: string; items: AppId[] };
 
-/* Reader is opened by Microsoft links rather than from the desktop, so only the menus list it, after GitHub. */
-const menuApps = desktopRows.flat().flatMap((id): AppId[] => (id === "github" ? [id, "reader"] : [id]));
+/* Reader lives in the Projects folder; Microsoft links still open it directly. */
+const menuApps = desktopRows.flat();
 const isFolder = (id: AppId) => apps[id].kind === "folder";
 
 /* The Start menu and the phone home screen, built from the desktop groups: apps, then folders, then documents. */

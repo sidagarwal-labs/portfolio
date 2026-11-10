@@ -41,7 +41,9 @@ function DesktopIcons({ desk, open, reset }: { desk: DeskSize; open: (id: AppId)
       ...desktopRows.flatMap((items, row) => items.map((id, col) => ({ id, col, row }))),
       ...desktopDocuments.map((id, col) => ({ id, col, row: rows - 1 }))
     ];
-    for (const { id, col, row } of layout) {
+    /* Saved icons claim their slots first, so an icon added later takes a free slot instead of moving the user's icons. */
+    const ordered = [...layout.filter(({ id }) => saved[id]), ...layout.filter(({ id }) => !saved[id])];
+    for (const { id, col, row } of ordered) {
       const desired = saved[id] ?? { col, row };
       let slot = clamp(desired.col, 0, columns - 1) * rows + clamp(desired.row, 0, rows - 1);
       if (used.has(slot)) {
