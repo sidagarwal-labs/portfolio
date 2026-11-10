@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { RotateCcw } from "lucide-react";
 import { LivePanel, OtherBar, TemperatureSlider } from "./next-token/LivePanel";
 import { nextTokenData, percent, probability, speakToken, temperatureIndex, vocabSize } from "./next-token/nextTokenData";
@@ -13,6 +13,8 @@ function NextToken({ active }: { active: boolean }) {
   const revealRef = useRef<HTMLDivElement>(null);
   const baseId = useId();
   const [tab, setTab] = useState<"game" | "live">("game");
+  const tabChosen = useRef(false);
+  const restoreLiveTab = useCallback(() => { if (!tabChosen.current) setTab("live"); }, []);
   const [index, setIndex] = useState(0);
   const [pick, setPick] = useState<number | null>(null);
   const [temperature, setTemperature] = useState(1);
@@ -63,6 +65,7 @@ function NextToken({ active }: { active: boolean }) {
     const nextIndex = event.key === "ArrowRight" ? current + 1 : event.key === "ArrowLeft" ? current - 1 : event.key === "Home" ? 0 : event.key === "End" ? order.length - 1 : null;
     if (nextIndex === null) return;
     event.preventDefault();
+    tabChosen.current = true;
     const target = order[(nextIndex + order.length) % order.length];
     setTab(target);
     rootRef.current?.querySelector<HTMLButtonElement>(`#${CSS.escape(`${baseId}-tab-${target}`)}`)?.focus();
@@ -75,7 +78,7 @@ function NextToken({ active }: { active: boolean }) {
       <div className="nexttoken__tabs" role="tablist" aria-label="Next Token modes">
         {tabs.map((item) => (
           <button key={item.id} id={`${baseId}-tab-${item.id}`} type="button" role="tab" className="nexttoken__tab" aria-selected={tab === item.id}
-            aria-controls={`${baseId}-panel-${item.id}`} tabIndex={tab === item.id ? 0 : -1} onClick={() => setTab(item.id)} onKeyDown={onTabKey}>
+            aria-controls={`${baseId}-panel-${item.id}`} tabIndex={tab === item.id ? 0 : -1} onClick={() => { tabChosen.current = true; setTab(item.id); }} onKeyDown={onTabKey}>
             {item.label}
           </button>
         ))}
@@ -159,7 +162,7 @@ function NextToken({ active }: { active: boolean }) {
       </div>
 
       <div id={`${baseId}-panel-live`} role="tabpanel" aria-labelledby={`${baseId}-tab-live`} className="nexttoken__panel" hidden={tab !== "live"}>
-        <LivePanel visible={tab === "live"} />
+        <LivePanel visible={tab === "live"} onCachedModel={restoreLiveTab} />
       </div>
     </div>
   );
