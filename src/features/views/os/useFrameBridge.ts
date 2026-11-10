@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { canonicalMarketsPath } from "../../live/marketsPath";
 import { embeddedView, isOsMessage, isResumeUrl, openInNewTab, postToOs, routerPath } from "./embed";
 import { pageApp, routeLink } from "./linkRoutes";
 
@@ -57,5 +58,7 @@ export function useFrameBridge() {
     };
   }, []);
 
-  useEffect(() => postToOs({ type: "labos:location", path }), [path]);
+  /* An old Markets link is reported as the page it redirects to, so the window's address bar and back/forward
+     history never hold the old address. */
+  useEffect(() => postToOs({ type: "labos:location", path: canonicalMarketsPath(path) }), [path]);
 }

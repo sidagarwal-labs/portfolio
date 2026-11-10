@@ -67,34 +67,37 @@ function launch(id: string, mission: string, net: number, options: { status?: [s
   };
 }
 
-test("Markets shows a linkable quote, watchlist, and TradingView fallbacks", async ({ page }) => {
-  const scripts: string[] = [];
-  page.on("request", (request) => { if (request.url().startsWith("https://s3.tradingview.com/")) scripts.push(request.url()); });
-  await page.goto("./markets?symbol=MSFT");
+test("Markets is the AI stack, and old AI stack links still open it", async ({ page }) => {
+  await page.goto("./markets");
+  await expect(page).toHaveTitle("Markets | Sid Agarwal");
+  await expect(page.getByRole("heading", { name: "Markets", level: 1 })).toBeVisible();
+  await expect(page.locator(".live-hero")).toContainText("AI / LLM Stack Tracker");
+  await expect(page.locator(".mk-status")).toHaveAttribute("data-source", "live");
+  await expect(page.locator(".mk-layer tr[data-symbol]")).toHaveCount(7);
+  await expect(page.getByRole("navigation", { name: "Markets views" })).toHaveCount(0);
+  await expect(page.locator(".mk-detail")).toHaveCount(0);
 
-  await expect(page).toHaveTitle("MSFT · Markets | Sid Agarwal");
-  await expect(page.getByRole("navigation", { name: "Markets views" }).getByRole("link", { name: "Watchlist" })).toHaveAttribute("aria-current", "page");
-  await expect(page.getByRole("heading", { name: "Microsoft", exact: true })).toBeVisible();
-  // useStockQuotes waits for the whole watchlist batch (up to 8s) before showing any price.
-  await expect(page.locator(".mk-quote")).toContainText("$230.36", { timeout: 10_000 });
-  await expect(page.locator(".mk-quote")).toContainText("+0.84% today");
-  const watchlist = page.getByRole("navigation", { name: "Watchlist" });
-  await expect(watchlist.getByRole("link")).toHaveCount(7);
-  await expect(watchlist.locator('[aria-current="page"]')).toContainText("MSFT");
+  /* Links from when Markets also had a watchlist land on the same company, and the redirect replaces the old address. */
+  await page.goto("./launches");
+  await page.goto("./markets?view=stack");
+  await expect(page).toHaveURL(/\/markets$/);
+  await expect(page).toHaveTitle("Markets | Sid Agarwal");
+  await expect(page.locator(".mk-layer tr[data-symbol]")).toHaveCount(7);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/launches$/);
 
-  const chart = page.locator(".tv-widget").first();
-  await expect(chart).toHaveAttribute("data-state", "failed");
-  await expect(chart.getByRole("alert")).toContainText("The MSFT chart could not load here.");
-  await expect(chart.getByRole("link", { name: "Open it on TradingView" })).toHaveAttribute("href", "https://www.tradingview.com/symbols/NASDAQ-MSFT/");
-  expect(scripts.some((url) => url.endsWith("/embed-widget-advanced-chart.js"))).toBe(true);
+  await page.goto("./markets?view=stack&symbol=nvda");
+  await expect(page).toHaveURL(/\/markets\?symbol=nvda$/);
+  await expect(page).toHaveTitle("NVDA · Markets | Sid Agarwal");
+  await expect(page.locator(".mk-detail").getByRole("heading", { name: "NVIDIA", level: 2 })).toBeVisible();
 
-  await watchlist.getByRole("link", { name: /NVDA/ }).click();
-  await expect(page).toHaveURL(/\/markets\?symbol=NVDA$/);
-  await expect(page.getByRole("heading", { name: "NVIDIA", exact: true })).toBeVisible();
-  await expect(page.locator(".tv-widget").first()).toContainText("The NVDA chart could not load here.");
-
-  await page.goto("./markets?symbol=<script>");
-  await expect(page.getByRole("heading", { name: "NVIDIA", exact: true })).toBeVisible();
+  /* A symbol that isn't in the stack (AAPL is only in the ticker) shows the whole stack. */
+  for (const path of ["./markets?symbol=AAPL", "./markets?symbol=<script>"]) {
+    await page.goto(path);
+    await expect(page.locator(".mk-layer tr[data-symbol]")).toHaveCount(7);
+    await expect(page.locator(".mk-detail")).toHaveCount(0);
+    await expect(page).toHaveTitle("Markets | Sid Agarwal");
+  }
   await page.getByRole("navigation", { name: "Live pages" }).getByRole("link", { name: "Launches" }).click();
   await expect(page).toHaveURL(/\/launches$/);
   await expect(page.getByRole("heading", { name: "SpaceX launch tracker", level: 1 })).toBeVisible();
@@ -102,11 +105,7 @@ test("Markets shows a linkable quote, watchlist, and TradingView fallbacks", asy
 
 test("the Markets AI stack groups the tracker sheet by layer and level", async ({ page }) => {
   await page.goto("./markets");
-  const views = page.getByRole("navigation", { name: "Markets views" });
-  await views.getByRole("link", { name: "AI stack" }).click();
-  await expect(page).toHaveURL(/\/markets\?view=stack$/);
-  await expect(page).toHaveTitle("AI stack · Markets | Sid Agarwal");
-  await expect(views.getByRole("link", { name: "AI stack" })).toHaveAttribute("aria-current", "page");
+  await expect(page).toHaveTitle("Markets | Sid Agarwal");
   const status = page.locator(".mk-status");
   await expect(status).toHaveAttribute("data-source", "live");
   await expect(status).toHaveText(/^Live from the tracker sheet, read at .+\. Its Google Finance prices can be delayed up to 20 minutes\.$/);
@@ -139,19 +138,17 @@ test("the Markets AI stack groups the tracker sheet by layer and level", async (
   await expect(source).toHaveAttribute("href", /^https:\/\/docs\.google\.com\/spreadsheets\/d\/e\/[\w-]+\/pubhtml$/);
   await expect(source).toHaveAttribute("target", "_blank");
   await expect(page.locator(".live-foot__sources")).toContainText("Nothing here is investment advice.");
-
-  await views.getByRole("link", { name: "Watchlist" }).click();
-  await expect(page).toHaveURL(/\/markets$/);
-  await expect(page.getByRole("navigation", { name: "Watchlist" }).getByRole("link")).toHaveCount(7);
-  await expect(page.locator(".mk-status")).toHaveCount(0);
+  await expect(page.locator(".live-foot__sources")).not.toContainText(/Finnhub|watchlist/i);
 });
 
 test("selecting an AI stack company opens its quote and TradingView panels", async ({ page }) => {
-  await page.goto("./markets?view=stack");
+  const scripts: string[] = [];
+  page.on("request", (request) => { if (request.url().startsWith("https://s3.tradingview.com/")) scripts.push(request.url()); });
+  await page.goto("./markets");
   await expect(page.locator(".mk-status")).toHaveAttribute("data-source", "live");
   await page.locator("#mk-layer-chips").getByRole("link", { name: /^NVDA/ }).click();
-  await expect(page).toHaveURL(/\/markets\?view=stack&symbol=NVDA$/);
-  await expect(page).toHaveTitle("NVDA · AI stack · Markets | Sid Agarwal");
+  await expect(page).toHaveURL(/\/markets\?symbol=NVDA$/);
+  await expect(page).toHaveTitle("NVDA · Markets | Sid Agarwal");
   const detail = page.locator(".mk-detail");
   await expect(detail.getByRole("heading", { name: "NVIDIA", level: 2 })).toBeFocused();
   await expect(detail.locator(".mk-quote")).toContainText("NASDAQ:NVDA");
@@ -165,16 +162,19 @@ test("selecting an AI stack company opens its quote and TradingView panels", asy
   }
   const chart = detail.locator(".tv-widget").first();
   await chart.scrollIntoViewIfNeeded();
-  await expect(chart).toContainText("The NVDA chart could not load here.");
+  await expect(chart).toHaveAttribute("data-state", "failed");
+  await expect(chart.getByRole("alert")).toContainText("The NVDA chart could not load here.");
   await expect(chart.getByRole("link", { name: "Open it on TradingView" })).toHaveAttribute("href", "https://www.tradingview.com/symbols/NASDAQ-NVDA/");
+  expect(scripts.some((url) => url.endsWith("/embed-widget-advanced-chart.js"))).toBe(true);
 
   await detail.getByRole("link", { name: "Back to the whole stack" }).click();
-  await expect(page).toHaveURL(/\/markets\?view=stack$/);
+  await expect(page).toHaveURL(/\/markets$/);
+  await expect(page).toHaveTitle("Markets | Sid Agarwal");
   await expect(page.locator(".mk-detail")).toHaveCount(0);
   await expect(page.locator('#mk-layer-chips tr[data-symbol="NVDA"] a')).toBeFocused();
 
   /* Symbols match case-insensitively; a company the sheet can't price still charts on its own exchange. */
-  await page.goto("./markets?view=stack&symbol=samsung");
+  await page.goto("./markets?symbol=samsung");
   await expect(detail.getByRole("heading", { name: "Samsung Electronics", level: 2 })).toBeVisible();
   await expect(detail.locator(".mk-quote")).toContainText("KRX:005930");
   await expect(detail.locator(".mk-quote__price strong")).toHaveText("—");
@@ -184,19 +184,17 @@ test("selecting an AI stack company opens its quote and TradingView panels", asy
   await expect(chart.getByRole("link", { name: "Open it on TradingView" })).toHaveAttribute("href", "https://www.tradingview.com/symbols/KRX-005930/");
 
   await page.locator("#mk-layer-application").getByRole("link", { name: /^MSFT/ }).click();
-  await expect(page).toHaveURL(/\/markets\?view=stack&symbol=MSFT$/);
+  await expect(page).toHaveURL(/\/markets\?symbol=MSFT$/);
+  await expect(page).toHaveTitle("MSFT · Markets | Sid Agarwal");
   await expect(detail.getByRole("list", { name: "Places in the stack" }).getByRole("listitem"))
     .toHaveText(["Data center · Level 13 · Servers", "Application · Level 16 · Software productivity"]);
-
-  await page.goto("./markets?view=stack&symbol=<script>");
-  await expect(page.locator(".mk-detail")).toHaveCount(0);
-  await expect(page).toHaveTitle("AI stack · Markets | Sid Agarwal");
+  await expect(detail.locator(".mk-quote__about")).toBeVisible();
 });
 
 test("the AI stack falls back to the saved snapshot when the sheet can't be read", async ({ page }) => {
   await page.unroute(stackCsv);
   await page.route(stackCsv, (route) => route.abort());
-  await page.goto("./markets?view=stack");
+  await page.goto("./markets");
   const status = page.locator(".mk-status");
   await expect(status).toHaveAttribute("data-source", "snapshot");
   await expect(status).toHaveText(/^Saved snapshot from [A-Z][a-z]{2} \d{1,2}, \d{4}\. The live sheet couldn't be reached\.$/);
@@ -211,34 +209,61 @@ test("the AI stack falls back to the saved snapshot when the sheet can't be read
   await expect(page.locator(".mk-layer tr[data-symbol]")).toHaveCount(stackSnapshot.rows.length);
 });
 
-test("Markets tickers keep the reader's place on the page and in a Lab OS window", async ({ page }) => {
+test("choosing a Markets company keeps the reader in the stack, on the page and in a Lab OS window", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 1440, height: 900 });
-  const scrollY = () => page.evaluate(() => window.scrollY);
-  await page.goto("./markets?symbol=MSFT");
-  await expect(page.getByRole("heading", { name: "Microsoft", exact: true })).toBeVisible();
-  await page.evaluate(() => window.scrollTo(0, 400));
-  await expect.poll(() => scrollY()).toBe(400);
-  await page.getByRole("navigation", { name: "Watchlist" }).getByRole("link", { name: /NVDA/ }).click();
-  await expect(page).toHaveURL(/\/markets\?symbol=NVDA$/);
-  await expect(page.getByRole("heading", { name: "NVIDIA", exact: true })).toBeVisible();
-  expect(await scrollY()).toBe(400);
+  /* The chosen company's details come up just under the sticky header, with focus on its name, instead of the page
+     jumping back to its title. */
+  async function expectDetailsInView(name: string) {
+    const heading = page.locator(".mk-detail").getByRole("heading", { name, level: 2 });
+    await expect(heading).toBeFocused();
+    await expect(heading).toBeInViewport();
+    await expect(page.getByRole("heading", { name: "Markets", level: 1 })).not.toBeInViewport();
+    const { scrollY, detailTop, headerBottom } = await page.evaluate(() => ({
+      scrollY: window.scrollY,
+      detailTop: document.querySelector(".mk-detail")!.getBoundingClientRect().top,
+      headerBottom: document.querySelector(".live-top")!.getBoundingClientRect().bottom
+    }));
+    expect(scrollY).toBeGreaterThan(0);
+    expect(detailTop).toBeGreaterThanOrEqual(headerBottom);
+  }
+
+  await page.goto("./markets");
+  await expect(page.locator(".mk-status")).toHaveAttribute("data-source", "live");
+  await page.locator("#mk-layer-application").getByRole("link", { name: /^MSFT/ }).click();
+  await expect(page).toHaveURL(/\/markets\?symbol=MSFT$/);
+  await expectDetailsInView("Microsoft");
+  /* From one company to another, further down the page. */
+  await page.locator("#mk-layer-data").getByRole("link", { name: /^SNOW/ }).click();
+  await expect(page).toHaveURL(/\/markets\?symbol=SNOW$/);
+  await expectDetailsInView("Snowflake");
   /* A different page still opens at its top. */
   await page.getByRole("navigation", { name: "Live pages" }).getByRole("link", { name: "Launches" }).click();
   await expect(page).toHaveURL(/\/launches$/);
-  expect(await scrollY()).toBe(0);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
 
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("./markets");
+  await expect(page.locator(".mk-status")).toHaveAttribute("data-source", "live");
+  await page.locator("#mk-layer-data-center").getByRole("link", { name: /^VRT/ }).click();
+  await expect(page).toHaveURL(/\/markets\?symbol=VRT$/);
+  await expectDetailsInView("Vertiv");
+
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("./?view=os");
   await page.getByRole("button", { name: "Open Markets" }).click();
+  const win = page.locator('.os-win[data-app="markets"]');
   const frame = page.frameLocator('.os-win[data-app="markets"] iframe');
-  await expect(frame.getByRole("heading", { name: "NVIDIA", exact: true })).toBeVisible();
-  const body = frame.locator("body");
-  await body.evaluate(() => window.scrollTo(0, 300));
-  await expect.poll(() => body.evaluate(() => window.scrollY)).toBe(300);
-  /* A scripted click reaches the window's link handler without Playwright first scrolling the link into view. */
-  await frame.getByRole("navigation", { name: "Watchlist" }).getByRole("link", { name: /MSFT/ }).evaluate((link) => (link as HTMLElement).click());
-  await expect(frame.getByRole("heading", { name: "Microsoft", exact: true })).toBeVisible();
-  expect(await body.evaluate(() => window.scrollY)).toBe(300);
+  await expect(frame.locator(".mk-status")).toHaveAttribute("data-source", "live");
+  await frame.locator("#mk-layer-application").getByRole("link", { name: /^MSFT/ }).click();
+  await expect(win.locator(".os-address__text")).toHaveText("agarwal-labs.com/markets?symbol=MSFT");
+  const heading = frame.locator(".mk-detail").getByRole("heading", { name: "Microsoft", level: 2 });
+  await expect(heading).toBeFocused();
+  await expect(heading).toBeInViewport();
+  await expect(frame.getByRole("heading", { name: "Markets", level: 1 })).not.toBeInViewport();
+  expect(await frame.locator("body").evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  /* Only the window's page scrolls; the desktop around it stays put. */
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
 });
 
 test("the launch tracker shows a live launch, plays streams in place, and lists replays", async ({ page }) => {
@@ -482,7 +507,7 @@ test("AI leaderboards read Arena live, keep tabs linkable, and fall back to the 
 
 test("live pages fit a phone screen", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  for (const path of ["./markets", "./markets?view=stack", "./launches", "./leaderboards"]) {
+  for (const path of ["./markets", "./markets?symbol=NVDA", "./launches", "./leaderboards"]) {
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Live pages" }).getByRole("link", { name: "AI leaderboards" })).toBeInViewport({ ratio: 1 });

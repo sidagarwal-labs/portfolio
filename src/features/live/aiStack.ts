@@ -11,12 +11,12 @@ export type AiStackState = { rows: AiStackRow[]; source: "live" | "snapshot"; as
 
 const snapshotState: AiStackState = { rows: saved.rows, source: "snapshot", asOf: saved.generatedAt, loading: false };
 const liveTtl = 5 * 60_000;
-/* The last good live read, so switching views within a visit doesn't refetch or flash the snapshot. */
+/* The last good live read, so leaving Markets and coming back within a visit doesn't refetch or flash the snapshot. */
 let live: { rows: AiStackRow[]; fetchedAt: number } | undefined;
 const liveState = (read: NonNullable<typeof live>): AiStackState =>
   ({ rows: read.rows, source: "live", asOf: new Date(read.fetchedAt).toISOString(), loading: false });
 
-/* The published sheet's CSV allows cross-origin reads, so the stack view reads it live and falls back to the
+/* The published sheet's CSV allows cross-origin reads, so Markets reads it live and falls back to the
    build-time snapshot when the request fails, times out, or returns something that isn't the tracker. */
 export function useAiStack(): AiStackState {
   const [state, setState] = useState<AiStackState>(() => (live ? liveState(live) : { ...snapshotState, loading: true }));
@@ -64,6 +64,7 @@ const listings: Record<string, { name: string; exchange: string; symbol?: string
   AMAT: { name: "Applied Materials", exchange: "NASDAQ" },
   TTMI: { name: "TTM Technologies", exchange: "NASDAQ" },
   AMKR: { name: "Amkor Technology", exchange: "NASDAQ" },
+  ASX: { name: "ASE Technology", exchange: "NYSE" },
   BESIY: { name: "BE Semiconductor (Besi)", exchange: "OTC" },
   AEHR: { name: "Aehr Test Systems", exchange: "NASDAQ" },
   MU: { name: "Micron Technology", exchange: "NASDAQ" },

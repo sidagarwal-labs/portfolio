@@ -10,6 +10,7 @@ test.beforeEach(async ({ page }) => {
   await page.route("https://ll.thespacedevs.com/2.3.0/launches/upcoming/**", (route) => route.fulfill({ json: { results: [] } }));
   await page.route("https://ll.thespacedevs.com/2.3.0/launches/previous/**", (route) => route.fulfill({ json: { results: [] } }));
   await page.route("https://s3.tradingview.com/**", (route) => route.abort());
+  await page.route("https://docs.google.com/spreadsheets/**", (route) => route.abort());
   await page.route("https://datasets-server.huggingface.co/**", (route) => route.abort());
 });
 
@@ -698,7 +699,7 @@ for (const style of ["modern", "retro"]) {
 
     /* The taskbar widgets open full pages that also work outside the OS. */
     const liveApps = [
-      { button: "Open Markets", app: "markets", heading: "NVIDIA" },
+      { button: "Open Markets", app: "markets", heading: "Markets" },
       { button: "Open Launch Tracker", app: "launches", heading: "SpaceX launch tracker" },
       { button: "Open AI Leaderboards", app: "leaderboards", heading: "AI leaderboards" }
     ];
@@ -710,7 +711,8 @@ for (const style of ["modern", "retro"]) {
       await expect(frame.locator(".market-bar")).toHaveCount(0);
     }
     const appFrame = (app: string) => page.frameLocator(`.os-win[data-app="${app}"] iframe`);
-    await expect(appFrame("markets").locator(".mk-quote")).toContainText("$230.36");
+    await expect(appFrame("markets").locator(".mk-status")).toHaveAttribute("data-source", "snapshot");
+    await expect(appFrame("markets").getByRole("heading", { name: "Chips", level: 2 })).toBeVisible();
     await expect(appFrame("launches").getByText("No SpaceX launches are on the schedule right now.")).toBeVisible();
     await expect(appFrame("leaderboards").getByText(/^Saved snapshot, published /)).toBeVisible();
     await page.getByRole("button", { name: "Open Markets" }).click();
