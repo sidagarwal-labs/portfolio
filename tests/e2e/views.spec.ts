@@ -268,6 +268,20 @@ test("the terminal view runs commands and keeps the ticker on top", async ({ pag
   await expect(page.locator("#tm-command-status")).toContainText(/HELP/);
 });
 
+test("terminal shortcuts keep accessible labels and scroll within the bar on a narrow phone", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("./?view=terminal");
+  const contact = page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "5 MSG Contact", exact: true });
+  await contact.focus();
+  await expect(contact).toBeFocused();
+  await expect(contact).toBeInViewport({ ratio: 1 });
+  expect(await page.locator(".tm-keys ul").evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#contact")).toBeInViewport();
+});
+
 test("notebook navigation does not fake training; explicit training produces measured loss and resets", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("./?view=training");

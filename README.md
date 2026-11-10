@@ -89,6 +89,8 @@ The launch schedule and recent launches show loading messages while requests are
 
 The **Test portfolio** GitHub Actions workflow builds and runs the full Playwright suite in Chromium on pull requests to `main` and on manual dispatch. Failed runs upload Playwright's screenshots, traces, and videos for seven days. This check does not deploy the site.
 
+Responsive checks require zero horizontal page overflow, including when keyboard focus scrolls Terminal shortcuts into view on a 320px screen. The compact shortcut labels retain their full accessible names.
+
 ## Verification
 
 ```sh
