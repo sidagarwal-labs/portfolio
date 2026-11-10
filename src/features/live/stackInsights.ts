@@ -97,6 +97,13 @@ export function pricedInReadout(points: PricedPoint[]) {
 export type Rect = { x: number; y: number; w: number; h: number };
 type Weighted = { value: number };
 
+/* Shrinks a rect by up to `pad` on each side, but never below half its size, so slivers keep their tiles. */
+const inset = (rect: Rect, pad: number): Rect => {
+  const dx = Math.min(pad, rect.w / 4);
+  const dy = Math.min(pad, rect.h / 4);
+  return { x: rect.x + dx, y: rect.y + dy, w: rect.w - dx * 2, h: rect.h - dy * 2 };
+};
+
 const worst = (row: number[], side: number) => {
   const sum = row.reduce((a, b) => a + b, 0);
   const max = Math.max(...row);
@@ -164,13 +171,12 @@ export function treemap(rows: AiStackRow[], width: number, height: number, gap =
   for (const layer of layerRects) {
     const levels = new Map<number, typeof entries>();
     for (const entry of layer.list) levels.set(entry.row.level, [...(levels.get(entry.row.level) ?? []), entry]);
-    const inner = { x: layer.x + gap, y: layer.y + gap, w: Math.max(0, layer.w - gap * 2), h: Math.max(0, layer.h - gap * 2) };
     const levelRects = squarify([...levels.entries()].map(([level, list]) => ({
       level, list, value: list.reduce((sum, entry) => sum + entry.value, 0)
-    })), inner);
+    })), inset(layer, gap));
     for (const level of levelRects) {
       groups.push({ key: `L${level.level}`, label: `L${level.level} ${levelName(level.level, level.list.map((entry) => entry.row))}`, layerId: layer.id, value: level.value, x: level.x, y: level.y, w: level.w, h: level.h });
-      const cells = squarify(level.list.map((entry) => ({ entry, value: entry.value })), { x: level.x + 1, y: level.y + 1, w: Math.max(0, level.w - 2), h: Math.max(0, level.h - 2) });
+      const cells = squarify(level.list.map((entry) => ({ entry, value: entry.value })), inset(level, 1));
       for (const cell of cells) {
         tiles.push({
           symbol: cell.entry.row.symbol, level: cell.entry.row.level, layerId: layer.id, layer: layer.label,
