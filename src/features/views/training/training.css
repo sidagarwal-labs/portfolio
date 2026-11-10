@@ -172,6 +172,10 @@ html[data-view="training"] {
 
 .tr-archive { margin-top: 18px; }
 
+.tr-insights { margin-top: 18px; font-size: 15px; line-height: 1.6; }
+
+.tr-insights__prompt { margin-right: 6px; color: var(--muted); font-family: var(--tr-mono); font-size: 13px; }
+
 .tr-lede { margin-bottom: 18px; font-size: 16px; line-height: 1.65; }
 
 .tr-table { width: 100%; border-collapse: collapse; font-size: 15px; line-height: 1.5; }

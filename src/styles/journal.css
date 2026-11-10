@@ -99,6 +99,8 @@ section { scroll-margin-top: 28px; }
 
 .note-archive { margin-top: 16px; }
 
+.notes-insights { margin-top: 16px; }
+
 .disclaimer { color: var(--muted); font-size: 14px; }
 
 .article-page { padding-top: 32px; }

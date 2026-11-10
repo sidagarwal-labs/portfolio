@@ -36,13 +36,6 @@ export const archivedResearchNotes = [
 
 export const marketsInsightsPath = "/markets?tab=insights";
 
-export const currentResearchNotes = [
-  ...buildoutEditions.slice(0, 1),
-  ...researchNotes.filter((note) => !note.slug.startsWith(buildoutPrefix))
-];
-
-export const earlierBuildoutEditions = buildoutEditions.slice(1);
-
 export const selectedProjects = [
   {
     title: "arXiv Search",

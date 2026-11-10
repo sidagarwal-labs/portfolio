@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { courseworkProjects, currentResearchNotes, earlierBuildoutEditions } from "../../../content/journalContent";
+import { archivedResearchNotes, courseworkProjects, featuredResearchNotes, marketsInsightsPath } from "../../../content/journalContent";
 import { profileContent } from "../../../content/siteContent";
 import { usePrefersReducedMotion } from "../../../hooks/usePrefersReducedMotion";
 import { useResearchNoteDates } from "../../../hooks/useResearchNoteDates";
@@ -387,7 +387,7 @@ function ForwardPassPage() {
               </p>
             )}
             <ul className="fp-notes">
-              {currentResearchNotes.map((note) => (
+              {featuredResearchNotes.map((note) => (
                 <li key={note.slug}>
                   <ActivationStrip seed={note.slug} />
                   <a href={note.href} target="_blank" rel="noopener noreferrer">{note.title}</a>
@@ -402,11 +402,16 @@ function ForwardPassPage() {
                 </li>
               ))}
             </ul>
-            {earlierBuildoutEditions.length > 0 && (
+            <p className="notes-insights fp-insights">
+              <span className="fp-insights__label fp-mono" aria-hidden="true">Output</span>
+              Charts and deep dives built from these notes live in{" "}
+              <Link to={marketsInsightsPath}>Markets › Insights</Link>.
+            </p>
+            {archivedResearchNotes.length > 0 && (
               <details className="project-archive fp-archive">
-                <summary>Earlier AI buildout editions</summary>
+                <summary>All research notes</summary>
                 <ul>
-                  {earlierBuildoutEditions.map((note) => (
+                  {archivedResearchNotes.map((note) => (
                     <li key={note.slug}>
                       <a href={note.href} target="_blank" rel="noopener noreferrer">{note.title}</a>{" "}
                       <time className="entry-meta" dateTime={noteDates[note.slug]}>{noteDateFormatter.format(new Date(noteDates[note.slug]))}</time>
