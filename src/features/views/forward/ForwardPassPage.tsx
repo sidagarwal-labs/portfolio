@@ -378,11 +378,11 @@ function ForwardPassPage() {
           <section className="fp-section" id="writing" aria-labelledby="fp-writing-heading">
             <p className="fp-kicker fp-mono">Layer 02 · Feed-forward</p>
             <h2 id="fp-writing-heading">Writing &amp; notes</h2>
-            {marketTracker && (
+            {marketTracker?.href && (
               <p className="fp-lede">
                 I follow the AI buildout: where the capital goes, what becomes a bottleneck,
                 and which businesses turn that investment into earnings. My{" "}
-                <a href={marketTracker.href}>AI / LLM Stack Tracker</a> maps public
+                <Link to={marketTracker.href}>AI / LLM Stack Tracker</Link> maps public
                 companies across chips, power, data centers, and applications.
               </p>
             )}

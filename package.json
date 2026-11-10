@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "data:leaderboards": "node scripts/update-leaderboards.mjs",
     "data:github": "node scripts/fetch-github-insights.mjs",
+    "data:stack": "node scripts/fetch-ai-stack.mjs",
     "data:next-token": "node scripts/precompute-next-token.mjs",
     "pretest:e2e": "npm run build -- --mode test",
     "test:e2e": "playwright test",

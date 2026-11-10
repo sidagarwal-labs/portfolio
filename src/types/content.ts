@@ -88,6 +88,8 @@ export interface ProjectEntry {
   whatThisProves: string;
   href?: string;
   hrefLabel?: string;
+  /* The underlying data or document when href opens a page on this site instead. */
+  sourceHref?: string;
   accent: string;
   visualMode: "orbit" | "signal" | "grid" | "spectrum" | "score";
 }

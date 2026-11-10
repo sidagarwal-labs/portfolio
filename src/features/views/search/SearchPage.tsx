@@ -313,11 +313,11 @@ function SearchPage() {
 
               <section className="se-section" id="writing" aria-labelledby="se-writing-heading">
                 <h2 id="se-writing-heading">Writing &amp; notes</h2>
-                {marketTracker && (
+                {marketTracker?.href && (
                   <p className="se-lede">
                     I follow the AI buildout: where the capital goes, what becomes a bottleneck,
                     and which businesses turn that investment into earnings. My{" "}
-                    <a href={marketTracker.href}>AI / LLM Stack Tracker</a> maps public
+                    <Link to={marketTracker.href}>AI / LLM Stack Tracker</Link> maps public
                     companies across chips, power, data centers, and applications.
                   </p>
                 )}

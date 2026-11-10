@@ -10,7 +10,7 @@ import { siteViews } from "../siteViews";
 import { contactLinks, roleLine } from "../viewData";
 import { apps, type AppId } from "./apps";
 import { isOsMessage, openInNewTab, type OsMessage } from "./embed";
-import { isLinkApp, routeLink } from "./linkRoutes";
+import { isLinkApp, pageApp, routeLink } from "./linkRoutes";
 import OsWindow, { clamp } from "./OsWindow";
 import type { DeskSize, OsActions, OsWin, Rect } from "./types";
 import { SignalStatus, SignalsProvider } from "./Signals";
@@ -208,14 +208,20 @@ function DesktopShell() {
       openInNewTab(profileContent.resumeHref);
       return;
     }
-    const target = targetValue === undefined ? undefined : { value: targetValue, seq: ++targetSeq.current };
+    const def = apps[app];
+    /* Site apps take a target as the router path to show; native apps keep it as an OsTarget. */
+    const page = def.kind === "site" ? targetValue : undefined;
+    const target = targetValue === undefined || page !== undefined ? undefined : { value: targetValue, seq: ++targetSeq.current };
     const existing = current.find((win) => win.app === app);
     if (existing) {
       if (target) setWindows((list) => list.map((win) => (win.id === existing.id ? { ...win, target } : win)));
+      if (page) {
+        const message: OsMessage = { type: "labos:navigate", path: page };
+        frames.current.get(existing.id)?.contentWindow?.postMessage(message, window.location.origin);
+      }
       focus(existing.id);
       return;
     }
-    const def = apps[app];
     const hash = app === "search" ? initialHash.current : "";
     if (app === "search") initialHash.current = "";
     const win: OsWin = {
@@ -224,7 +230,7 @@ function DesktopShell() {
       ...initialRect(app, size, current.length),
       z: ++zRef.current,
       minimized: false,
-      src: def.kind === "site" ? `${import.meta.env.BASE_URL}${def.path?.slice(1) ?? ""}${hash}` : undefined,
+      src: def.kind === "site" ? `${import.meta.env.BASE_URL}${(page ?? def.path)?.slice(1) ?? ""}${hash}` : undefined,
       history: [],
       index: -1,
       target
@@ -300,6 +306,8 @@ function DesktopShell() {
       if (message.type === "labos:open") open("resume");
       else if (message.type === "labos:link") {
         if (isLinkApp(message.app) && typeof message.target === "string") open(message.app, message.target.slice(0, 200));
+      } else if (message.type === "labos:page") {
+        if (typeof message.path === "string" && pageApp(message.path) === message.app) open(message.app, message.path.slice(0, 200));
       } else if (message.type === "labos:boot") setBooting(true);
       else if (message.type === "labos:focus") {
         focus(windowId);

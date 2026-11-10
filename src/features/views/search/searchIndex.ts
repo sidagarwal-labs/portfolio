@@ -32,7 +32,7 @@ const siteNames: Record<string, string> = {
 export function describeSource(href: string, route = false) {
   if (href.startsWith("mailto:")) return { site: "Email", url: href.slice("mailto:".length) };
   if (route || href.startsWith("#")) {
-    const path = href.startsWith("#") ? "" : href.split("/").filter(Boolean).join(" › ");
+    const path = href.startsWith("#") ? "" : href.split(/[?#]/)[0].split("/").filter(Boolean).join(" › ");
     return { site: "Agarwal Labs", url: path ? `agarwal-labs.com › ${path}` : "agarwal-labs.com" };
   }
   try {
@@ -105,11 +105,12 @@ export const searchDocs: SearchDoc[] = [
     snippet: project.description,
     keywords: [project.focus, ...project.stack, ...project.concepts, "project build code"].join(" ")
   })),
-  ...(marketTracker ? [{
+  ...(marketTracker?.href ? [{
     id: "project-tracker",
     kind: "Project",
     title: marketTracker.title,
-    href: marketTracker.href ?? "#writing",
+    href: marketTracker.href,
+    route: true,
     snippet: marketTracker.description,
     keywords: "markets stocks investing ai buildout chips power data centers applications companies"
   }] : []),
