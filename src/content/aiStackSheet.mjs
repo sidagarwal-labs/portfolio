@@ -1,6 +1,6 @@
 /*
  * Reads Sid's published AI / LLM Stack Tracker (a Google Sheet). Shared by scripts/fetch-ai-stack.mjs, which writes the
- * build-time snapshot, and the Markets AI stack view, which reads the live CSV; plain JS so Node can import it directly.
+ * build-time snapshot, and the Markets page, which reads the live CSV; plain JS so Node can import it directly.
  */
 const published = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiLfygL3LFE2X_ynXjE5IzIKrvVPT_AFSwuZCZn59pMUd0dsR4Tdpx-OUxaDmDiMYrioLurLWE3_CO";
 

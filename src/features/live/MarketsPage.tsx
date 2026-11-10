@@ -121,7 +121,7 @@ function StackView() {
       section="markets"
       title="Markets"
       documentTitle={symbol ? `${symbol} · Markets` : "Markets"}
-      lede="My AI / LLM Stack Tracker: the public companies behind each layer of AI, from materials and chip design up through data centers, data platforms, and applications."
+      lede="My AI / LLM Stack Tracker: the public companies behind each layer of AI, from materials and chip design up through data centers, data platforms, and applications. Select a company for its chart, financials, and news."
       sources={
         <p>
           Prices, market caps, P/E ratios, and 52-week ranges come from my{" "}
