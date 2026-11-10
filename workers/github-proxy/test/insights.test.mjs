@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-  fetchInsights, GitHubInsightsError, INSIGHTS_QUERY, isValidLogin, MAX_REPOS, normalizeGraphql, occurredAtToDate, USER_AGENT
+  COMMIT_TOTALS_QUERY, fetchInsights, GitHubInsightsError, INSIGHTS_QUERY, isValidLogin, MAX_COMMIT_TOTALS, MAX_REPOS, normalizeGraphql, occurredAtToDate,
+  queryAllTimeCommits, USER_AGENT
 } from "../src/insights.mjs";
-import { graphqlData, repo } from "./fixtures.mjs";
+import { commitTotalsData, graphqlData, graphqlUpstream, repo } from "./fixtures.mjs";
 
 const now = new Date("2026-11-10T12:00:00Z");
 const graphqlResponse = (body, init = {}) => new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" }, ...init });
@@ -80,6 +81,22 @@ describe("normalizeGraphql", () => {
     assert.equal(busy.diskUsageKb, 321);
     assert.equal(busy.stars, 5);
     assert.ok(!("isPrivate" in busy));
+    assert.ok(!("id" in busy));
+  });
+
+  it("attaches all-time commit counts by repository node id", () => {
+    const allTimeCommits = new Map([["R_busy", 42], ["R_quiet", 0], ["R_repo-0", 7], ["R_secret-plan", 99]]);
+    const out = normalizeGraphql(graphqlData(), { now, allTimeCommits });
+    const counts = Object.fromEntries(out.repos.map((item) => [item.name, item.allTimeCommits]));
+    assert.deepEqual(counts, { busy: 42, quiet: 0, "repo-0": 7, "repo-1": undefined, "repo-2": undefined });
+    assert.ok(!("allTimeCommits" in out.repos.find((item) => item.name === "repo-1")));
+    assert.ok(!JSON.stringify(out).includes("secret-plan"));
+  });
+
+  it("leaves all-time commit counts out when they are missing or invalid", () => {
+    assert.ok(normalizeGraphql(graphqlData(), { now }).repos.every((item) => !("allTimeCommits" in item)));
+    const allTimeCommits = new Map([["R_busy", -1], ["R_quiet", 2.5], ["R_repo-0", "7"], ["R_repo-1", null]]);
+    assert.ok(normalizeGraphql(graphqlData(), { now, allTimeCommits }).repos.every((item) => !("allTimeCommits" in item)));
   });
 
   it("treats a null user as not found", () => {
@@ -87,20 +104,112 @@ describe("normalizeGraphql", () => {
   });
 });
 
-describe("fetchInsights", () => {
-  it("posts the query with auth and user agent headers", async () => {
-    let call;
+describe("queryAllTimeCommits", () => {
+  const ok = (body) => async () => graphqlResponse(body);
+
+  it("asks for the public repositories with commits, by node id and user id", async () => {
+    const calls = [];
     const fetchImpl = async (url, init) => {
-      call = { url, init };
-      return graphqlResponse({ data: graphqlData() });
+      calls.push({ url, init });
+      return graphqlUpstream()(url, init);
+    };
+    const totals = await queryAllTimeCommits(graphqlData(), { token: "t0ken", fetchImpl, now });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, "https://api.github.com/graphql");
+    assert.equal(calls[0].init.headers.Authorization, "bearer t0ken");
+    assert.equal(calls[0].init.headers["User-Agent"], USER_AGENT);
+    assert.deepEqual(JSON.parse(calls[0].init.body), { query: COMMIT_TOTALS_QUERY, variables: { ids: ["R_busy", "R_quiet"], userId: "U_octo" } });
+    assert.deepEqual([...totals], [["R_busy", 42], ["R_quiet", 1]]);
+  });
+
+  it("queries each author's default-branch history", () => {
+    assert.match(COMMIT_TOTALS_QUERY, /nodes\(ids: \$ids\)/);
+    assert.match(COMMIT_TOTALS_QUERY, /defaultBranchRef \{ target \{ \.\.\. on Commit \{ history\(author: \{id: \$userId\}\) \{ totalCount \} \} \} \}/);
+    assert.match(INSIGHTS_QUERY, /user\(login: \$login\) \{\s+id /);
+    assert.match(INSIGHTS_QUERY, /fragment RepoFields on Repository \{\s+id /);
+  });
+
+  it("caps the ids and de-duplicates them", async () => {
+    const data = graphqlData();
+    const many = Array.from({ length: 30 }, (_, i) => ({ repository: repo(`many-${i}`), contributions: { nodes: [] } }));
+    data.user.contributionsCollection.commitContributionsByRepository.push(...many, many[0]);
+    let ids;
+    await queryAllTimeCommits(data, { token: "t", now, fetchImpl: async (url, init) => {
+      ids = JSON.parse(init.body).variables.ids;
+      return graphqlResponse({ data: commitTotalsData(ids) });
+    } });
+    assert.equal(ids.length, MAX_COMMIT_TOTALS);
+    assert.equal(new Set(ids).size, ids.length);
+    assert.ok(!ids.includes("R_secret-plan"));
+  });
+
+  it("keeps the counts GitHub could give and skips the rest", async () => {
+    const node = (id, totalCount) => ({ id, defaultBranchRef: { target: { history: { totalCount } } } });
+    const body = {
+      data: { nodes: [node("R_busy", 42), { id: "R_quiet", defaultBranchRef: null }, node("R_unasked", 5), null] },
+      errors: [{ type: "NOT_FOUND", message: "Could not resolve to a node" }]
+    };
+    assert.deepEqual([...(await queryAllTimeCommits(graphqlData(), { token: "t", fetchImpl: ok(body), now }))], [["R_busy", 42]]);
+    const odd = { data: { nodes: [node("R_busy", -3), node("R_quiet", "12")] } };
+    assert.deepEqual([...(await queryAllTimeCommits(graphqlData(), { token: "t", fetchImpl: ok(odd), now }))], []);
+  });
+
+  it("makes no request when there is nothing to count", async () => {
+    const fetchImpl = async () => assert.fail("fetch should not be called");
+    const noId = graphqlData();
+    delete noId.user.id;
+    const noRepos = graphqlData();
+    noRepos.user.contributionsCollection.commitContributionsByRepository = noRepos.user.contributionsCollection.commitContributionsByRepository
+      .filter((entry) => entry.repository.isPrivate);
+    for (const data of [noId, noRepos, { user: null }, undefined]) assert.equal((await queryAllTimeCommits(data, { token: "t", fetchImpl })).size, 0);
+  });
+
+  it("maps failures like the main query", async () => {
+    await assert.rejects(queryAllTimeCommits(graphqlData(), { fetchImpl: ok({}) }), { code: "misconfigured", status: 500 });
+    const limited = async () => new Response("{}", { status: 429, headers: { "retry-after": "9" } });
+    await assert.rejects(queryAllTimeCommits(graphqlData(), { token: "t", fetchImpl: limited, now }), { code: "rate-limited", retryAfter: 9 });
+    const cases = [
+      async () => { throw new TypeError("socket hang up"); },
+      async () => new Response("Bad gateway", { status: 502 }),
+      ok({ data: null, errors: [{ message: "Timeout" }] }),
+      ok({ errors: [{ message: "Something broke" }] })
+    ];
+    for (const fetchImpl of cases) await assert.rejects(queryAllTimeCommits(graphqlData(), { token: "t", fetchImpl, now }), { code: "upstream", status: 502 });
+  });
+});
+
+describe("fetchInsights", () => {
+  it("posts both queries with auth and user agent headers", async () => {
+    const calls = [];
+    const fetchImpl = async (url, init) => {
+      calls.push({ url, init });
+      return graphqlUpstream()(url, init);
     };
     const out = await fetchInsights("octo", { token: "t0ken", fetchImpl, now });
     assert.equal(out.login, "Octo");
-    assert.equal(call.url, "https://api.github.com/graphql");
-    assert.equal(call.init.method, "POST");
-    assert.equal(call.init.headers.Authorization, "bearer t0ken");
-    assert.equal(call.init.headers["User-Agent"], USER_AGENT);
-    assert.deepEqual(JSON.parse(call.init.body), { query: INSIGHTS_QUERY, variables: { login: "octo" } });
+    assert.equal(calls.length, 2);
+    for (const call of calls) {
+      assert.equal(call.url, "https://api.github.com/graphql");
+      assert.equal(call.init.method, "POST");
+      assert.equal(call.init.headers.Authorization, "bearer t0ken");
+      assert.equal(call.init.headers["User-Agent"], USER_AGENT);
+    }
+    assert.deepEqual(JSON.parse(calls[0].init.body), { query: INSIGHTS_QUERY, variables: { login: "octo" } });
+    assert.deepEqual(JSON.parse(calls[1].init.body), { query: COMMIT_TOTALS_QUERY, variables: { ids: ["R_busy", "R_quiet"], userId: "U_octo" } });
+    assert.deepEqual(out.repos.map((item) => [item.name, item.allTimeCommits]).slice(0, 3), [["busy", 42], ["quiet", 1], ["repo-0", undefined]]);
+  });
+
+  it("still returns the insights when the all-time request fails", async () => {
+    const expected = normalizeGraphql(graphqlData(), { now });
+    const failures = [
+      async () => { throw new TypeError("socket hang up"); },
+      async () => new Response("{}", { status: 429, headers: { "retry-after": "9" } }),
+      async () => graphqlResponse({ errors: [{ message: "Something broke" }] })
+    ];
+    for (const failure of failures) {
+      const fetchImpl = async (url, init) => (JSON.parse(init.body).variables.ids ? failure() : graphqlResponse({ data: graphqlData() }));
+      assert.deepEqual(await fetchInsights("octo", { token: "t", fetchImpl, now }), expected);
+    }
   });
 
   it("rejects invalid logins and missing tokens without calling GitHub", async () => {

@@ -3,7 +3,7 @@ import { expect, test, type Locator, type Page, type Route } from "@playwright/t
 import { buildLaunch, buildMarket, buildRepoLab, computeStats, createTrainer } from "../../src/features/views/os/github/analytics";
 import { curateOwnInsights } from "../../src/features/views/os/github/client";
 import { OWN_HIDDEN_REPOS, type GitHubInsights } from "../../src/features/views/os/github/contract";
-import { fmtDate, fmtInt, fmtNum, fmtP, fmtPct, plural } from "../../src/features/views/os/github/ui/format";
+import { fmtDate, fmtInt, fmtNum, fmtP, fmtPct, fmtRange, plural } from "../../src/features/views/os/github/ui/format";
 
 const rawSnapshot = JSON.parse(readFileSync(new URL("../../src/content/generated/github-insights.json", import.meta.url), "utf8")) as GitHubInsights;
 // The app shows the owner's snapshot with tutorial repositories removed.
@@ -133,6 +133,43 @@ test("opens from the desktop on the owner's snapshot with an accessible heatmap 
     expect(hidden.has(name.toLowerCase()), `${name} should be hidden`).toBe(false);
   }
   await expect(win.locator(".gh-langs li").first()).toContainText(stats.languages[0].name);
+});
+
+test("labels the repository counts and says when the owner's snapshot refreshes", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const win = await openGitHub(page);
+
+  const fresh = win.locator(".gh-head__fresh");
+  await expect(fresh).toHaveText(`Data as of ${fmtDate(snapshot.generatedAt)} · refreshed on each deploy and daily`);
+  await expect(fresh.locator("time")).toHaveAttribute("datetime", snapshot.generatedAt);
+  await expect(win.locator(".gh-head__meta").first()).toHaveText(`${fmtRange(snapshot.range.from, snapshot.range.to)} · contribution calendar`);
+
+  const legend = "Commits in the last 12 months · share of all repository commits · active days.";
+  await expect(win.locator(".gh-repos__legend")).toHaveText(`${legend} All-time: every commit by @${snapshot.login} on the default branch.`);
+  await expect(win.locator(".gh-repos")).toHaveAccessibleDescription(new RegExp(`^${legend.replace(/[.]/g, "\\.")}`));
+
+  // Every repository with commits in the year has an all-time count in the committed snapshot.
+  expect(stats.topRepos.length).toBeGreaterThan(0);
+  expect(stats.topRepos.every((repo) => repo.allTimeCommits !== undefined)).toBe(true);
+  if (stats.topRepos.length > 8) await win.getByRole("button", { name: `Show all ${stats.topRepos.length}` }).click();
+  const rows = win.locator(".gh-repo");
+  await expect(rows).toHaveCount(stats.topRepos.length);
+  for (const [i, repo] of stats.topRepos.entries()) {
+    const row = rows.nth(i);
+    await expect(row.locator(".gh-repo__name")).toHaveText(repo.name);
+    // The unit is spoken with each count; the share and active days follow the legend's order.
+    await expect(row.locator(".gh-repo__value")).toHaveText(
+      `${fmtInt(repo.total)} commits in the last 12 months · ${fmtPct(repo.share)} · ${plural(repo.activeDays, "day")}`
+    );
+    await expect(row.locator(".gh-repo__total")).toHaveText(`${fmtInt(repo.allTimeCommits!)} all-time`);
+    await expect(row.locator(".gh-repo__total")).toBeVisible();
+  }
+
+  const note = win.locator(".gh-repos__note");
+  await expect(note).toContainText("Only default-branch commits count, and a squash-merged pull request counts as one.");
+  const above = stats.topRepos.filter((repo) => repo.total > repo.allTimeCommits!);
+  if (above.length) await expect(note).toContainText("A 12-month count above the all-time one means GitHub still credits commits that are no longer on the branch");
+  else await expect(note).not.toContainText("12-month count above");
 });
 
 test("lab tabs follow the ARIA tabs pattern and show model output", async ({ page }) => {
@@ -324,6 +361,13 @@ test("looks up another user through the REST fallback, then returns to the owner
   await expect(stat(win, "total")).toHaveText(String(octo.events.length));
   await expect(win.locator(".gh-totals")).toContainText("pushes");
   await expect(win.locator(".gh-repo__name").first()).toHaveAttribute("href", /^https:\/\/github\.com\/Octo\//);
+  // Lookups are fetched live, and public events are not commits: no all-time counts or commit notes.
+  await expect(win.locator(".gh-head__fresh")).toHaveText(/^Fetched live · data as of \w{3} \d{1,2}, \d{4}$/);
+  await expect(win.locator(".gh-head__meta").first()).toContainText("public events from the GitHub REST API");
+  await expect(win.locator(".gh-repos__legend")).toHaveText("Public events in the last 90 days · share of all repository events · active days.");
+  await expect(win.locator(".gh-repo__value").first()).toContainText(/^\d+ public events in the last 90 days · \d+% · \d+ days?$/);
+  await expect(win.locator(".gh-repo__total")).toHaveCount(0);
+  await expect(win.locator(".gh-repos__note")).toHaveCount(0);
 
   for (const name of ["Training run", "Market", "Launch", "Data science lab"]) {
     await win.getByRole("tab", { name, exact: true }).click();
@@ -336,6 +380,8 @@ test("looks up another user through the REST fallback, then returns to the owner
   await win.getByRole("button", { name: `Back to ${snapshot.name}` }).click();
   await expect(win.getByRole("heading", { level: 3, name: snapshot.name! })).toBeVisible();
   await expect(win.getByRole("note")).toHaveCount(0);
+  await expect(win.locator(".gh-head__fresh")).toContainText("refreshed on each deploy and daily");
+  await expect(win.locator(".gh-repo__total").first()).toBeVisible();
   await expect(win.locator("rect.gh-cell")).toHaveCount(snapshot.days.length);
 });
 
@@ -419,6 +465,15 @@ test("fits a phone without horizontal overflow", async ({ page }) => {
   expect(await overflow()).toEqual({ page: 0, body: 0 });
   const box = (await win.locator(".gh-stats").boundingBox())!;
   expect(box.width).toBeLessThanOrEqual(390);
+  // On a phone the all-time count sits beside the bar, under the 12-month count.
+  const row = win.locator(".gh-repo.has-total").first();
+  const [rowBox, barBox, valueBox, totalBox] = await Promise.all(
+    [row, row.locator(".gh-repo__bar"), row.locator(".gh-repo__value"), row.locator(".gh-repo__total")].map(async (part) => (await part.boundingBox())!)
+  );
+  expect(totalBox.x).toBeGreaterThan(barBox.x + barBox.width);
+  expect(totalBox.x + totalBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width);
+  expect(totalBox.y).toBeGreaterThanOrEqual(valueBox.y + valueBox.height - 1);
+  expect(Math.abs(totalBox.y + totalBox.height / 2 - (barBox.y + barBox.height / 2))).toBeLessThan(totalBox.height);
 
   // Linux CI falls back to wider fonts than Windows; a wide font catches overflow either way.
   await page.addStyleTag({ content: "*, *::before, *::after { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }" });
