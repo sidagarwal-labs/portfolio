@@ -14,6 +14,7 @@ const loadLabel = `Load model (~${Math.round(meta.downloadBytes / 1e6)} MB)`;
 const liveConfig = { model: meta.model, revision: meta.revision, files: meta.files, dtype: "q4f16" as const, temperatures };
 
 function errorText(state: Extract<LiveState, { phase: "error" }>) {
+  if (state.kind === "inference") return "The model did not pass its calculation check. Try another browser, or play the no-download game.";
   if (state.kind === "network" && state.cached) return "Couldn't restore the saved model. Check your connection if the runtime needs to load from cdn.jsdelivr.net, then retry.";
   if (state.kind === "network") return "Couldn't download the model. Check your connection, or whether a network filter or browser extension blocks huggingface.co or cdn.jsdelivr.net.";
   if (state.kind === "memory") return "The browser ran out of memory while running the model. Close other tabs and retry, or try a desktop browser.";
@@ -155,6 +156,7 @@ export function LivePanel({ visible, onCachedModel }: { visible: boolean; onCach
             <Cpu size={14} strokeWidth={2.2} aria-hidden="true" />
             Running in your browser on {state.device === "webgpu" ? "WebGPU" : "WebAssembly (CPU)"}{prediction && !stale ? `, last step ${prediction.ms} ms for ${prediction.tokens} tokens` : ""}.
           </p>}
+          {ready && state.fallback && <p className="game__status" role="status">{state.fallback}</p>}
           <label className="nexttoken__label" htmlFor={textId}>Prompt</label>
           <textarea id={textId} className="nexttoken__input" data-autofocus rows={3} maxLength={400} spellCheck={false} value={text} onChange={(event) => setText(event.target.value)} />
           {!text && <p className="game__hint">Type a prompt to see what comes next.</p>}

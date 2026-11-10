@@ -49,6 +49,12 @@ jobs:
           retention-days: 7
       - run: npm run test:models
       - uses: actions/upload-artifact@v4
+        if: matrix.dtype == 'q4f16' && success()
+        with:
+          name: next-token-browser-check
+          path: dist/
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: next-token-parity-${{ matrix.dtype }}

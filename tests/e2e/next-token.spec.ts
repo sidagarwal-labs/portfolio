@@ -93,7 +93,7 @@ async function expectLoad(worker: Worker, cacheOnly: boolean) {
 }
 
 async function finishLoading(worker: Worker) {
-  await worker.evaluate(() => self.postMessage({ type: "ready", device: "wasm" }));
+  await worker.evaluate(() => self.postMessage({ type: "ready", device: "wasm", validated: true }));
 }
 
 async function barPercents(page: Page) {
@@ -455,6 +455,36 @@ test("a delayed cache check does not override an explicitly selected game tab", 
       document.documentElement.dataset.checkingModelCache = "true";
       return new Promise((resolve, reject) => {
         window.addEventListener("release-model-cache", () => { match.call(this, request, options).then(resolve, reject); }, { once: true });
+      });
+
+      test("the live prompt explains a verified CPU fallback instead of claiming the GPU worked", async ({ page }) => {
+        await mockLiveWorker(page);
+        const game = await openNextToken(page);
+        await game.getByRole("tab", { name: "Try it live" }).click();
+        const started = page.waitForEvent("worker", (worker) => worker.url().includes("nextToken.worker"));
+        await game.getByRole("button", { name: /^Load model/ }).click();
+        const worker = await started;
+        await expectLoad(worker, false);
+        await worker.evaluate(() => self.postMessage({
+          type: "ready", device: "wasm", validated: true,
+          fallback: "WebGPU did not pass the calculation check. Using verified WebAssembly instead."
+        }));
+        await expect(game.getByRole("status")).toContainText("WebGPU did not pass the calculation check");
+        await expect(game.locator(".nexttoken__device")).toContainText("WebAssembly (CPU)");
+        await expect(game.getByRole("button", { name: "Sample", exact: true })).toBeEnabled();
+      });
+
+      test("a model without a passing calculation check cannot enable live inference", async ({ page }) => {
+        await mockLiveWorker(page);
+        const game = await openNextToken(page);
+        await game.getByRole("tab", { name: "Try it live" }).click();
+        const started = page.waitForEvent("worker", (worker) => worker.url().includes("nextToken.worker"));
+        await game.getByRole("button", { name: /^Load model/ }).click();
+        const worker = await started;
+        await expectLoad(worker, false);
+        await worker.evaluate(() => self.postMessage({ type: "ready", device: "webgpu", validated: false }));
+        await expect(game.getByRole("alert")).toContainText("The model did not pass its calculation check");
+        await expect(game.getByRole("button", { name: "Sample", exact: true })).toHaveCount(0);
       });
     };
   });

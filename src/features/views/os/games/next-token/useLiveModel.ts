@@ -8,7 +8,7 @@ export type LiveState =
   | { phase: "checking" }
   | { phase: "idle"; cached: boolean; message?: string }
   | { phase: "loading"; cached: boolean; loaded: number; total: number; message: string }
-  | { phase: "ready"; device: LiveDevice }
+  | { phase: "ready"; device: LiveDevice; fallback?: string }
   | { phase: "error"; cached: boolean; kind: LiveErrorKind; message: string };
 
 type LiveConfig = CachedModel & { dtype: "q4f16"; temperatures: number[] };
@@ -50,7 +50,14 @@ export function useLiveModel(config: LiveConfig, onSample: (sample: LiveSample) 
       if (workerRef.current !== worker) return;
       if (data.type === "progress") setState((current) => (current.phase === "loading" ? { ...current, loaded: data.loaded, total: data.total } : current));
       else if (data.type === "status") setState((current) => (current.phase === "loading" ? { ...current, message: data.message } : current));
-      else if (data.type === "ready") setState({ phase: "ready", device: data.device });
+      else if (data.type === "ready") {
+        if (!data.validated) {
+          stop();
+          setState({ phase: "error", cached: cacheOnly, kind: "inference", message: "This model has no matching reference predictions to verify its calculations." });
+        } else {
+          setState({ phase: "ready", device: data.device, fallback: data.fallback });
+        }
+      }
       else if (data.type === "prediction") {
         if (data.id !== requestRef.current) return;
         setPrediction(data);

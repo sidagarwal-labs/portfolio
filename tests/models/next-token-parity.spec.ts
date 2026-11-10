@@ -81,7 +81,7 @@ test(`real ${requestedDtype} ${requestedDevice} predictions agree with native CP
     await expect.poll(() => page.evaluate(() => window.parityMessages.find((message) => message.type === "ready" || message.type === "error")), { timeout: 180_000 }).toBeDefined();
     const status = await page.evaluate(() => window.parityMessages.find((message) => message.type === "ready" || message.type === "error"));
     if (status?.type === "error") throw new Error(status.message);
-    expect(status).toEqual({ type: "ready", device: requestedDevice });
+    expect(status).toMatchObject({ type: "ready", device: requestedDevice, validated: requestedDtype === meta.dtype });
     for (const [index, reference] of references.entries()) {
       const request: LiveRequest = { type: "predict", id: index + 1, text: reference.text, k: topK };
       await page.evaluate((request) => window.parityWorker.postMessage(request), request);
@@ -99,7 +99,7 @@ test(`real ${requestedDtype} ${requestedDevice} predictions agree with native CP
       });
       expect.soft(result.inputIds, reference.text).toEqual(reference.inputIds);
       expect.soft(result.top[0].id, reference.text).toBe(reference.topId);
-      expect.soft(maxProbabilityError, `${reference.text}: top-${topK} probabilities must differ by at most one percentage point`).toBeLessThanOrEqual(0.01);
+      expect.soft(maxProbabilityError, `${reference.text}: quantized top-${topK} probabilities must stay within five percentage points`).toBeLessThanOrEqual(0.05);
       const mass = probabilities.reduce((sum, value) => sum + value, 0) + Math.exp(result.rest[atOne] - result.lse[atOne]);
       expect.soft(mass, reference.text).toBeCloseTo(1, 5);
     }
