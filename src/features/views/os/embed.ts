@@ -21,8 +21,10 @@ export type OsMessage =
   | { type: "labos:open"; app: "resume" }
   /* An outside link that a native app shows instead of a new tab (see linkRoutes.ts). */
   | { type: "labos:link"; app: LinkApp; target: string }
-  /* A same-origin link to a page that is its own app, such as /markets?symbol=NVDA. */
-  | { type: "labos:page"; app: PageApp; path: string }
+  /* A same-origin link to a page that is its own app, such as /markets?symbol=NVDA. The OS answers with
+     labos:handled and the same id once that app's window shows it. */
+  | { type: "labos:page"; app: PageApp; path: string; id?: number }
+  | { type: "labos:handled"; id: number }
   | { type: "labos:boot" }
   | { type: "labos:focus" }
   | { type: "labos:location"; path: string }
