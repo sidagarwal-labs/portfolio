@@ -398,7 +398,7 @@ const projects: ProjectEntry[] = [
     ],
     whatThisProves:
       "I track the AI buildout the way I think about products: as a system with layers, bottlenecks, and feedback loops, not a single trade.",
-    href: "/markets?view=stack",
+    href: "/markets",
     hrefLabel: "Open in Markets",
     sourceHref: AI_STACK_SHEET,
     accent: "#5df0be",

@@ -1,41 +1,22 @@
 import { useEffect, useMemo, useRef, type RefObject } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { marketCompanies, marketSymbols } from "../../content/journalContent";
-import { useStockQuotes, type StockQuote } from "../../hooks/useStockQuotes";
+import { Link, Navigate, useLocation, useSearchParams, type To } from "react-router-dom";
+import { marketCompanies } from "../../content/journalContent";
 import {
-  AI_STACK_SHEET, direction as moveDirection, distance, formatDay, formatMarketCap, formatPercent, formatPrice, formatRatio,
+  AI_STACK_SHEET, direction, distance, formatDay, formatMarketCap, formatPercent, formatPrice, formatRatio,
   formatTime, groupStack, layerId, layerLabel, listing, useAiStack, type AiStackRow, type AiStackState, type StackLayer
 } from "./aiStack";
 import LivePageShell from "./LivePageShell";
+import { canonicalMarketsPath } from "./marketsPath";
 import TradingViewWidget from "./TradingViewWidget";
-
-const price = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
-const quoteTime = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
-
-const change = (quote: StockQuote) => `${quote.changePercent > 0 ? "+" : ""}${quote.changePercent.toFixed(2)}%`;
-const direction = (quote: StockQuote) => quote.changePercent > 0 ? "up" : quote.changePercent < 0 ? "down" : "flat";
-
-const statusText = {
-  loading: "Loading prices...",
-  ready: "Prices from Finnhub, refreshed every minute while this page is open.",
-  cached: "Showing the last saved prices.",
-  unavailable: "Prices are unavailable here, but the TradingView charts still update."
-};
 
 const tradingView = <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a>;
 
+/* Markets is the AI stack. Old /markets?view=stack links land on the same company here, without a history entry. */
 function MarketsPage() {
-  const [params] = useSearchParams();
-  return params.get("view") === "stack" ? <StackView /> : <WatchlistView />;
-}
-
-function ViewSwitch({ view }: { view: "watchlist" | "stack" }) {
-  return (
-    <nav className="mk-views" aria-label="Markets views">
-      <Link to={{ search: "" }} aria-current={view === "watchlist" ? "page" : undefined}>Watchlist</Link>
-      <Link to="?view=stack" aria-current={view === "stack" ? "page" : undefined}>AI stack</Link>
-    </nav>
-  );
+  const { pathname, search, hash } = useLocation();
+  const path = `${pathname}${search}${hash}`;
+  const current = canonicalMarketsPath(path);
+  return current === path ? <StackView /> : <Navigate to={current} replace />;
 }
 
 /* TradingView's chart, financials, technicals, profile, and news for one symbol. */
@@ -86,75 +67,6 @@ function CompanyPanels({ symbol, ticker, href }: { symbol: string; ticker: strin
   );
 }
 
-function WatchlistView() {
-  const [params] = useSearchParams();
-  const requested = params.get("symbol")?.toUpperCase() ?? "";
-  const symbol = marketSymbols.includes(requested) ? requested : marketSymbols[0];
-  const company = marketCompanies[symbol];
-  const ticker = `${company.exchange}:${symbol}`;
-  const href = `https://www.tradingview.com/symbols/${company.exchange}-${symbol}/`;
-  const { quotes, status } = useStockQuotes();
-  const quote = quotes[symbol];
-
-  return (
-    <LivePageShell
-      section="markets"
-      title="Markets"
-      documentTitle={`${symbol} · Markets`}
-      lede="The AI infrastructure and platform companies I follow, with full charts, volume, financials, and news for each."
-      sources={<p>Charts, financials, technicals, profiles, and news are {tradingView} widgets. Watchlist prices come from <a href="https://finnhub.io/" target="_blank" rel="noopener noreferrer">Finnhub</a>. Nothing here is investment advice.</p>}
-    >
-      <ViewSwitch view="watchlist" />
-      <div className="mk-layout">
-        <nav className="mk-watch" aria-label="Watchlist">
-          <h2 className="live-label">Watchlist</h2>
-          <ul>
-            {marketSymbols.map((item) => {
-              const itemQuote = quotes[item];
-              return (
-                <li key={item}>
-                  <Link to={`?symbol=${item}`} replace aria-current={item === symbol ? "page" : undefined}>
-                    <span className="mk-watch__symbol">{item}</span>
-                    <span className="mk-watch__price">{itemQuote ? price.format(itemQuote.price) : "—"}</span>
-                    <span className="mk-watch__name">{marketCompanies[item].name}</span>
-                    <span className="mk-watch__change" data-direction={itemQuote ? direction(itemQuote) : undefined}>
-                      {itemQuote ? change(itemQuote) : ""}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-          <p className="mk-watch__status" aria-live="polite">{statusText[status]}</p>
-        </nav>
-
-        <div className="mk-main">
-          <section className="mk-quote" aria-labelledby="mk-quote-title">
-            <div>
-              <p className="live-label">{ticker}</p>
-              <h2 id="mk-quote-title">{company.name}</h2>
-              <p className="mk-quote__about">{company.about}</p>
-            </div>
-            <div className="mk-quote__price">
-              {quote ? (
-                <>
-                  <strong>{price.format(quote.price)}</strong>
-                  <span className="mk-quote__change" data-direction={direction(quote)}>{change(quote)} today</span>
-                  <small>As of {quoteTime.format(new Date(quote.quotedAt * 1000))} ET</small>
-                </>
-              ) : (
-                <small>Live price is in the chart below.</small>
-              )}
-            </div>
-          </section>
-
-          <CompanyPanels symbol={symbol} ticker={ticker} href={href} />
-        </div>
-      </div>
-    </LivePageShell>
-  );
-}
-
 function stackStatus({ source, asOf, loading }: AiStackState) {
   if (loading) return `Checking the tracker sheet for newer prices. Showing the saved snapshot from ${formatDay(asOf)} until then.`;
   if (source === "live") return `Live from the tracker sheet, read at ${formatTime(asOf)}. Its Google Finance prices can be delayed up to 20 minutes.`;
@@ -167,7 +79,7 @@ const levelRange = (layer: StackLayer) => {
   return first === last ? `Level ${first}` : `Levels ${first}–${last}`;
 };
 
-const stackLink = (symbol?: string) => (symbol ? `?view=stack&symbol=${encodeURIComponent(symbol)}` : "?view=stack");
+const stackLink = (symbol?: string): To => ({ search: symbol ? `?symbol=${encodeURIComponent(symbol)}` : "" });
 
 /* Where a price sits between its 52-week low (0) and high (100); drawn as a small range bar. */
 function rangePosition(row: AiStackRow) {
@@ -200,7 +112,7 @@ function StackView() {
     <LivePageShell
       section="markets"
       title="Markets"
-      documentTitle={symbol ? `${symbol} · AI stack · Markets` : "AI stack · Markets"}
+      documentTitle={symbol ? `${symbol} · Markets` : "Markets"}
       lede="My AI / LLM Stack Tracker: the public companies behind each layer of AI, from materials and chip design up through data centers, data platforms, and applications."
       sources={
         <p>
@@ -211,7 +123,6 @@ function StackView() {
         </p>
       }
     >
-      <ViewSwitch view="stack" />
       <p className="mk-status" data-source={stack.loading ? "loading" : stack.source} aria-live="polite">{stackStatus(stack)}</p>
 
       {selected && <StackDetail row={selected} rows={stack.rows} heading={heading} />}
@@ -231,7 +142,7 @@ function StackView() {
                 <dl>
                   <div>
                     <dt>Median day</dt>
-                    <dd data-direction={moveDirection(layer.medianChange)}>{formatPercent(layer.medianChange)}</dd>
+                    <dd data-direction={direction(layer.medianChange)}>{formatPercent(layer.medianChange)}</dd>
                   </div>
                   <div>
                     <dt>Median from 52w high</dt>
@@ -297,7 +208,7 @@ function StackView() {
                             {level.areas.length > 1 && <span className="mk-row__area">{row.area}</span>}
                           </th>
                           <td>{formatPrice(row.price)}</td>
-                          <td data-direction={moveDirection(row.change)}>{formatPercent(row.change)}</td>
+                          <td data-direction={direction(row.change)}>{formatPercent(row.change)}</td>
                           <td>{formatMarketCap(row.marketCap)}</td>
                           <td>{formatRatio(row.pe)}</td>
                           <td className="mk-table__range">
@@ -347,7 +258,7 @@ function StackDetail({ row, rows, heading }: { row: AiStackRow; rows: AiStackRow
         </div>
         <div className="mk-quote__price">
           <strong>{formatPrice(row.price)}</strong>
-          {row.change !== null && <span className="mk-quote__change" data-direction={moveDirection(row.change)}>{formatPercent(row.change)} today</span>}
+          {row.change !== null && <span className="mk-quote__change" data-direction={direction(row.change)}>{formatPercent(row.change)} today</span>}
           <small>Price from the tracker sheet</small>
         </div>
       </div>
