@@ -5,8 +5,9 @@ import { pageApp, routeLink } from "./linkRoutes";
 
 const embedded = embeddedView !== undefined;
 
-/* Runs inside a Lab OS window. Outside links to books, podcasts, Microsoft pages, and Sid's GitHub open in the OS's
-   Library, Reader, and GitHub apps; other outside sites open in a new tab (most refuse to load in frames). The
+/* Runs inside a Lab OS window. Outside links to books, podcasts, Microsoft pages, Sid's GitHub, and the arXiv Search
+   site open in the OS's Library, Reader, GitHub, and arXiv Search apps; other outside sites open in a new tab (most
+   refuse to load in frames). The
    decision is made here, during the click, so the new-tab fallback keeps the user gesture popup blockers require.
    The resume opens in the OS's PDF window, and links to Markets, Launches, or AI leaderboards from another page open
    that app's window. Other in-site links replace the frame's URL instead of pushing browser
