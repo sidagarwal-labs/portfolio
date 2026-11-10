@@ -45,6 +45,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Keeps the committed snapshot if the sheet cannot be read; Markets also reads it live.
+      - name: Refresh AI stack data
+        run: npm run data:stack
+
       - name: Build app
         run: npm run build
         env:
