@@ -62,23 +62,8 @@
 .tradingview-widget-copyright { margin-top: 8px; color: var(--muted); font-size: 12px; }
 
 /* Markets */
-.mk-layout { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 24px; align-items: start; }
-.mk-watch { position: sticky; top: 78px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
-.mk-watch h2 { margin: 4px 6px 10px !important; font-family: var(--live-sans) !important; }
-.mk-watch ul { margin: 0; padding: 0; list-style: none; }
-.mk-watch a { display: grid; grid-template-columns: 1fr auto; column-gap: 10px; padding: 9px 10px; border-radius: 10px; color: var(--ink); text-decoration: none; }
-.mk-watch a:hover { background: var(--live-soft); }
-.mk-watch a[aria-current="page"] { background: var(--ink); color: var(--paper); }
-.mk-watch__symbol { font-weight: 700; }
-.mk-watch__price { text-align: right; font-variant-numeric: tabular-nums; }
-.mk-watch__name { color: var(--muted); font-size: 13px; }
-.mk-watch__change { text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
-.mk-watch a[aria-current="page"] .mk-watch__name { color: color-mix(in srgb, var(--paper) 75%, transparent); }
 .live [data-direction="up"] { color: var(--positive); }
 .live [data-direction="down"] { color: var(--negative); }
-.mk-watch a[aria-current="page"] [data-direction="up"] { color: #8fd8ad; }
-.mk-watch a[aria-current="page"] [data-direction="down"] { color: #f2a3a5; }
-.mk-watch__status { margin: 10px 6px 2px !important; color: var(--muted); font-size: 12px; }
 
 .mk-main { display: grid; gap: 20px; min-width: 0; }
 .mk-quote { display: flex; justify-content: space-between; gap: 24px; align-items: flex-end; }
@@ -89,11 +74,6 @@
 .mk-quote__change { font-weight: 600; }
 .mk-quote__price small { color: var(--muted); font-size: 12px; }
 .mk-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
-
-.mk-views { display: flex; width: fit-content; max-width: 100%; gap: 4px; margin-bottom: 24px; padding: 4px; border: 1px solid var(--line); border-radius: 999px; background: #fff; }
-.mk-views a { padding: 6px 16px; border-radius: 999px; color: var(--muted); font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; }
-.mk-views a:hover { color: var(--ink); background: var(--live-soft); }
-.mk-views a[aria-current="page"] { color: var(--paper); background: var(--ink); }
 
 /* Markets: AI stack */
 .live [data-layer] { --layer: #7b8580; }
@@ -271,12 +251,6 @@
 .lb-more a { display: inline-flex; align-items: center; gap: 6px; }
 
 @media (max-width: 960px) {
-  .mk-layout { grid-template-columns: minmax(0, 1fr); }
-  .mk-watch { position: static; min-width: 0; padding: 8px; }
-  .mk-watch h2, .mk-watch__status { display: none; }
-  .mk-watch ul { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
-  .mk-watch li { flex: none; }
-  .mk-watch a { min-width: 120px; }
   .mk-grid { grid-template-columns: 1fr; }
   .mk-summary__layers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .lt-hero__grid { grid-template-columns: 1fr; }
