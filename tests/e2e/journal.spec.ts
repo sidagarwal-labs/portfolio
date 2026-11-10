@@ -257,7 +257,7 @@ test("writing features the newest AI buildout edition and keeps earlier editions
     "AI capital expenditure", "AI adoption", "Cloud growth"
   ]);
   await expect(page.getByRole("heading", { name: "Following the AI buildout" })).toHaveCount(0);
-  await expect(writing.getByRole("link", { name: "AI / LLM Stack Tracker", exact: true })).toHaveAttribute("href", /docs\.google\.com\/spreadsheets/);
+  await expect(writing.getByRole("link", { name: "AI / LLM Stack Tracker", exact: true })).toHaveAttribute("href", "/markets?view=stack");
   await expect(writing.locator(".disclaimer")).toHaveText("Research for my own learning, not investment advice.");
   const editions = writing.locator(".note-archive");
   await expect(editions.locator("summary")).toHaveText("Earlier AI buildout editions");

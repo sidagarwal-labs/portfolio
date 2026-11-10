@@ -1,8 +1,28 @@
+import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 
 const upcomingApi = "https://ll.thespacedevs.com/2.3.0/launches/upcoming/**";
 const previousApi = "https://ll.thespacedevs.com/2.3.0/launches/previous/**";
+const stackCsv = "https://docs.google.com/spreadsheets/**";
 const hour = 60 * 60 * 1000;
+
+const stackSnapshot = JSON.parse(readFileSync(new URL("../../src/content/generated/ai-stack.json", import.meta.url), "utf8")) as { rows: unknown[] };
+
+/* A slice of the AI / LLM Stack Tracker in its published CSV form: quoted thousands and commas, #N/A cells, a ticker
+   at two levels, and the sheet's trailing blank columns and rows. */
+const stackSheet = [
+  "Stock,Area,Layer,Level,Price,MCAP (b),Daily Price Change,EPS,Price to Earnings,Beta,52 week high,52 week low,Current - High,% from high,Current - Low,% from low,,",
+  'NVDA,Designing,Chips,1,$150.00,"$3,650",2.50%,$3.00,50.00,1.80,$200.00,$100.00,-$50.00,-25.00%,$50.00,150.00%,,',
+  "AMD,Designing,Chips,1,$120.00,$195,-1.00%,$2.00,60.00,1.90,$240.00,$80.00,-$120.00,-50.00%,$40.00,150.00%,,",
+  "SAMSUNG,Memory - HBM,Chips,5,#N/A,#N/A,#N/A,#N/A,#N/A,#N/A,#N/A,#N/A,#N/A,#N/A,#N/A,#N/A,,",
+  "VRT,Cooling,Data Center,8,$90.00,$34,-3.00%,$1.50,60.00,1.70,$100.00,$45.00,-$10.00,-10.00%,$45.00,200.00%,,",
+  'MSFT,Servers,Data Center,13,$400.00,"$2,970",0.50%,$12.00,33.33,0.90,$500.00,$320.00,-$100.00,-20.00%,$80.00,125.00%,,',
+  'SNOW,"Cloud, analytics",Data,15,$180.00,$60,1.00%,#N/A,#N/A,1.10,$200.00,$120.00,-$20.00,-10.00%,$60.00,150.00%,,',
+  'MSFT,Software productivity,Application,16,$400.00,"$2,970",0.50%,$12.00,33.33,0.90,$500.00,$320.00,-$100.00,-20.00%,$80.00,125.00%,,',
+  ",,,,,,,,,,,,,,,,,"
+].join("\r\n");
+
+const csvResponse = (body: string, contentType = "text/csv") => ({ body, contentType, headers: { "access-control-allow-origin": "*" } });
 
 test.beforeEach(async ({ page }) => {
   await page.route("https://finnhub.io/api/v1/quote?*", (route) => route.fulfill({ json: { c: 230.36, dp: 0.84, t: 1788552000 } }));
@@ -11,6 +31,7 @@ test.beforeEach(async ({ page }) => {
   await page.route(upcomingApi, (route) => route.fulfill({ json: { results: [] } }));
   await page.route(previousApi, (route) => route.fulfill({ json: { results: [] } }));
   await page.route("https://datasets-server.huggingface.co/**", (route) => route.abort());
+  await page.route(stackCsv, (route) => route.fulfill(csvResponse(stackSheet)));
 });
 
 async function horizontalOverflow(page: Page) {
@@ -52,6 +73,7 @@ test("Markets shows a linkable quote, watchlist, and TradingView fallbacks", asy
   await page.goto("./markets?symbol=MSFT");
 
   await expect(page).toHaveTitle("MSFT · Markets | Sid Agarwal");
+  await expect(page.getByRole("navigation", { name: "Markets views" }).getByRole("link", { name: "Watchlist" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("heading", { name: "Microsoft", exact: true })).toBeVisible();
   // useStockQuotes waits for the whole watchlist batch (up to 8s) before showing any price.
   await expect(page.locator(".mk-quote")).toContainText("$230.36", { timeout: 10_000 });
@@ -76,6 +98,117 @@ test("Markets shows a linkable quote, watchlist, and TradingView fallbacks", asy
   await page.getByRole("navigation", { name: "Live pages" }).getByRole("link", { name: "Launches" }).click();
   await expect(page).toHaveURL(/\/launches$/);
   await expect(page.getByRole("heading", { name: "SpaceX launch tracker", level: 1 })).toBeVisible();
+});
+
+test("the Markets AI stack groups the tracker sheet by layer and level", async ({ page }) => {
+  await page.goto("./markets");
+  const views = page.getByRole("navigation", { name: "Markets views" });
+  await views.getByRole("link", { name: "AI stack" }).click();
+  await expect(page).toHaveURL(/\/markets\?view=stack$/);
+  await expect(page).toHaveTitle("AI stack · Markets | Sid Agarwal");
+  await expect(views.getByRole("link", { name: "AI stack" })).toHaveAttribute("aria-current", "page");
+  const status = page.locator(".mk-status");
+  await expect(status).toHaveAttribute("data-source", "live");
+  await expect(status).toHaveText(/^Live from the tracker sheet, read at .+\. Its Google Finance prices can be delayed up to 20 minutes\.$/);
+
+  const summary = page.getByRole("region", { name: "The stack at a glance" });
+  await expect(summary).toContainText("6 companies in 4 layers.");
+  await expect(summary.getByRole("heading", { level: 3 })).toHaveText(["Chips", "Data center", "Data", "Application"]);
+  const chipsSummary = summary.locator('li[data-layer="chips"]');
+  await expect(chipsSummary).toContainText("Levels 1–5 · 3 companies");
+  await expect(chipsSummary.locator("dd")).toHaveText(["+0.75%", "-37.5%"]);
+  await expect(chipsSummary).toContainText("1 up, 1 down today");
+  await expect(summary.locator('li[data-layer="data-center"] dd')).toHaveText(["-1.25%", "-15.0%"]);
+
+  await expect(page.locator(".mk-layer h2")).toHaveText(["Chips", "Data center", "Data", "Application"]);
+  const chips = page.getByRole("table", { name: /^Chips layer by level/ });
+  await expect(chips.getByRole("columnheader")).toHaveText(["Company", "Price", "Day", "Market cap", "P/E", "From 52w high", "From 52w low"]);
+  await expect(chips.locator(".mk-level")).toHaveText(["Level 1 Designing", "Level 5 Memory - HBM"]);
+  await expect(chips.locator('tr[data-symbol="NVDA"] th')).toHaveText("NVDANVIDIA");
+  await expect(chips.locator('tr[data-symbol="NVDA"] td')).toHaveText(["$150.00", "+2.50%", "$3.65T", "50.0", "-25.0%", "+50.0%"]);
+  await expect(chips.locator('tr[data-symbol="AMD"] td').nth(1)).toHaveAttribute("data-direction", "down");
+  // #N/A is missing data, shown as a dash rather than zero.
+  await expect(chips.locator('tr[data-symbol="SAMSUNG"] th')).toContainText("Samsung Electronics");
+  await expect(chips.locator('tr[data-symbol="SAMSUNG"] td')).toHaveText(Array(6).fill("—"));
+  const data = page.getByRole("table", { name: /^Data layer by level/ });
+  await expect(data.locator(".mk-level")).toHaveText("Level 15 Cloud, analytics");
+  await expect(data.locator('tr[data-symbol="SNOW"] td')).toHaveText(["$180.00", "+1.00%", "$60B", "—", "-10.0%", "+50.0%"]);
+  await expect(page.locator(".mk-layer tr[data-symbol]")).toHaveCount(7);
+
+  const source = page.getByRole("link", { name: "AI / LLM Stack Tracker Google Sheet" });
+  await expect(source).toHaveAttribute("href", /^https:\/\/docs\.google\.com\/spreadsheets\/d\/e\/[\w-]+\/pubhtml$/);
+  await expect(source).toHaveAttribute("target", "_blank");
+  await expect(page.locator(".live-foot__sources")).toContainText("Nothing here is investment advice.");
+
+  await views.getByRole("link", { name: "Watchlist" }).click();
+  await expect(page).toHaveURL(/\/markets$/);
+  await expect(page.getByRole("navigation", { name: "Watchlist" }).getByRole("link")).toHaveCount(7);
+  await expect(page.locator(".mk-status")).toHaveCount(0);
+});
+
+test("selecting an AI stack company opens its quote and TradingView panels", async ({ page }) => {
+  await page.goto("./markets?view=stack");
+  await expect(page.locator(".mk-status")).toHaveAttribute("data-source", "live");
+  await page.locator("#mk-layer-chips").getByRole("link", { name: /^NVDA/ }).click();
+  await expect(page).toHaveURL(/\/markets\?view=stack&symbol=NVDA$/);
+  await expect(page).toHaveTitle("NVDA · AI stack · Markets | Sid Agarwal");
+  const detail = page.locator(".mk-detail");
+  await expect(detail.getByRole("heading", { name: "NVIDIA", level: 2 })).toBeFocused();
+  await expect(detail.locator(".mk-quote")).toContainText("NASDAQ:NVDA");
+  await expect(detail.locator(".mk-quote__price")).toContainText("$150.00");
+  await expect(detail.locator(".mk-quote__change")).toHaveText("+2.50% today");
+  await expect(detail.getByRole("list", { name: "Places in the stack" }).getByRole("listitem")).toHaveText(["Chips · Level 1 · Designing"]);
+  await expect(detail.locator(".mk-stats dd")).toHaveText(["$3.65T", "50.0", "$3.00", "1.80", "$100.00 to $200.00", "-25.0%", "+50.0%"]);
+  await expect(page.locator('#mk-layer-chips tr[data-symbol="NVDA"]')).toHaveClass(/is-selected/);
+  for (const name of ["Price and volume", "Financials", "Technicals", "Company profile", "News"]) {
+    await expect(detail.getByRole("heading", { name, level: 2 })).toBeVisible();
+  }
+  const chart = detail.locator(".tv-widget").first();
+  await chart.scrollIntoViewIfNeeded();
+  await expect(chart).toContainText("The NVDA chart could not load here.");
+  await expect(chart.getByRole("link", { name: "Open it on TradingView" })).toHaveAttribute("href", "https://www.tradingview.com/symbols/NASDAQ-NVDA/");
+
+  await detail.getByRole("link", { name: "Back to the whole stack" }).click();
+  await expect(page).toHaveURL(/\/markets\?view=stack$/);
+  await expect(page.locator(".mk-detail")).toHaveCount(0);
+  await expect(page.locator('#mk-layer-chips tr[data-symbol="NVDA"] a')).toBeFocused();
+
+  /* Symbols match case-insensitively; a company the sheet can't price still charts on its own exchange. */
+  await page.goto("./markets?view=stack&symbol=samsung");
+  await expect(detail.getByRole("heading", { name: "Samsung Electronics", level: 2 })).toBeVisible();
+  await expect(detail.locator(".mk-quote")).toContainText("KRX:005930");
+  await expect(detail.locator(".mk-quote__price strong")).toHaveText("—");
+  await expect(detail.locator(".mk-quote__change")).toHaveCount(0);
+  await expect(detail.locator(".mk-stats dd")).toHaveText(Array(7).fill("—"));
+  await chart.scrollIntoViewIfNeeded();
+  await expect(chart.getByRole("link", { name: "Open it on TradingView" })).toHaveAttribute("href", "https://www.tradingview.com/symbols/KRX-005930/");
+
+  await page.locator("#mk-layer-application").getByRole("link", { name: /^MSFT/ }).click();
+  await expect(page).toHaveURL(/\/markets\?view=stack&symbol=MSFT$/);
+  await expect(detail.getByRole("list", { name: "Places in the stack" }).getByRole("listitem"))
+    .toHaveText(["Data center · Level 13 · Servers", "Application · Level 16 · Software productivity"]);
+
+  await page.goto("./markets?view=stack&symbol=<script>");
+  await expect(page.locator(".mk-detail")).toHaveCount(0);
+  await expect(page).toHaveTitle("AI stack · Markets | Sid Agarwal");
+});
+
+test("the AI stack falls back to the saved snapshot when the sheet can't be read", async ({ page }) => {
+  await page.unroute(stackCsv);
+  await page.route(stackCsv, (route) => route.abort());
+  await page.goto("./markets?view=stack");
+  const status = page.locator(".mk-status");
+  await expect(status).toHaveAttribute("data-source", "snapshot");
+  await expect(status).toHaveText(/^Saved snapshot from [A-Z][a-z]{2} \d{1,2}, \d{4}\. The live sheet couldn't be reached\.$/);
+  await expect(page.locator(".mk-layer tr[data-symbol]")).toHaveCount(stackSnapshot.rows.length);
+  await expect(page.locator(".mk-layer h2").first()).toHaveText("Chips");
+
+  /* A page that isn't the tracker (such as a sign-in page) is treated the same as a failed request. */
+  await page.unroute(stackCsv);
+  await page.route(stackCsv, (route) => route.fulfill(csvResponse("<!doctype html><title>Sign in</title><p>Sign in to continue</p>", "text/html")));
+  await page.reload();
+  await expect(status).toHaveAttribute("data-source", "snapshot");
+  await expect(page.locator(".mk-layer tr[data-symbol]")).toHaveCount(stackSnapshot.rows.length);
 });
 
 test("the launch tracker shows a live launch, plays streams in place, and lists replays", async ({ page }) => {
@@ -319,7 +452,7 @@ test("AI leaderboards read Arena live, keep tabs linkable, and fall back to the 
 
 test("live pages fit a phone screen", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  for (const path of ["./markets", "./launches", "./leaderboards"]) {
+  for (const path of ["./markets", "./markets?view=stack", "./launches", "./leaderboards"]) {
     await page.goto(path);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Live pages" }).getByRole("link", { name: "AI leaderboards" })).toBeInViewport({ ratio: 1 });
