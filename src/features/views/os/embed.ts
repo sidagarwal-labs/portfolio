@@ -1,5 +1,6 @@
 import { profileContent } from "../../../content/siteContent";
 import { isSiteView, type SiteView } from "../siteViews";
+import type { LinkApp } from "./linkRoutes";
 
 const framePrefix = "labos:";
 
@@ -18,6 +19,8 @@ export const frameName = (view: SiteView) => `${framePrefix}${view}`;
 /* Messages between the OS and the site apps running in its windows (same origin only). */
 export type OsMessage =
   | { type: "labos:open"; app: "resume" }
+  /* An outside link that a native app shows instead of a new tab (see linkRoutes.ts). */
+  | { type: "labos:link"; app: LinkApp; target: string }
   | { type: "labos:boot" }
   | { type: "labos:focus" }
   | { type: "labos:location"; path: string }
