@@ -390,7 +390,7 @@ function ForwardPassPage() {
               {currentResearchNotes.map((note) => (
                 <li key={note.slug}>
                   <ActivationStrip seed={note.slug} />
-                  <a href={note.href}>{note.title}</a>
+                  <a href={note.href} target="_blank" rel="noopener noreferrer">{note.title}</a>
                   <time className="entry-meta" dateTime={noteDates[note.slug]}>{noteDateFormatter.format(new Date(noteDates[note.slug]))}</time>
                 </li>
               ))}
@@ -408,7 +408,7 @@ function ForwardPassPage() {
                 <ul>
                   {earlierBuildoutEditions.map((note) => (
                     <li key={note.slug}>
-                      <a href={note.href}>{note.title}</a>{" "}
+                      <a href={note.href} target="_blank" rel="noopener noreferrer">{note.title}</a>{" "}
                       <time className="entry-meta" dateTime={noteDates[note.slug]}>{noteDateFormatter.format(new Date(noteDates[note.slug]))}</time>
                     </li>
                   ))}

@@ -247,7 +247,7 @@ function TrainingRunPage() {
               {currentResearchNotes.map((note, index) => (
                 <tr key={note.slug}>
                   <td className="tr-table__index">{index}</td>
-                  <td><a href={note.href}>{note.title}</a></td>
+                  <td><a href={note.href} target="_blank" rel="noopener noreferrer">{note.title}</a></td>
                   <td className="tr-table__date"><time dateTime={noteDates[note.slug]}>{noteDateFormatter.format(new Date(noteDates[note.slug]))}</time></td>
                 </tr>
               ))}
@@ -266,7 +266,7 @@ function TrainingRunPage() {
               <ul>
                 {earlierBuildoutEditions.map((note) => (
                   <li key={note.slug}>
-                    <a href={note.href}>{note.title}</a>{" "}
+                    <a href={note.href} target="_blank" rel="noopener noreferrer">{note.title}</a>{" "}
                     <time className="entry-meta" dateTime={noteDates[note.slug]}>{noteDateFormatter.format(new Date(noteDates[note.slug]))}</time>
                   </li>
                 ))}

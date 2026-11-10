@@ -40,8 +40,10 @@ const featuredDocId = `project-${featuredProject?.symbol}`;
 const otherProjects = viewProjects.filter((project) => project !== featuredProject);
 
 function DocLink({ doc, className, children }: { doc: SearchDoc; className?: string; children: ReactNode }) {
-  return doc.route
-    ? <Link className={className} to={doc.href}>{children}</Link>
+  if (doc.route) return <Link className={className} to={doc.href}>{children}</Link>;
+  /* Research notes live on GitHub and open in a new tab, as in the notes list. */
+  return doc.kind === "Research note"
+    ? <a className={className} href={doc.href} target="_blank" rel="noopener noreferrer">{children}</a>
     : <a className={className} href={doc.href}>{children}</a>;
 }
 
@@ -335,7 +337,7 @@ function SearchPage() {
                 <ul className="se-stories">
                   {currentResearchNotes.map((note) => (
                     <li key={note.slug}>
-                      <a href={note.href}>
+                      <a href={note.href} target="_blank" rel="noopener noreferrer">
                         <span className="se-stories__source">GitHub · research notes</span>
                         <span className="se-stories__title">{note.title}</span>
                         <time dateTime={noteDates[note.slug]}>{noteDateFormatter.format(new Date(noteDates[note.slug]))}</time>
@@ -358,7 +360,7 @@ function SearchPage() {
                     <ul>
                       {earlierBuildoutEditions.map((note) => (
                         <li key={note.slug}>
-                          <a href={note.href}>{note.title}</a>{" "}
+                          <a href={note.href} target="_blank" rel="noopener noreferrer">{note.title}</a>{" "}
                           <time className="entry-meta" dateTime={noteDates[note.slug]}>{noteDateFormatter.format(new Date(noteDates[note.slug]))}</time>
                         </li>
                       ))}
