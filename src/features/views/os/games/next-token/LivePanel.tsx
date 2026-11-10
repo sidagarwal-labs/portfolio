@@ -11,9 +11,10 @@ const DEFAULT_PROMPT = "The capital of France is";
 // 5,574,350 bytes transferred in headless Chromium on Nov 9, 2026 (gzip); brotli clients get about 4.7 MB.
 const RUNTIME_BYTES = 5_574_350;
 const loadLabel = `Load model (~${Math.round(meta.downloadBytes / 1e6)} MB)`;
-const liveConfig = { model: meta.model, revision: meta.revision, dtype: "q4f16" as const, temperatures };
+const liveConfig = { model: meta.model, revision: meta.revision, files: meta.files, dtype: "q4f16" as const, temperatures };
 
 function errorText(state: Extract<LiveState, { phase: "error" }>) {
+  if (state.kind === "network" && state.cached) return "Couldn't restore the saved model. Check your connection if the runtime needs to load from cdn.jsdelivr.net, then retry.";
   if (state.kind === "network") return "Couldn't download the model. Check your connection, or whether a network filter or browser extension blocks huggingface.co or cdn.jsdelivr.net.";
   if (state.kind === "memory") return "The browser ran out of memory while running the model. Close other tabs and retry, or try a desktop browser.";
   if (state.kind === "unsupported") return "This browser couldn't start the model runtime (WebAssembly or WebGPU).";
@@ -42,7 +43,7 @@ export function OtherBar({ probability: value, count }: { probability: number; c
   );
 }
 
-export function LivePanel({ visible }: { visible: boolean }) {
+export function LivePanel({ visible, onCachedModel }: { visible: boolean; onCachedModel: () => void }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const textId = useId();
   const [text, setText] = useState(DEFAULT_PROMPT);
@@ -61,9 +62,10 @@ export function LivePanel({ visible }: { visible: boolean }) {
     append(sample.text, sample.token.text);
     setAnnouncement(`Sampled ${speakToken(sample.token.text)}, which had ${percent(sample.probability)} at temperature ${sample.temperature.toFixed(1)}.`);
   };
-  const live = useLiveModel(liveConfig, onSample);
+  const live = useLiveModel(liveConfig, onSample, onCachedModel);
   const { state, prediction, pending, predict } = live;
   const ready = state.phase === "ready";
+  const showPrompt = ready || ("cached" in state && state.cached);
 
   useEffect(() => {
     if (!ready || !text) return;
@@ -92,12 +94,15 @@ export function LivePanel({ visible }: { visible: boolean }) {
 
   return (
     <div className="nexttoken__live" ref={panelRef}>
-      {state.phase === "idle" && (
+      {state.phase === "checking" && <p className="game__status" role="status">Checking for a saved model...</p>}
+
+      {state.phase === "idle" && !state.cached && (
         <>
+          {state.message && <p className="game__status" role="status">{state.message}</p>}
           <p className="game__hint">Run the same model in your browser and type your own prompt.</p>
           <p className="nexttoken__copy">
             This downloads {megabytes(meta.downloadBytes)} of model files from Hugging Face, plus up to {megabytes(RUNTIME_BYTES)} for the ONNX Runtime engine from jsDelivr.
-            Nothing downloads until you press the button. Your browser caches the files, so the next load is fast. It works on phones too, but uses mobile data.
+            Nothing downloads until you press the button. Saved model files are reused automatically when available. It works on phones too, but uses mobile data.
           </p>
           <div className="game__row">
             <button type="button" className="game__btn game__btn--primary" data-autofocus onClick={live.load}>
@@ -111,14 +116,26 @@ export function LivePanel({ visible }: { visible: boolean }) {
       {state.phase === "loading" && (
         <div className="nexttoken__loading">
           <p className="game__status" aria-live="polite">{state.message}…</p>
-          <div className="nexttoken__progress" role="progressbar" aria-label="Model download" aria-valuemin={0} aria-valuemax={100}
-            aria-valuenow={Math.round(Math.min(state.loaded / meta.downloadBytes, 1) * 100)} aria-valuetext={`${megabytes(state.loaded)} of ${megabytes(meta.downloadBytes)}`}>
-            <span style={{ width: `${Math.min(state.loaded / meta.downloadBytes, 1) * 100}%` }} />
-          </div>
-          <p className="game__muted">{megabytes(state.loaded)} of {megabytes(meta.downloadBytes)}. Cached files load without downloading again.</p>
+          {state.cached ? (
+            <p className="game__muted">Your model is saved in this browser. You can edit the prompt while it initializes.</p>
+          ) : (
+            <>
+              <div className="nexttoken__progress" role="progressbar" aria-label="Model download" aria-valuemin={0} aria-valuemax={100}
+                aria-valuenow={Math.round(Math.min(state.loaded / meta.downloadBytes, 1) * 100)} aria-valuetext={`${megabytes(state.loaded)} of ${megabytes(meta.downloadBytes)}`}>
+                <span style={{ width: `${Math.min(state.loaded / meta.downloadBytes, 1) * 100}%` }} />
+              </div>
+              <p className="game__muted">{megabytes(state.loaded)} of {megabytes(meta.downloadBytes)}. Cached files load without downloading again.</p>
+            </>
+          )}
           <div className="game__row">
             <button type="button" className="game__btn" data-autofocus onClick={live.cancel}><X size={14} strokeWidth={2.2} aria-hidden="true" /> Cancel</button>
           </div>
+        </div>
+      )}
+
+      {state.phase === "idle" && state.cached && (
+        <div className="game__row">
+          <button type="button" className="game__btn game__btn--primary" onClick={live.resume}>Resume saved model</button>
         </div>
       )}
 
@@ -127,17 +144,17 @@ export function LivePanel({ visible }: { visible: boolean }) {
           <p className="game__status">{errorText(state)}</p>
           <p className="game__muted nexttoken__detail">Details: {state.message}</p>
           <div className="game__row">
-            <button type="button" className="game__btn game__btn--primary" data-autofocus onClick={live.load}><RefreshCw size={14} strokeWidth={2.2} aria-hidden="true" /> Retry</button>
+            <button type="button" className="game__btn game__btn--primary" data-autofocus onClick={state.cached ? live.resume : live.load}><RefreshCw size={14} strokeWidth={2.2} aria-hidden="true" /> Retry</button>
           </div>
         </div>
       )}
 
-      {ready && (
+      {showPrompt && (
         <>
-          <p className="game__muted nexttoken__device">
+          {ready && <p className="game__muted nexttoken__device">
             <Cpu size={14} strokeWidth={2.2} aria-hidden="true" />
             Running in your browser on {state.device === "webgpu" ? "WebGPU" : "WebAssembly (CPU)"}{prediction && !stale ? `, last step ${prediction.ms} ms for ${prediction.tokens} tokens` : ""}.
-          </p>
+          </p>}
           <label className="nexttoken__label" htmlFor={textId}>Prompt</label>
           <textarea id={textId} className="nexttoken__input" data-autofocus rows={3} maxLength={400} spellCheck={false} value={text} onChange={(event) => setText(event.target.value)} />
           {!text && <p className="game__hint">Type a prompt to see what comes next.</p>}
@@ -160,7 +177,7 @@ export function LivePanel({ visible }: { visible: boolean }) {
           )}
           <TemperatureSlider value={temperature} onChange={setTemperature} />
           <div className="game__row">
-            <button type="button" className="game__btn game__btn--primary" disabled={!text || stale} onClick={() => live.sample(text, temperature)}>
+            <button type="button" className="game__btn game__btn--primary" disabled={!ready || !text || stale} onClick={() => live.sample(text, temperature)}>
               <Dices size={14} strokeWidth={2.2} aria-hidden="true" /> Sample
             </button>
             <button type="button" className="game__btn" disabled={!history.length} onClick={() => { setText(history[history.length - 1]); setHistory((current) => current.slice(0, -1)); }}>

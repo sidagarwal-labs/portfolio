@@ -1,13 +1,14 @@
 // Runs SmolLM2-135M with transformers.js off the main thread. transformers.js is bundled into this worker only,
-// and the worker is created when the visitor presses "Load model", so nothing downloads before that.
+// New model downloads require consent; returning visits restore already-cached weights.
 import { AutoModelForCausalLM, AutoTokenizer, env, type PreTrainedModel, type PreTrainedTokenizer, type Tensor } from "@huggingface/transformers";
+import { MODEL_CACHE_NAME } from "./modelCache";
 
 export type LiveDevice = "webgpu" | "wasm";
 export type LiveToken = { id: number; text: string; logit: number };
-export type LiveErrorKind = "network" | "memory" | "unsupported" | "other";
+export type LiveErrorKind = "cache-miss" | "network" | "memory" | "unsupported" | "other";
 
 export type LiveRequest =
-  | { type: "load"; model: string; revision: string; dtype: "q4f16"; temperatures: number[] }
+  | { type: "load"; model: string; revision: string; dtype: "q4f16"; temperatures: number[]; cacheOnly: boolean }
   | { type: "predict"; id: number; text: string; k: number }
   | { type: "sample"; id: number; text: string; temperature: number };
 
@@ -25,6 +26,7 @@ type WorkerScope = { postMessage(message: LiveResponse): void; onmessage: ((even
 
 const scope = self as unknown as WorkerScope;
 const send = (message: LiveResponse) => scope.postMessage(message);
+const fetchRemote = env.fetch;
 
 let tokenizer: PreTrainedTokenizer | null = null;
 let model: PreTrainedModel | null = null;
@@ -35,6 +37,7 @@ let queue: Promise<unknown> = Promise.resolve();
 
 function classify(error: unknown): { kind: LiveErrorKind; message: string } {
   const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("Cached model file unavailable")) return { kind: "cache-miss", message };
   if (/fetch|network|load failed|could not locate|offline|ERR_|\b(403|404|429|5\d\d)\b/i.test(message)) return { kind: "network", message };
   if (/memory|allocation|bad_alloc|Aborted\(/i.test(message) || error instanceof RangeError) return { kind: "memory", message };
   if (/webgpu|wasm|webassembly|backend|execution provider/i.test(message)) return { kind: "unsupported", message };
@@ -52,7 +55,7 @@ async function pickDevice(): Promise<LiveDevice> {
   }
 }
 
-async function load({ model: id, revision, dtype, temperatures: grid }: Extract<LiveRequest, { type: "load" }>) {
+async function load({ model: id, revision, dtype, temperatures: grid, cacheOnly }: Extract<LiveRequest, { type: "load" }>) {
   temperatures = grid;
   const files = new Map<string, { loaded: number; total: number }>();
   const progress_callback = (info: { status: string; file?: string; loaded?: number; total?: number }) => {
@@ -66,14 +69,23 @@ async function load({ model: id, revision, dtype, temperatures: grid }: Extract<
 
   // The site serves an HTML fallback for unknown paths, so never look for model files on this origin.
   env.allowLocalModels = false;
-  send({ type: "status", message: "Downloading the tokenizer" });
+  env.cacheKey = MODEL_CACHE_NAME;
+  // local_files_only conflicts with allowLocalModels=false in transformers.js. Guard its
+  // remote fetch instead, so cache eviction cannot silently trigger a fresh model download.
+  env.fetch = (input, options) => {
+    if (cacheOnly && new URL(input).origin === new URL(env.remoteHost).origin) {
+      throw new Error("Cached model file unavailable. Download the model again to continue.");
+    }
+    return fetchRemote(input, options);
+  };
+  send({ type: "status", message: cacheOnly ? "Restoring the saved tokenizer" : "Downloading the tokenizer" });
   tokenizer = await AutoTokenizer.from_pretrained(id, { revision, progress_callback });
   let device = await pickDevice();
-  send({ type: "status", message: "Downloading the model weights" });
+  send({ type: "status", message: cacheOnly ? "Restoring the saved model weights" : "Downloading the model weights" });
   try {
     model = await AutoModelForCausalLM.from_pretrained(id, { revision, dtype, device, progress_callback });
   } catch (error) {
-    if (device !== "webgpu" || classify(error).kind === "network") throw error;
+    if (device !== "webgpu" || ["network", "cache-miss"].includes(classify(error).kind)) throw error;
     // Some GPUs advertise WebGPU but fail to build the session. The files are cached by now, so fall back.
     device = "wasm";
     send({ type: "status", message: "WebGPU failed, retrying on WebAssembly" });

@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Page, type Worker } from "@playwright/test";
+import type { LiveRequest } from "../../src/features/views/os/games/next-token/nextToken.worker";
 
 type Token = { id: number; text: string; logit: number };
 type Prompt = { text: string; note: string; tokens: number; top: Token[]; lse: number[]; rest: number[]; choices: number[] };
@@ -42,12 +43,57 @@ async function openNextToken(page: Page, width = 1440) {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width, height: width < 600 ? 760 : 900 });
   await page.goto("./");
+  return launchNextToken(page, width);
+}
+
+async function launchNextToken(page: Page, width = 1440) {
   if (width < 600) await page.locator(".os-home .os-icon", { hasText: "Next Token" }).click();
   else {
     await page.locator(".os-icons .os-icon", { hasText: "Games" }).click();
     await page.locator(".os-folder .os-icon", { hasText: "Next Token" }).click();
   }
   return page.locator(".nexttoken");
+}
+
+async function cacheModel(page: Page, files = meta.files, revision = meta.revision) {
+  await page.evaluate(async ({ model, revision, files }) => {
+    const cache = await caches.open("transformers-cache");
+    for (const { path } of files) {
+      await cache.put(`https://huggingface.co/${model}/resolve/${revision}/${path}`, new Response("cached model fixture"));
+    }
+  }, { model: meta.model, revision, files });
+}
+
+function recordModelRequests(page: Page) {
+  const requests: string[] = [];
+  page.context().on("request", (request) => { if (/huggingface\.co|hf\.co|jsdelivr\.net/.test(request.url())) requests.push(request.url()); });
+  return requests;
+}
+
+// Keep readiness under test control; inference responses use the existing saved probability fixture.
+async function mockLiveWorker(page: Page) {
+  await page.context().route("**/nextToken.worker-*.js", (route) => route.fulfill({
+    contentType: "application/javascript",
+    body: `
+      const prediction = ${JSON.stringify(prompts[1])};
+      self.onmessage = ({ data }) => {
+        if (data.type === "load") self.loadRequest = data;
+        if (data.type === "predict") self.postMessage({
+          type: "prediction", id: data.id, text: data.text, tokens: prediction.tokens,
+          top: prediction.top, lse: prediction.lse, rest: prediction.rest, ms: 1
+        });
+      };
+    `
+  }));
+}
+
+async function expectLoad(worker: Worker, cacheOnly: boolean) {
+  await expect.poll(() => worker.evaluate<Extract<LiveRequest, { type: "load" }> | undefined>("self.loadRequest"))
+    .toMatchObject({ type: "load", model: meta.model, revision: meta.revision, dtype: meta.dtype, cacheOnly });
+}
+
+async function finishLoading(worker: Worker) {
+  await worker.evaluate(() => self.postMessage({ type: "ready", device: "wasm" }));
 }
 
 async function barPercents(page: Page) {
@@ -228,4 +274,161 @@ test("Try it live downloads nothing until asked, can cancel, and fails clearly w
   expect(modelRequests.length).toBeGreaterThan(0);
   expect(delivered).toEqual([]);
   expect(errors).toEqual([]);
+});
+
+test("a downloaded model reopens at the live prompt and survives a page reload", async ({ page }) => {
+  const requests = recordModelRequests(page);
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await mockLiveWorker(page);
+  const game = await openNextToken(page);
+  await game.getByRole("tab", { name: "Try it live" }).click();
+  const firstWorker = page.waitForEvent("worker", (worker) => worker.url().includes("nextToken.worker"));
+  await game.getByRole("button", { name: /^Load model/ }).click();
+  const first = await firstWorker;
+  await expectLoad(first, false);
+  await cacheModel(page);
+  await finishLoading(first);
+  await expect(game.getByLabel("Prompt", { exact: true })).toHaveValue("The capital of France is");
+  await expect(game.getByRole("button", { name: "Sample", exact: true })).toBeEnabled();
+
+  const closed = first.waitForEvent("close");
+  await page.getByRole("button", { name: "Close Next Token", exact: true }).click();
+  await closed;
+  const secondWorker = page.waitForEvent("worker", (worker) => worker.url().includes("nextToken.worker"));
+  await launchNextToken(page);
+  const second = await secondWorker;
+  await expectLoad(second, true);
+  await expect(game.getByRole("tab", { name: "Try it live" })).toHaveAttribute("aria-selected", "true");
+  await expect(game.getByRole("button", { name: /^Load model/ })).toHaveCount(0);
+  await expect(game.getByRole("progressbar", { name: "Model download" })).toHaveCount(0);
+  await expect(game.getByLabel("Prompt", { exact: true })).toHaveValue("The capital of France is");
+  await expect(game.getByRole("button", { name: "Sample", exact: true })).toBeDisabled();
+  await game.getByLabel("Prompt", { exact: true }).fill("The Eiffel Tower is");
+  await finishLoading(second);
+  await expect(game.getByRole("button", { name: "Sample", exact: true })).toBeEnabled();
+  await expect(game.getByLabel("Prompt", { exact: true })).toHaveValue("The Eiffel Tower is");
+
+  await page.reload();
+  const thirdWorker = page.waitForEvent("worker", (worker) => worker.url().includes("nextToken.worker"));
+  await launchNextToken(page);
+  const third = await thirdWorker;
+  await expectLoad(third, true);
+  await expect(game.getByLabel("Prompt", { exact: true })).toHaveValue("The capital of France is");
+  await finishLoading(third);
+  await expect(game.getByRole("button", { name: "Sample", exact: true })).toBeEnabled();
+  expect(requests).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test("an existing cached model opens directly on a phone and can pause and resume initialization", async ({ page }) => {
+  const requests = recordModelRequests(page);
+  await mockLiveWorker(page);
+  await page.goto("./");
+  await cacheModel(page);
+  const workerStarted = page.waitForEvent("worker", (worker) => worker.url().includes("nextToken.worker"));
+  const game = await openNextToken(page, 320);
+  const worker = await workerStarted;
+  await expectLoad(worker, true);
+  await expect(game.getByRole("tab", { name: "Try it live" })).toHaveAttribute("aria-selected", "true");
+  await expect(game.getByLabel("Prompt", { exact: true })).toHaveValue("The capital of France is");
+  await expect(game).toContainText("Your model is saved in this browser");
+  expect(await game.evaluate((element) => element.scrollWidth - element.clientWidth)).toBe(0);
+  const closed = worker.waitForEvent("close");
+  await game.getByRole("button", { name: "Cancel", exact: true }).click();
+  await closed;
+  await expect(game.getByLabel("Prompt", { exact: true })).toBeVisible();
+  await expect(game.getByRole("button", { name: /^Load model/ })).toHaveCount(0);
+  const resumed = page.waitForEvent("worker", (next) => next.url().includes("nextToken.worker"));
+  await game.getByRole("button", { name: "Resume saved model", exact: true }).click();
+  const next = await resumed;
+  await expectLoad(next, true);
+  await finishLoading(next);
+  await expect(game.getByRole("button", { name: "Sample", exact: true })).toBeEnabled();
+  expect(requests).toEqual([]);
+});
+
+for (const state of ["partial", "older revision", "cleared", "failed response"] as const) {
+  test(`a ${state} model cache still requires download confirmation`, async ({ page }) => {
+    const requests = recordModelRequests(page);
+    const workers: Worker[] = [];
+    page.on("worker", (worker) => { if (worker.url().includes("nextToken.worker")) workers.push(worker); });
+    await page.goto("./");
+    await cacheModel(page,
+      state === "partial" ? meta.files.filter((file) => !file.path.endsWith(".onnx_data")) : meta.files,
+      state === "older revision" ? "0".repeat(40) : meta.revision);
+    if (state === "cleared") await page.evaluate(() => caches.delete("transformers-cache"));
+    if (state === "failed response") {
+      await page.evaluate(async ({ model, revision }) => {
+        const cache = await caches.open("transformers-cache");
+        await cache.put(`https://huggingface.co/${model}/resolve/${revision}/tokenizer.json`, new Response("Unavailable", { status: 503 }));
+      }, meta);
+    }
+    const game = await openNextToken(page);
+    await game.getByRole("tab", { name: "Try it live" }).click();
+    await expect(game.getByRole("button", { name: /^Load model/ })).toBeVisible();
+    await expect(game.getByLabel("Prompt", { exact: true })).toHaveCount(0);
+    expect(workers).toHaveLength(0);
+    expect(requests).toEqual([]);
+  });
+}
+
+test("unavailable cache storage explains the problem and allows manual loading", async ({ page }) => {
+  const requests = recordModelRequests(page);
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "caches", { get() { throw new DOMException("Storage access denied", "SecurityError"); } });
+  });
+  const game = await openNextToken(page);
+  await game.getByRole("tab", { name: "Try it live" }).click();
+  await expect(game.getByRole("status")).toContainText("Saved model files could not be checked");
+  const load = game.getByRole("button", { name: /^Load model/ });
+  await expect(load).toBeVisible();
+  expect(requests).toEqual([]);
+  await load.click();
+  await expect(game.getByRole("alert")).toContainText("Couldn't download the model", { timeout: 15_000 });
+  expect(requests.length).toBeGreaterThan(0);
+});
+
+test("the real worker never redownloads files evicted between cache inspection and restoration", async ({ page }) => {
+  const requests = recordModelRequests(page);
+  await page.goto("./");
+  await cacheModel(page);
+  await page.context().route("**/nextToken.worker-*.js", async (route) => {
+    await page.evaluate(() => caches.delete("transformers-cache"));
+    await route.continue();
+  });
+  const game = await openNextToken(page);
+  await expect(game.getByRole("tab", { name: "Try it live" })).toHaveAttribute("aria-selected", "true");
+  await expect(game.getByRole("status")).toContainText("Some saved model files are no longer available", { timeout: 15_000 });
+  const load = game.getByRole("button", { name: /^Load model/ });
+  await expect(load).toBeVisible();
+  expect(requests).toEqual([]);
+  await load.click();
+  await expect(game.getByRole("alert")).toContainText("Couldn't download the model", { timeout: 15_000 });
+  expect(requests.length).toBeGreaterThan(0);
+});
+
+test("a delayed cache check does not override an explicitly selected game tab", async ({ page }) => {
+  await mockLiveWorker(page);
+  await page.goto("./");
+  await cacheModel(page);
+  await page.addInitScript(() => {
+    const match = Cache.prototype.match;
+    Cache.prototype.match = function (request, options) {
+      document.documentElement.dataset.checkingModelCache = "true";
+      return new Promise((resolve, reject) => {
+        window.addEventListener("release-model-cache", () => { match.call(this, request, options).then(resolve, reject); }, { once: true });
+      });
+    };
+  });
+  const game = await openNextToken(page);
+  await expect(page.locator("html")).toHaveAttribute("data-checking-model-cache", "true");
+  await game.getByRole("tab", { name: "Real predictions", exact: true }).click();
+  const workerStarted = page.waitForEvent("worker", (worker) => worker.url().includes("nextToken.worker"));
+  await page.evaluate(() => window.dispatchEvent(new Event("release-model-cache")));
+  const worker = await workerStarted;
+  await expectLoad(worker, true);
+  await expect(game.getByRole("tab", { name: "Real predictions", exact: true })).toHaveAttribute("aria-selected", "true");
+  await game.getByRole("tab", { name: "Try it live" }).click();
+  await expect(game.getByLabel("Prompt", { exact: true })).toHaveValue("The capital of France is");
 });
