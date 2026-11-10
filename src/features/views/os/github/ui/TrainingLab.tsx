@@ -144,7 +144,6 @@ function TrainingRun({ insights, unit }: { insights: GitHubInsights; unit: strin
 
   return (
     <div className="gh-lab" ref={rootRef}>
-      <Method unit={unit} result={result} />
       <LabSection title="Training">
         <div className="gh-train__bar">
           <p className="gh-train__epoch" data-epoch={epoch}>
@@ -202,6 +201,7 @@ function TrainingRun({ insights, unit }: { insights: GitHubInsights; unit: strin
           <p className="gh-muted">Results appear when training finishes.</p>
         </LabSection>
       )}
+      <Method unit={unit} result={result} />
     </div>
   );
 }

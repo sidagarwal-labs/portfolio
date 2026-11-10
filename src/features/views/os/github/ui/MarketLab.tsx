@@ -47,7 +47,6 @@ function MarketView({ insights, model, unit }: { insights: GitHubInsights; model
 
   return (
     <div className="gh-lab">
-      <Method unit={unit} model={model} />
       <LabSection title="Results">
         <Metrics
           items={[
@@ -99,6 +98,7 @@ function MarketView({ insights, model, unit }: { insights: GitHubInsights; model
       <LabSection title="Caveats">
         <Caveats items={marketCaveats(insights, model, unit)} />
       </LabSection>
+      <Method unit={unit} model={model} />
     </div>
   );
 }

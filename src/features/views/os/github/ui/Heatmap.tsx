@@ -59,6 +59,7 @@ export function Heatmap({ insights, calendar, stats, unit }: { insights: GitHubI
           width={width}
           height={height}
           viewBox={`0 0 ${width} ${height}`}
+          style={{ minWidth: width, maxWidth: Math.round(width * 1.5) }}
           role="img"
           aria-label={summary}
           onMouseOver={(event) => {

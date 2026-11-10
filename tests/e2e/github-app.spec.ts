@@ -136,7 +136,7 @@ test("lab tabs follow the ARIA tabs pattern and show model output", async ({ pag
 
   await expect(win.getByRole("tab")).toHaveText(["Training run", "Market", "Launch", "Data science lab"]);
   await expect(tab("Training run")).toHaveAttribute("aria-selected", "true");
-  await expect(panel("Training run").getByRole("heading", { level: 4 })).toHaveText(["Method", "Training", "Results", "Caveats"]);
+  await expect(panel("Training run").getByRole("heading", { level: 4 })).toHaveText(["Training", "Results", "Caveats", "Method"]);
 
   await tab("Training run").focus();
   await page.keyboard.press("ArrowRight");
@@ -147,7 +147,7 @@ test("lab tabs follow the ARIA tabs pattern and show model output", async ({ pag
   const market = buildMarket(snapshot.days);
   if ("insufficient" in market) throw new Error(market.insufficient);
   const marketPanel = panel("Market");
-  await expect(marketPanel.getByRole("heading", { level: 4 })).toHaveText(["Method", "Results", "Caveats"]);
+  await expect(marketPanel.getByRole("heading", { level: 4 })).toHaveText(["Results", "Caveats", "Method"]);
   await expect(metric(marketPanel, "momentum")).toHaveText(`r = ${fmtNum(market.momentum.statistic)}`);
   await expect(marketPanel.locator('[data-metric="momentum"]')).toContainText(`p = ${fmtP(market.momentum.pValue)}, ${market.momentum.significant ? "significant" : "not significant"}`);
   await expect(metric(marketPanel, "trend")).toHaveText(fmtPct(market.trendBacktest.accuracy, 1));

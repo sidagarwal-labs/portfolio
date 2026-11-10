@@ -89,7 +89,6 @@ function RepoLabView({ insights, lab }: { insights: GitHubInsights; lab: RepoLab
 
   return (
     <div className="gh-lab">
-      <Method lab={lab} />
       <LabSection title="Results">
         <Metrics
           items={[
@@ -186,6 +185,7 @@ function RepoLabView({ insights, lab }: { insights: GitHubInsights; lab: RepoLab
           ]}
         />
       </LabSection>
+      <Method lab={lab} />
     </div>
   );
 }
