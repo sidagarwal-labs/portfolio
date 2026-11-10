@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type Re
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { marketCompanies } from "../../content/journalContent";
-import { bottlenecksForLevel, tightnessLabel, type Bottleneck } from "../../content/marketInsights";
+import { bottlenecksForLevel, type Bottleneck } from "../../content/marketInsights";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { usePrefersReducedMotion } from "../../hooks/usePrefersReducedMotion";
 import { embeddedView, replaceHistoryState } from "../views/os/embed";
@@ -11,7 +11,7 @@ import {
   formatTime, groupStack, layerId, layerLabel, listing, useAiStack, type AiStackRow, type AiStackState, type StackLayer
 } from "./aiStack";
 import LivePageShell from "./LivePageShell";
-import MarketsInsights from "./MarketsInsights";
+import MarketsInsights, { TightnessBadge } from "./MarketsInsights";
 import { canonicalMarketsPath } from "./marketsPath";
 import TradingViewWidget from "./TradingViewWidget";
 import "./markets.css";
@@ -213,10 +213,6 @@ const levelRange = (layer: StackLayer) => {
   const last = layer.levels[layer.levels.length - 1].level;
   return first === last ? `Level ${first}` : `Levels ${first}–${last}`;
 };
-
-export function TightnessBadge({ item, label = tightnessLabel(item.tightness) }: { item: Bottleneck; label?: string }) {
-  return <span className="mk-badge" data-tightness={item.tightness} title={`${item.name}: ${item.reason}`}>{label}</span>;
-}
 
 type StackPanelProps = {
   layers: StackLayer[];
@@ -451,6 +447,17 @@ function Preview({ row, rows, inline }: { row: AiStackRow; rows: AiStackRow[]; i
         attribution={`${row.symbol} chart`}
         config={{ symbol: info.ticker, locale: "en", dateRange: "12M", colorTheme: "light", isTransparent: true, autosize: true, width: "100%", height: "100%", chartOnly: false, noTimeScale: false }}
       />
+      <p className="mk-preview__actions">
+        <Link
+          className="mk-button"
+          to={{ search: marketsSearch({ symbol: row.symbol, full: true }) }}
+          state={{ fromStack: true }}
+          onClick={() => { stackScroll = window.scrollY; }}
+        >
+          Open full view<ArrowRight size={16} aria-hidden="true" />
+        </Link>
+        <span>Price and volume, financials, technicals, profile, and news</span>
+      </p>
       <dl className="mk-stats mk-stats--compact">
         <div><dt>Market cap</dt><dd>{formatMarketCap(row.marketCap)}</dd></div>
         <div><dt>P/E</dt><dd>{formatRatio(row.pe)}</dd></div>
@@ -461,16 +468,6 @@ function Preview({ row, rows, inline }: { row: AiStackRow; rows: AiStackRow[]; i
       <Placements placements={placements} />
       <Bottlenecks items={bottlenecksOf(placements)} />
       {about && <p className="mk-preview__about">{about}</p>}
-      <p className="mk-preview__actions">
-        <Link
-          className="mk-button"
-          to={{ search: marketsSearch({ symbol: row.symbol, full: true }) }}
-          state={{ fromStack: true }}
-          onClick={() => { stackScroll = window.scrollY; }}
-        >
-          Open full view<ArrowRight size={16} aria-hidden="true" />
-        </Link>
-      </p>
     </section>
   );
 }

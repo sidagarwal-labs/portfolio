@@ -79,7 +79,8 @@
 .mk-bottlenecks li { display: flex; align-items: baseline; gap: 8px; }
 .mk-bottlenecks .mk-badge { flex: none; }
 .mk-preview__about { margin: 0 !important; color: var(--muted); font-size: 13px; }
-.mk-preview__actions { margin: 0 !important; }
+.mk-preview__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 !important; }
+.mk-preview__actions span { color: var(--muted); font-size: 12px; }
 
 /* Insights */
 .mk-insights { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; min-width: 0; }
