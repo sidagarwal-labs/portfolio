@@ -11,12 +11,15 @@ npm install
 npm run dev
 ```
 
+Passing pull-request tests publish a `portfolio-browser-check` build artifact for local UI review. This does not deploy the site.
+
 ## Portfolio views and Lab OS
 
 The site defaults to Lab OS. Use `?view=os`, `?view=search`, `?view=journal`, `?view=forward`, `?view=training`, or `?view=terminal` to select a view explicitly; an earlier selection is otherwise remembered. All views also work with the development server.
 
 - Both modern and retro desktops use a bottom Windows-style taskbar, Start app search, network status, time/date, and a calendar. Start also offers restart, shutdown, full-page views, and icon arrangement reset.
-- Desktop icons snap to a grid and retain their positions in browser storage. Drag them, or focus an icon and use Shift + arrow keys. Dropping on another icon swaps their positions.
+- Desktop defaults are grouped into rows: Sid Search; Forward pass and Other designs; then Games, Markets, Launches, and AI leaderboards. Resume.pdf and README.txt start at the bottom-left. Other designs contains Training run, Terminal, and Journal, while Start search and the phone home screen retain direct access to individual apps. Sid Search opens beside the four-column default icon area when space permits.
+- Desktop icons snap to a grid and retain their positions in browser storage. Drag them, or focus an icon and use Shift + arrow keys. Dropping on another icon swaps their positions. The grouped layout uses `lab-os-icons-v2`, so it replaces old `v1` arrangements once; new custom positions survive reloads, and Arrange restores the grouped defaults.
 - Drag window title bars to move them, any edge or corner to resize, and double-click the title bar to maximize. Show desktop temporarily minimizes open windows; its second click restores them. Phones use a home screen and full-screen apps instead.
 - Portfolio apps have independent browser history. Markets, Launches, and AI leaderboards are full pages (see [Live pages](#live-pages)) that open as desktop apps; the taskbar widgets for NVDA, the next SpaceX launch, and the top Arena text model open them. Embedded apps do not repeat the ticker.
 - Games include Snake, Mines, Blocks (an original Tetris-style falling-block puzzle), Rank It, and Next Token. Snake and Blocks pause when inactive or the browser tab is hidden. Controls work with keyboards and on-screen buttons.

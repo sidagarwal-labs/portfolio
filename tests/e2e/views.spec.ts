@@ -356,7 +356,9 @@ test("Lab OS windows open, focus, minimize, maximize, and close", async ({ page 
   await page.goto("./");
   await expect(page.locator(searchWin)).toBeVisible();
 
-  await page.locator(".os-icons .os-icon", { hasText: "Journal" }).click();
+  await page.locator(".os-start").click();
+  await page.getByRole("dialog", { name: "Start menu" }).getByRole("list", { name: "Apps", exact: true })
+    .getByRole("button", { name: "Journal", exact: true }).click();
   const journal = page.locator('.os-win[data-app="journal"]');
   await expect(journal).toHaveClass(/is-active/);
   await expect(page.frameLocator('.os-win[data-app="journal"] iframe').getByRole("heading", { name: "Sid Agarwal", exact: true })).toBeVisible();
@@ -565,13 +567,13 @@ test("desktop icons drag without opening, persist, move with the keyboard, and c
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("./?view=os");
   await page.getByRole("button", { name: "Show desktop", exact: true }).click();
-  const icon = page.locator(".os-icons .os-icon", { hasText: "Journal" });
+  const icon = page.locator(".os-icons .os-icon", { hasText: "Forward pass" });
   const before = (await icon.boundingBox())!;
   await page.mouse.move(before.x + 40, before.y + 35);
   await page.mouse.down();
   await page.mouse.move(before.x + 224, before.y + 35, { steps: 8 });
   await page.mouse.up();
-  await expect(page.locator('.os-win[data-app="journal"]')).toHaveCount(0);
+  await expect(page.locator('.os-win[data-app="forward"]')).toHaveCount(0);
   expect((await icon.boundingBox())!.x).toBe(before.x + 184);
   await page.keyboard.press("Shift+ArrowDown");
   expect((await icon.boundingBox())!.y).toBe(before.y + 92);
@@ -595,7 +597,7 @@ test("desktop icons drag without opening, persist, move with the keyboard, and c
   expect((await icon.boundingBox())!.x).toBe(before.x + 92);
   expect((await icon.boundingBox())!.y).toBe(before.y - 92);
   await icon.click();
-  await expect(page.locator('.os-win[data-app="journal"]')).toBeVisible();
+  await expect(page.locator('.os-win[data-app="forward"]')).toBeVisible();
 });
 
 test("windows move and resize from all eight edges and corners, enforcing minimum sizes", async ({ page }) => {
@@ -662,4 +664,112 @@ test("Start search and restart use the real desktop rather than a different thre
   await expect(page.locator(".os-icons .os-icon__label")).toHaveText(labels);
   await expect(page.locator(".os-win")).toHaveCount(1);
   await expect(page.locator(searchWin)).toBeVisible();
+});
+
+for (const style of ["modern", "retro"]) {
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 1024, height: 768 }, { width: 800, height: 520 }]) {
+    test(`desktop groups fit ${viewport.width}x${viewport.height} in ${style} style`, async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.setViewportSize(viewport);
+      await page.goto(`./?view=os&style=${style}`);
+      await expect(page.locator(searchWin)).toBeVisible();
+      const search = (await page.locator(searchWin).boundingBox())!;
+      const desk = (await page.locator(".os-desktop").boundingBox())!;
+      await page.getByRole("button", { name: "Show desktop", exact: true }).click();
+      const rows = [["Sid Search"], ["Forward pass", "Other designs"], ["Games", "Markets", "Launches", "AI leaderboards"]];
+      const labels = [...rows.flat(), "Resume.pdf", "README.txt"];
+      await expect(page.locator(".os-icons .os-icon__label")).toHaveText(labels);
+      const boxes = await page.locator(".os-icons > li").evaluateAll((icons) => icons.map((icon) => {
+        const { x, y, width, height } = icon.getBoundingClientRect();
+        return { x, y, width, height };
+      }));
+      const expected = [
+        ...rows.flatMap((items, row) => items.map((_, col) => ({ col, row }))),
+        ...[0, 1].map((col) => ({ col, row: Math.floor((desk.height - 16) / 92) - 1 }))
+      ];
+      expected.forEach(({ col, row }, index) => {
+        expect(boxes[index].x, labels[index]).toBe(desk.x + 8 + col * 92);
+        expect(boxes[index].y, labels[index]).toBe(desk.y + 8 + row * 92);
+        expect(boxes[index].width).toBe(92);
+        expect(boxes[index].height).toBe(92);
+        expect(boxes[index].x + boxes[index].width).toBeLessThanOrEqual(desk.x + desk.width - 8);
+        expect(boxes[index].y + boxes[index].height).toBeLessThanOrEqual(desk.y + desk.height - 8);
+      });
+      expect(new Set(boxes.map(({ x, y }) => `${x},${y}`)).size).toBe(labels.length);
+      if (viewport.width === 1440) {
+        expect(search.x).toBeGreaterThanOrEqual(boxes[6].x + boxes[6].width + 12);
+        expect(search.width).toBeGreaterThanOrEqual(640);
+      }
+      expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
+    });
+  }
+
+  test(`Other designs and Games expose their own apps in ${style} style`, async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`./?view=os&style=${style}`);
+    await page.locator(".os-icons .os-icon", { hasText: "Other designs" }).click();
+    const folder = page.getByRole("list", { name: "Other designs apps", exact: true });
+    const designs = [{ id: "training", title: "Training run" }, { id: "terminal", title: "Terminal" }, { id: "journal", title: "Journal" }];
+    await expect(folder.locator(".os-icon__label")).toHaveText(designs.map(({ title }) => title));
+    for (const { id, title } of designs) {
+      await folder.locator(".os-icon", { hasText: title }).click();
+      const win = page.locator(`.os-win[data-app="${id}"]`);
+      await expect(win).toHaveClass(/is-active/);
+      const frame = page.frameLocator(`.os-win[data-app="${id}"] iframe`);
+      await expect(frame.getByRole("heading", { name: /Sid Agarwal/ }).first()).toBeVisible();
+      const html = frame.locator("html");
+      if (id === "journal") await expect(html).not.toHaveAttribute("data-view", /.+/);
+      else await expect(html).toHaveAttribute("data-view", id);
+      await page.getByRole("button", { name: `Close ${title}`, exact: true }).click();
+    }
+    await page.locator(".os-icons .os-icon", { hasText: "Games" }).click();
+    await expect(page.getByRole("list", { name: "Games apps", exact: true }).locator(".os-icon__label"))
+      .toHaveText(["Snake", "Mines", "Blocks", "Rank It", "Next Token"]);
+    await page.locator(".os-start").click();
+    const menuApps = page.getByRole("dialog", { name: "Start menu" }).getByRole("list", { name: "Apps", exact: true });
+    for (const { title } of designs) await expect(menuApps.getByRole("button", { name: title, exact: true })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+}
+
+test("the grouped layout replaces v1 once and preserves subsequent manual positions", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(() => {
+    localStorage.setItem("lab-os-icons-v1", JSON.stringify({ search: { col: 6, row: 6 }, games: { col: 5, row: 5 } }));
+  });
+  await page.goto("./?view=os");
+  await page.getByRole("button", { name: "Show desktop", exact: true }).click();
+  const search = page.locator(".os-icons .os-icon", { hasText: "Sid Search" });
+  const games = page.locator(".os-icons .os-icon", { hasText: "Games" });
+  expect((await search.boundingBox())!.x).toBe(8);
+  expect((await search.boundingBox())!.y).toBe(8);
+  const before = (await games.boundingBox())!;
+  expect(before.x).toBe(8);
+  expect(before.y).toBe(192);
+  await games.focus();
+  await page.keyboard.press("Shift+ArrowRight");
+  expect((await games.boundingBox())!.x).toBe(before.x + 92);
+  await page.reload();
+  await page.getByRole("button", { name: "Show desktop", exact: true }).click();
+  expect((await games.boundingBox())!.x).toBe(before.x + 92);
+  expect((await games.boundingBox())!.y).toBe(before.y);
+  await page.goto("./?view=os&style=retro");
+  await page.getByRole("button", { name: "Show desktop", exact: true }).click();
+  expect((await games.boundingBox())!.x).toBe(before.x + 92);
+  expect((await games.boundingBox())!.y).toBe(before.y);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("lab-os-icons-v2") ?? "{}").games)).toEqual({ col: 1, row: 2 });
+});
+
+test("phone home keeps direct access to the alternate designs and games", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 390, height: 760 });
+  await page.goto("./?view=os");
+  for (const title of ["Training run", "Terminal", "Journal", "Next Token"]) {
+    await expect(page.locator(".os-home .os-icon", { hasText: title })).toBeVisible();
+  }
+  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
 });
