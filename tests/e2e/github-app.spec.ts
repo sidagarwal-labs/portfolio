@@ -218,6 +218,9 @@ test("lab tabs follow the ARIA tabs pattern and show model output", async ({ pag
   const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   for (const feature of lab.droppedFeatures) await expect(caveats).toContainText(new RegExp(escape(feature), "i"));
   if (lab.droppedFeatures.length === 1) await expect(caveats).toContainText("was left out because it is the same for every repository here.");
+  const singletons = lab.clusters.filter((cluster) => cluster.size === 1);
+  await expect(caveats.getByText(/clusters? holds? a single repository/)).toHaveCount(singletons.length ? 1 : 0);
+  for (const cluster of singletons) await expect(caveats).toContainText(cluster.members[0]);
   await expect(labPanel).toContainText(`which leaves ${lab.featureNames.length} features here`);
   await labPanel.locator("circle.gh-point").first().focus();
   await expect(labPanel.locator(".gh-scatter__readout")).toContainText(lab.points[0].name);

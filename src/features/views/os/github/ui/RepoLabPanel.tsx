@@ -85,6 +85,7 @@ function RepoLabView({ insights, lab }: { insights: GitHubInsights; lab: RepoLab
   const seeded = seedFrames[seedFrames.length - 1];
   const moved = seeded ? frames[frames.length - 1].assignments.filter((c, i) => c !== seeded.assignments[i]).length : 0;
   const maxK = lab.silhouetteByK[lab.silhouetteByK.length - 1]?.k ?? lab.k;
+  const singletons = lab.clusters.filter((cluster) => cluster.size === 1);
   const negatives = lab.points.filter((p) => p.silhouette < 0);
   const [ev1, ev2] = lab.explainedVariance;
   const bestInertia = Math.min(...lab.restartInertias);
@@ -193,6 +194,9 @@ function RepoLabView({ insights, lab }: { insights: GitHubInsights; lab: RepoLab
         <Caveats
           items={[
             `A mean silhouette of ${fmtNum(lab.silhouette)} is ${strength(lab.silhouette)} by the usual rule of thumb (above 0.5 reasonable, above 0.7 strong)${lab.silhouette <= 0.5 ? ", so the groups overlap" : ""}.`,
+            ...(singletons.length
+              ? [`${singletons.length} of the ${lab.k} clusters ${singletons.length === 1 ? "holds" : "hold"} a single repository (${listText(singletons.map((c) => c.members[0]))}), so ${singletons.length === 1 ? "it marks an outlier" : "they mark outliers"} rather than a group. Silhouette scores a lone repository as 0.`]
+              : []),
             ...(lab.atSearchLimit
               ? [`The score was still rising at k = ${maxK}, the largest k tried, so the "best" k may be an artifact of the search range rather than a natural number of groups.`]
               : []),
