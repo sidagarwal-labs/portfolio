@@ -13,6 +13,7 @@
     "pretest:e2e": "npm run build -- --mode test",
     "test:e2e": "playwright test",
     "test:e2e:headed": "npm run test:e2e -- --headed",
+    "test:models": "npm run build -- --mode test && playwright test --config playwright.models.config.ts",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },

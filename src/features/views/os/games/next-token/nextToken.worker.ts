@@ -4,11 +4,12 @@ import { AutoModelForCausalLM, AutoTokenizer, env, type PreTrainedModel, type Pr
 import { MODEL_CACHE_NAME } from "./modelCache";
 
 export type LiveDevice = "webgpu" | "wasm";
+export type LiveDtype = "q4f16" | "q4";
 export type LiveToken = { id: number; text: string; logit: number };
 export type LiveErrorKind = "cache-miss" | "network" | "memory" | "unsupported" | "other";
 
 export type LiveRequest =
-  | { type: "load"; model: string; revision: string; dtype: "q4f16"; temperatures: number[]; cacheOnly: boolean }
+  | { type: "load"; model: string; revision: string; dtype: LiveDtype; temperatures: number[]; cacheOnly: boolean }
   | { type: "predict"; id: number; text: string; k: number }
   | { type: "sample"; id: number; text: string; temperature: number };
 
@@ -16,7 +17,7 @@ export type LiveResponse =
   | { type: "progress"; loaded: number; total: number }
   | { type: "status"; message: string }
   | { type: "ready"; device: LiveDevice }
-  | { type: "prediction"; id: number; text: string; tokens: number; top: LiveToken[]; lse: number[]; rest: number[]; ms: number }
+  | { type: "prediction"; id: number; text: string; tokens: number; inputIds: number[]; top: LiveToken[]; lse: number[]; rest: number[]; ms: number }
   | { type: "sampled"; id: number; text: string; token: LiveToken; probability: number }
   | { type: "error"; id?: number; kind: LiveErrorKind; message: string };
 
@@ -31,7 +32,7 @@ const fetchRemote = env.fetch;
 let tokenizer: PreTrainedTokenizer | null = null;
 let model: PreTrainedModel | null = null;
 let temperatures: number[] = [];
-let cached: { text: string; tokens: number; logits: Float32Array } | null = null;
+let cached: { text: string; tokens: number; inputIds: number[]; logits: Float32Array } | null = null;
 let latestPredict = 0;
 let queue: Promise<unknown> = Promise.resolve();
 
@@ -117,7 +118,7 @@ async function logitsFor(text: string) {
   const last = data.slice((length - 1) * vocab, length * vocab);
   // Free the key/value tensors this single forward pass produced (on WebGPU they live in GPU memory).
   Object.entries(outputs).forEach(([name, tensor]) => { if (name !== "logits") tensor.dispose?.(); });
-  cached = { text, tokens: length, logits: last };
+  cached = { text, tokens: length, inputIds: Array.from(inputs.input_ids.data as BigInt64Array, Number), logits: last };
   return cached;
 }
 
@@ -126,7 +127,7 @@ const decode = (id: number) => tokenizer!.decode([id]);
 async function predict({ id, text, k }: Extract<LiveRequest, { type: "predict" }>) {
   if (id !== latestPredict) return;
   const started = performance.now();
-  const { tokens, logits } = await logitsFor(text);
+  const { tokens, inputIds, logits } = await logitsFor(text);
   const ranked: number[] = [];
   for (let token = 0; token < logits.length; token += 1) {
     if (ranked.length < k || logits[token] > logits[ranked[ranked.length - 1]]) {
@@ -137,7 +138,7 @@ async function predict({ id, text, k }: Extract<LiveRequest, { type: "predict" }
   }
   const skip = new Set(ranked);
   send({
-    type: "prediction", id, text, tokens,
+    type: "prediction", id, text, tokens, inputIds,
     top: ranked.map((token) => ({ id: token, text: decode(token), logit: logits[token] })),
     lse: temperatures.map((temperature) => logSumExp(logits, temperature)),
     rest: temperatures.map((temperature) => logSumExp(logits, temperature, skip)),
