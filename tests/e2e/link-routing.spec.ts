@@ -20,6 +20,13 @@ async function openSearch(page: Page) {
   return frame;
 }
 
+/* The taskbar button minimizes the active window, so only click it when another window is in front. */
+async function bringSearchForward(page: Page) {
+  const win = page.locator(searchWin);
+  if (!/\bis-active\b/.test((await win.getAttribute("class")) ?? "")) await page.locator(".os-task", { hasText: "Sid Search" }).click();
+  await expect(win).toHaveClass(/is-active/);
+}
+
 test("Microsoft links in Sid Search open their summaries in one Reader window", async ({ page }) => {
   const opened = trackNewTabs(page);
   const frame = await openSearch(page);
@@ -30,7 +37,7 @@ test("Microsoft links in Sid Search open their summaries in one Reader window", 
   await expect(reader.getByRole("article", { name: "Copilot in Power BI" })).toBeVisible();
   await expect(reader.getByRole("heading", { name: "Copilot in Power BI", level: 2 })).toBeFocused();
 
-  await page.locator(".os-task", { hasText: "Sid Search" }).click();
+  await bringSearchForward(page);
   await frame.getByRole("link", { name: "Copilot Connectors", exact: true }).first().click();
   await expect(reader).toHaveClass(/is-active/);
   await expect(reader.getByRole("article", { name: "Microsoft 365 Copilot connectors" })).toBeVisible();
@@ -47,7 +54,7 @@ test("book and podcast links open the Library on that title", async ({ page }) =
   await expect(library).toHaveClass(/is-active/);
   await expect(library.getByRole("complementary", { name: "The Nvidia Way" })).toBeVisible();
 
-  await page.locator(".os-task", { hasText: "Sid Search" }).click();
+  await bringSearchForward(page);
   await frame.locator("#se-query").fill("Acquired");
   await frame.locator("#se-query").press("Enter");
   await frame.locator('a[href^="https://open.spotify.com/show/7Fj0XEuUQLUqoMZQdsLXqp"]').first().click();
@@ -63,13 +70,22 @@ test("links to Sid's GitHub open the GitHub app, while deeper GitHub pages and o
   await frame.locator("#contact").getByRole("link", { name: "GitHub", exact: true }).click();
   const github = page.locator('.os-win[data-app="github"]');
   await expect(github).toHaveClass(/is-active/);
+  await expect(github.getByRole("heading", { name: "Sid Agarwal", level: 3 })).toBeVisible();
   await page.getByRole("button", { name: "Close GitHub" }).click();
   await expect(github).toHaveCount(0);
+
+  await bringSearchForward(page);
+  await frame.getByRole("link", { name: "arXiv Search on GitHub" }).first().click();
+  await expect(github).toHaveClass(/is-active/);
+  const repo = github.locator('.gh-repo[data-repo="arxiv-search"]');
+  await expect(repo).toHaveClass(/is-highlighted/);
+  await expect(repo).toHaveAttribute("aria-current", "true");
+  await page.getByRole("button", { name: "Close GitHub" }).click();
 
   await page.locator(".os-quick").getByRole("link", { name: "GitHub", exact: true }).click();
   await expect(github).toHaveClass(/is-active/);
 
-  await page.locator(".os-task", { hasText: "Sid Search" }).click();
+  await bringSearchForward(page);
   const linkedIn = page.context().waitForEvent("page");
   await frame.locator("#contact").getByRole("link", { name: "LinkedIn", exact: true }).click();
   await expect(await linkedIn).toHaveURL("https://www.linkedin.com/in/sid-agarwal-labs/");
