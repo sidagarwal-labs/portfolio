@@ -243,7 +243,9 @@
 .gh-centroid path { stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
 .gh-scatter__readout { min-height: 3em; color: #3b4250; font-size: 13px; overflow-wrap: anywhere; }
 .gh-frames { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.gh-frames__label { flex: 1 1 220px; color: #4f5664; font-size: 13px; font-variant-numeric: tabular-nums; }
+.gh-frames__label { flex: 1 1 220px; min-height: 2.6em; color: #4f5664; font-size: 13px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.gh-frames__count { display: block; color: #1f2328; font-weight: 600; }
+.gh-frames__step { display: block; }
 .gh-clusters { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
 .gh-clusters li { display: block; overflow-wrap: anywhere; }
 .gh-clusters .gh-dot { margin-right: 6px; vertical-align: baseline; }
