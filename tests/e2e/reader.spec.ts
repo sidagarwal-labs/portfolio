@@ -7,8 +7,9 @@ async function openReaderFromStart(page: Page) {
   await page.goto("./?view=os");
   await page.getByRole("button", { name: "Show desktop", exact: true }).click();
   await page.locator(".os-start").click();
-  await page.getByRole("dialog", { name: "Start menu" }).getByRole("list", { name: "Apps", exact: true })
-    .getByRole("button", { name: "Reader", exact: true }).click();
+  const menu = page.getByRole("dialog", { name: "Start menu" });
+  await menu.getByRole("list", { name: "Apps", exact: true }).getByRole("button", { name: "Projects", exact: true }).click();
+  await menu.getByRole("list", { name: "Projects", exact: true }).getByRole("button", { name: "Reader", exact: true }).click();
   const win = page.locator(readerWin);
   await expect(win).toHaveClass(/is-active/);
   return win;
@@ -57,7 +58,8 @@ test("Reader fits a phone with the article list above the summary", async ({ pag
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 390, height: 760 });
   await page.goto("./?view=os");
-  await page.locator(".os-home .os-icon", { hasText: "Reader" }).click();
+  await page.locator(".os-home .os-icon", { hasText: "Projects" }).click();
+  await page.getByRole("list", { name: "Projects apps", exact: true }).locator(".os-icon", { hasText: "Reader" }).click();
   const win = page.locator(readerWin);
   const nav = win.getByRole("navigation", { name: "Articles" });
   const article = win.getByRole("article");

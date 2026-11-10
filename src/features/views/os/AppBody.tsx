@@ -18,7 +18,8 @@ const games = {
 const nativeApps = {
   library: lazy(() => import("./library/Library")),
   github: lazy(() => import("./github/GitHubApp")),
-  reader: lazy(() => import("./reader/Reader"))
+  reader: lazy(() => import("./reader/Reader")),
+  arxiv: lazy(() => import("./arxiv/ArxivSearch"))
 };
 
 const host = "agarwal-labs.com";
@@ -103,13 +104,13 @@ function ResumeViewer() {
 }
 
 function Readme({ actions }: { actions: OsActions }) {
-  const appList: AppId[] = ["search", "library", "github", "forward", "designs"];
+  const appList: AppId[] = ["search", "projects", "library", "github", "forward", "designs"];
   return (
     <div className="os-note">
       <p><strong>Hi, I'm Sid Agarwal.</strong> {roleLine}.</p>
       <p>This site is a browser-based desktop simulation, and its apps are my portfolio. It does not control your computer or files.</p>
       <p>Drag desktop icons to arrange them; Shift + arrow keys also move a focused icon. Positions are saved in this browser. Drag title bars to move windows, their edges or corners to resize, and double-click a title bar to maximize. The taskbar restores minimized apps.</p>
-      <p>Other designs holds Training run, Terminal, and Journal, and Games holds the games. The Start menu and the phone home screen use the same folders, and Start search finds the apps inside them. Resume and README.txt start at the bottom-left of the desktop.</p>
+      <p>Projects holds arXiv Search, shortcuts to my other project repositories, and Reader (which Microsoft links also open). Other designs holds Training run, Terminal, and Journal, and Games holds the games. The Start menu and the phone home screen use the same folders, and Start search finds the apps inside them. Resume and README.txt start at the bottom-left of the desktop.</p>
       <ul>
         {appList.map((id) => (
           <li key={id}>
@@ -192,6 +193,7 @@ function AppBody({ id, app, src, target, active, actions }: AppBodyProps) {
   if (def.kind === "pdf") return <ResumeViewer />;
   if (def.kind === "note") return <Readme actions={actions} />;
   if (def.kind === "folder") return <AppFolder folder={def} actions={actions} />;
+  if (def.kind === "link") return null;
   if (def.kind === "app") {
     const Native = nativeApps[app as keyof typeof nativeApps];
     return (

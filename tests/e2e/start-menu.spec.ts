@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const topLevel = ["Sid Search", "Library", "GitHub", "Reader", "Forward pass", "Markets", "Launches", "AI leaderboards"];
+const topLevel = ["Sid Search", "Library", "GitHub", "Forward pass", "Markets", "Launches", "AI leaderboards"];
+const folders = ["Projects", "Other designs", "Games"];
 const designs = ["Training run", "Terminal", "Journal"];
 const games = ["Snake", "Mines", "Blocks", "Rank It", "Next Token"];
 const documents = ["Resume.pdf", "README.txt"];
@@ -30,7 +31,7 @@ for (const style of ["modern", "retro"]) {
   test(`Start menu groups apps into collapsible folders in ${style} style`, async ({ page }) => {
     const menu = await openStart(page, style);
     const appList = menu.getByRole("list", { name: "Apps", exact: true });
-    await expect(appList.locator(":scope > li > button")).toHaveText([...topLevel, "Other designs", "Games"]);
+    await expect(appList.locator(":scope > li > button")).toHaveText([...topLevel, ...folders]);
     await expect(menu.getByRole("list", { name: "Documents", exact: true }).getByRole("button")).toHaveText(documents);
 
     const folder = appList.getByRole("button", { name: "Games", exact: true });
@@ -67,6 +68,8 @@ test("Start menu folders work from the keyboard", async ({ page }) => {
   const menu = await openStart(page);
   await expect(menu.getByRole("searchbox", { name: "Search apps" })).toBeFocused();
   await menu.getByRole("button", { name: "AI leaderboards", exact: true }).focus();
+  await page.keyboard.press("Tab");
+  await expect(menu.getByRole("button", { name: "Projects", exact: true })).toBeFocused();
   await page.keyboard.press("Tab");
   const designsFolder = menu.getByRole("button", { name: "Other designs", exact: true });
   await expect(designsFolder).toBeFocused();
@@ -143,7 +146,7 @@ for (const style of ["modern", "retro"]) {
       await page.setViewportSize({ width, height: 760 });
       await page.goto(`./?view=os&style=${style}`);
       const home = page.locator(".os-home").getByRole("list", { name: "Apps", exact: true });
-      await expect(home.locator(".os-icon__label")).toHaveText([...topLevel, "Other designs", "Games", ...documents]);
+      await expect(home.locator(".os-icon__label")).toHaveText([...topLevel, ...folders, ...documents]);
       expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
       const clipped = await home.locator(".os-icon__label").evaluateAll((labels) => labels
         .filter((label) => label.scrollWidth > label.clientWidth || label.scrollHeight > label.clientHeight)
