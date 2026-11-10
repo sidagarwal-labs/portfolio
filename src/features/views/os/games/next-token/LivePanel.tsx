@@ -95,12 +95,12 @@ export function LivePanel({ visible, onCachedModel }: { visible: boolean; onCach
 
   return (
     <div className="nexttoken__live" ref={panelRef}>
+      <p className="game__hint">A small text-completion model, not a chatbot. It predicts plausible next text and can be wrong or repetitive.</p>
       {state.phase === "checking" && <p className="game__status" role="status">Checking for a saved model...</p>}
 
       {state.phase === "idle" && !state.cached && (
         <>
           {state.message && <p className="game__status" role="status">{state.message}</p>}
-          <p className="game__hint">Run the same model in your browser and type your own prompt.</p>
           <p className="nexttoken__copy">
             This downloads {megabytes(meta.downloadBytes)} of model files from Hugging Face, plus up to {megabytes(RUNTIME_BYTES)} for the ONNX Runtime engine from jsDelivr.
             Nothing downloads until you press the button. Saved model files are reused automatically when available. It works on phones too, but uses mobile data.
@@ -195,7 +195,7 @@ export function LivePanel({ visible, onCachedModel }: { visible: boolean; onCach
       <p className="sr-only" aria-live="polite">{announcement}</p>
 
       <p className="game__fine">
-        Live mode runs {meta.model} ({meta.dtype}, revision {meta.revision.slice(0, 7)}) with transformers.js in a Web Worker. Results can differ slightly from the precomputed tab because browsers use different math kernels.
+        Live mode runs {meta.model} ({meta.dtype}, revision {meta.revision.slice(0, 7)}) with transformers.js in a Web Worker. Results can differ slightly from the saved game because browsers use different quantized math kernels.
       </p>
     </div>
   );
