@@ -9,12 +9,12 @@ function trackNewTabs(page: Page) {
   return opened;
 }
 
-async function openSearch(page: Page) {
+async function openSearch(page: Page, url = "./") {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.route(/^https:\/\/(i\.scdn\.co|m\.media-amazon\.com|avatars\.githubusercontent\.com)\//, (route) => route.abort());
   await page.route("https://api.github.com/**", (route) => route.abort());
-  await page.goto("./");
+  await page.goto(url);
   const frame = page.frameLocator(`${searchWin} iframe`);
   await expect(frame.locator("#se-query")).toHaveValue("Sid Agarwal");
   return frame;
@@ -281,7 +281,7 @@ const designApps = { journal: "Journal", training: "Training run", terminal: "Te
 async function openFromStart(page: Page, app: "forward" | keyof typeof designApps) {
   await page.locator(".os-start").click();
   const menu = page.getByRole("dialog", { name: "Start menu" });
-  if (app === "forward") await menu.getByRole("button", { name: "Forward pass", exact: true }).click();
+  if (app === "forward") await menu.getByLabel("Apps", { exact: true }).getByRole("button", { name: "Forward pass", exact: true }).click();
   else {
     await menu.getByRole("button", { name: "Other designs", exact: true }).click();
     await menu.getByRole("list", { name: "Other designs", exact: true }).getByRole("button", { name: designApps[app], exact: true }).click();
@@ -316,4 +316,73 @@ test("a Lab OS window still opens Markets when the OS does not answer the tracke
   await expect(win.locator(".os-address__text")).toHaveText("agarwal-labs.com/");
   await expect(trackerLink(frame)).toBeVisible();
   expect(opened).toEqual([]);
+});
+
+for (const style of ["modern", "retro"] as const) {
+  test(`in ${style} Lab OS, the tracker link in every design restores a minimized Markets window`, async ({ page }) => {
+    await blockLiveData(page);
+    const opened = trackNewTabs(page);
+    await openSearch(page, `./?view=os&style=${style}`);
+    const markets = page.locator('.os-win[data-app="markets"]');
+    await page.getByRole("button", { name: "Open Markets" }).click();
+    await expect(markets).toHaveClass(/is-active/);
+
+    for (const app of ["forward", "journal", "training", "terminal"] as const) {
+      await page.getByRole("button", { name: "Minimize Markets", exact: true }).click();
+      await expect(markets).toHaveClass(/is-minimized/);
+      const { win, frame } = await openFromStart(page, app);
+      await trackerLink(frame).click();
+      await expect(markets).toHaveClass(/is-active/);
+      await expect(markets).not.toHaveClass(/is-minimized/);
+      await expect(markets.locator(".os-address__text")).toHaveText("agarwal-labs.com/markets");
+      await expect(page.frameLocator('.os-win[data-app="markets"] iframe').getByRole("heading", { name: "Chips", level: 2 })).toBeVisible();
+      /* The OS confirmed the link, so the window that held it never falls back to showing Markets itself. */
+      await page.waitForTimeout(700);
+      await expect(win.locator(".os-address__text")).not.toHaveText(/markets/);
+      await expect(trackerLink(frame)).toBeAttached();
+    }
+    await expect(markets).toHaveCount(1);
+    expect(opened).toEqual([]);
+  });
+}
+
+test("on a phone, the tracker link in every Lab OS app opens Markets full screen", async ({ page }) => {
+  await blockLiveData(page);
+  const opened = trackNewTabs(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.route(/^https:\/\/(i\.scdn\.co|m\.media-amazon\.com|avatars\.githubusercontent\.com)\//, (route) => route.abort());
+  await page.route("https://api.github.com/**", (route) => route.abort());
+  await page.goto("./?view=os");
+  const home = page.locator(".os-home");
+  const markets = page.locator('.os-win[data-app="markets"]');
+  const titles = { search: "Sid Search", forward: "Forward pass", ...designApps };
+
+  for (const [app, title] of Object.entries(titles)) {
+    await expect(home).toBeVisible();
+    if (app in designApps) {
+      await home.locator(".os-icon", { hasText: "Other designs" }).click();
+      await page.getByRole("list", { name: "Other designs apps", exact: true }).locator(".os-icon", { hasText: title }).click();
+    } else await home.locator(".os-home__grid .os-icon", { hasText: title }).click();
+    await expect(page.locator(`.os-win[data-app="${app}"]`)).toHaveClass(/is-active/);
+    await trackerLink(page.frameLocator(`.os-win[data-app="${app}"] iframe`)).click();
+    await expect(markets).toHaveClass(/is-active/);
+    await expect(markets).not.toHaveClass(/is-minimized/);
+    expect((await markets.boundingBox())?.width).toBe(390);
+    await expect(page.frameLocator('.os-win[data-app="markets"] iframe').getByRole("heading", { name: "Chips", level: 2 })).toBeVisible();
+    await markets.getByRole("button", { name: "Home" }).click();
+  }
+  await expect(markets).toHaveCount(1);
+  expect(opened).toEqual([]);
+});
+
+test("outside Lab OS, every design's AI / LLM Stack Tracker link goes to Markets", async ({ page }) => {
+  await blockLiveData(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const view of ["journal", "forward", "training", "terminal"]) {
+    await page.goto(`./?view=${view}`);
+    await page.locator("#writing").getByRole("link", { name: "AI / LLM Stack Tracker", exact: true }).click();
+    await expect(page, view).toHaveURL(/\/markets$/);
+    await expect(page.getByRole("heading", { name: "Chips", level: 2 })).toBeVisible();
+  }
 });
