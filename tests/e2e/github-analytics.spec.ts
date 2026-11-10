@@ -448,8 +448,28 @@ test.describe("market", () => {
     for (let i = 1; i < 300; i++) walk.push(walk[i - 1] + (rand() - 0.5) * 10);
     for (const v of rsi(walk, 14)) if (v !== null) expect(v >= 0 && v <= 100).toBe(true);
     const m = macd(walk);
-    expect(m.macd.findIndex((v) => v !== null)).toBe(25);
-    expect(m.signal.findIndex((v) => v !== null)).toBe(33);
+    // Nothing is plotted during warm-up: slow EMA (26) + signal EMA (9) share one day, so the first value is at 26 + 9 − 2.
+    for (const series of [m.macd, m.signal, m.histogram]) {
+      expect(series).toHaveLength(walk.length);
+      expect(series.findIndex((v) => v !== null)).toBe(33);
+      expect(series.slice(33).every((v) => v !== null && Number.isFinite(v))).toBe(true);
+    }
+    const r = rsi(walk, 14);
+    expect(r.findIndex((v) => v !== null)).toBe(14);
+    expect(r.slice(14).every((v) => v !== null)).toBe(true);
+    expect(rsi(walk.slice(0, 14), 14).every((v) => v === null)).toBe(true);
+  });
+
+  test("buildMarket leaves RSI and MACD null during warm-up and keeps them daily-aligned", () => {
+    const market = buildMarket(makeDays(burstySeries(366, 14)));
+    if ("insufficient" in market) throw new Error(market.insufficient);
+    const { rsi14, macd: m } = market.indicators;
+    expect(rsi14).toHaveLength(market.daily.length);
+    expect(rsi14.findIndex((v) => v !== null)).toBe(14);
+    for (const series of [m.macd, m.signal, m.histogram]) {
+      expect(series).toHaveLength(market.daily.length);
+      expect(series.findIndex((v) => v !== null)).toBe(33);
+    }
   });
 
   test("candles, price index and summary are consistent", () => {

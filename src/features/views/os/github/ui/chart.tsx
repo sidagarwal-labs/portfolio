@@ -86,6 +86,38 @@ export const niceMax = (max: number, count = 4) => {
   return last >= max ? last : last + (ticks[1] - ticks[0] || max);
 };
 
+/**
+ * Log scale over [d0, d1] (both > 0). Values that are not positive, not finite, or below d0 are clamped to d0,
+ * so a negative Bollinger band or an empty week sits on the axis floor instead of becoming NaN or -Infinity.
+ */
+export function logScale(d0: number, d1: number, r0: number, r1: number): Scale {
+  const l0 = Math.log(d0);
+  const span = Math.log(d1) - l0;
+  return (value) => {
+    const v = Number.isFinite(value) && value > d0 ? value : d0;
+    return span === 0 ? (r0 + r1) / 2 : r0 + ((Math.log(v) - l0) / span) * (r1 - r0);
+  };
+}
+
+/**
+ * Ticks for a log axis over [min, max] (min > 0): doublings of a power of ten (…25, 50, 100, 200, 400, 800…),
+ * thinned to ×4 or ×10 steps when there would be more than `maxCount`. Narrow ranges fall back to linear nice ticks.
+ */
+export function logTicks(min: number, max: number, maxCount = 6): number[] {
+  if (!(min > 0) || !(max > min)) return [min];
+  const anchor = 10 ** Math.floor(Math.log10(max));
+  for (const factor of [2, 4, 10]) {
+    const k0 = Math.ceil(Math.log(min / anchor) / Math.log(factor) - 1e-9);
+    const k1 = Math.floor(Math.log(max / anchor) / Math.log(factor) + 1e-9);
+    const ticks: number[] = [];
+    for (let k = k0; k <= k1; k++) ticks.push(Number((anchor * factor ** k).toPrecision(10)));
+    if (ticks.length >= 2 && ticks.length <= maxCount) return ticks;
+    if (ticks.length < 2) break;
+  }
+  const linearTicks = niceTicks(min, max, 3).filter((t) => t >= min && t <= max);
+  return linearTicks.length ? linearTicks : [min];
+}
+
 export function fmtTick(value: number) {
   if (Math.abs(value) >= 1000) return Math.round(value).toLocaleString("en-US");
   if (Number.isInteger(value)) return String(value);

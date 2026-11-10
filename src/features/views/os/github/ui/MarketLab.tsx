@@ -2,7 +2,7 @@ import { useId, useMemo } from "react";
 import { buildMarket, type MarketModel } from "../analytics";
 import type { GitHubInsights } from "../contract";
 import { labMemo } from "./cache";
-import { bandPath, Chart, Legend, linear, linePath, monthTicks, niceMax, niceTicks, XLabels, YGrid } from "./chart";
+import { bandPath, Chart, Legend, linear, linePath, logScale, logTicks, monthTicks, niceTicks, XLabels, YGrid } from "./chart";
 import { binomialTailHalf, fmtDate, fmtInt, fmtNum, fmtP, fmtPct, fmtSigned, plural } from "./format";
 import { Caveats, Guard, LabSection, Metrics } from "./LabParts";
 
@@ -15,10 +15,13 @@ function Method({ unit, model }: { unit: string; model: MarketModel | null }) {
         The daily {unit} become a price index:{" "}
         <code>{model?.formula ?? "price = 100 × (1 + EWMA7(daily contributions)) / (1 + mean daily contributions)"}</code>. An index of 100 means an
         average day{model ? ` (${fmtNum(model.meanDaily)} ${unit} per day here)` : ""}. Each candle is a Sunday-to-Saturday week: open and close are the
-        index on its first and last day, high and low its extremes. Hollow candles are partial weeks.
+        index on its first and last day, high and low its extremes. Hollow candles are partial weeks. The candle chart&apos;s y-axis is a log scale, so each
+        step up the axis is the same percentage change.
       </p>
       <p>
         Overlays: 4-week simple moving average and 8-week Bollinger bands (±2σ) on weekly closes; Wilder RSI(14) and MACD(12, 26, 9) on the daily index.
+        Each indicator needs a warm-up before it means anything, so it is not drawn until it has full history: RSI after 14 daily changes, and MACD,
+        its signal line and histogram from day 34 (the slow average needs 26 days, and the signal line then needs 9 MACD values, starting on day 26).
       </p>
       <p>
         Two tests on complete-week totals, both walk-forward or resampling based so nothing peeks ahead: a one-sided permutation test of lag-1
@@ -105,6 +108,16 @@ function MarketView({ insights, model, unit }: { insights: GitHubInsights; model
 
 const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1);
 
+/** Labels the empty stretch before an indicator has enough history, when there is room for the word. */
+function WarmupNote({ x0, x1, y }: { x0: number; x1: number; y: number }) {
+  if (x1 - x0 < 52) return null;
+  return (
+    <text className="gh-chart__note" x={(x0 + x1) / 2} y={y} textAnchor="middle">
+      warm-up
+    </text>
+  );
+}
+
 function useCandleLayout(model: MarketModel) {
   return useMemo(() => {
     let offset = 0;
@@ -121,23 +134,24 @@ function PriceChart({ model }: { model: MarketModel }) {
   const layout = useCandleLayout(model);
   const { bollinger, sma4 } = model.indicators;
   const n = model.daily.length;
-  const values = [...model.candles.flatMap((c) => [c.high, c.low]), ...(bollinger.upper.filter((v) => v !== null) as number[])];
-  const lowBand = bollinger.lower.filter((v) => v !== null) as number[];
-  const lo = Math.max(0, Math.min(...values, ...lowBand));
-  const hi = Math.max(...values);
-  const ticks = niceTicks(lo, hi, 4);
-  const top = Math.max(hi, ticks[ticks.length - 1]);
-  const bottom = Math.min(lo, ticks[0]);
+  // Log axis: the floor comes from the candles and SMA only. Lower Bollinger bands can be near or below zero
+  // after a burst; the scale clamps them to the floor instead of stretching the axis down to them.
+  const positive = (series: readonly (number | null)[]) => series.filter((v): v is number => v !== null && Number.isFinite(v) && v > 0);
+  const lo = Math.min(...model.candles.map((c) => c.low), ...positive(sma4));
+  const hi = Math.max(...model.candles.map((c) => c.high), ...positive(bollinger.upper), ...positive(sma4));
+  const bottom = lo / 1.12;
+  const top = hi * 1.05;
+  const ticks = logTicks(bottom, top);
   const H = 230;
   const up = model.candles.filter((c) => c.close >= c.open).length;
-  const label = `Weekly candles of the activity index, ${model.candles.length} weeks: ${up} closed at or above their open, ${model.candles.length - up} below. Index ranged ${fmtNum(model.summary.low, 1)} to ${fmtNum(model.summary.high, 1)}; it opened at ${fmtNum(model.summary.open, 1)} and closed at ${fmtNum(model.summary.close, 1)}.`;
+  const label = `Weekly candles of the activity index on a log scale, ${model.candles.length} weeks: ${up} closed at or above their open, ${model.candles.length - up} below. Index ranged ${fmtNum(model.summary.low, 1)} to ${fmtNum(model.summary.high, 1)}; it opened at ${fmtNum(model.summary.open, 1)} and closed at ${fmtNum(model.summary.close, 1)}.`;
   return (
     <figure className="gh-figure">
-      <figcaption>Activity index, weekly candles</figcaption>
+      <figcaption>Activity index, weekly candles (log scale)</figcaption>
       <Chart height={H} label={label}>
         {(w) => {
           const x = linear(-0.5, n - 0.5, M.left, w - M.right);
-          const y = linear(bottom, top, H - M.bottom, M.top);
+          const y = logScale(bottom, top, H - M.bottom, M.top);
           const centers = layout.map((l) => x(l.center));
           const day = x(1) - x(0);
           return (
@@ -148,6 +162,9 @@ function PriceChart({ model }: { model: MarketModel }) {
                 </clipPath>
               </defs>
               <YGrid ticks={ticks.filter((t) => t >= bottom && t <= top)} y={y} x0={M.left} x1={w - M.right} />
+              <text className="gh-axis gh-axis__title" transform={`translate(9 ${(M.top + H - M.bottom) / 2}) rotate(-90)`} textAnchor="middle">
+                log scale
+              </text>
               <XLabels ticks={monthTicks(model.daily.map((d) => d.date), x)} y={H - 6} />
               <g clipPath={`url(#${clipId})`}>
                 <path className="gh-band" d={bandPath(centers, bollinger.upper.map((v) => (v === null ? null : y(v))), bollinger.lower.map((v) => (v === null ? null : y(v))))} />
@@ -190,7 +207,8 @@ function RsiChart({ model }: { model: MarketModel }) {
   const last = valid[valid.length - 1];
   const above = valid.filter((v) => v > 70).length;
   const below = valid.filter((v) => v < 30).length;
-  const label = `RSI(14) of the daily index${last !== undefined ? `, last ${fmtNum(last, 0)}` : ""}. Above 70 on ${above} days, below 30 on ${below} days.`;
+  const firstRsi = rsi.findIndex((v) => v !== null);
+  const label = `RSI(14) of the daily index${firstRsi >= 0 ? `, from ${fmtDate(model.daily[firstRsi].date)} after a ${firstRsi}-day warm-up` : ""}${last !== undefined ? `, last ${fmtNum(last, 0)}` : ""}. Above 70 on ${above} days, below 30 on ${below} days.`;
   return (
     <figure className="gh-figure">
       <figcaption>RSI(14)</figcaption>
@@ -203,6 +221,7 @@ function RsiChart({ model }: { model: MarketModel }) {
               <YGrid ticks={[0, 30, 70, 100]} y={y} x0={M.left} x1={w - M.right} />
               <rect className="gh-zone" x={M.left} width={Math.max(0, w - M.left - M.right)} y={y(70)} height={y(30) - y(70)} />
               <XLabels ticks={monthTicks(model.daily.map((d) => d.date), x, 48)} y={H - 6} />
+              <WarmupNote x0={M.left} x1={firstRsi > 0 ? x(firstRsi) : M.left} y={M.top + 10} />
               <path className="gh-line gh-line--rsi" d={linePath(rsi.map((_, i) => x(i)), rsi.map((v) => (v === null ? null : y(v))))} />
             </>
           );
@@ -217,23 +236,29 @@ function MacdChart({ model }: { model: MarketModel }) {
   const n = macd.length;
   const H = 120;
   const all = [...macd, ...signal, ...histogram].filter((v) => v !== null) as number[];
-  const extent = Math.max(1, ...all.map(Math.abs));
-  const span = niceMax(extent, 2);
-  const ticks = [-span, 0, span];
+  // Fit the axis to the values (always including 0) rather than a symmetric ±max, so one early dip
+  // does not squash the rest of the year.
+  let lo = Math.min(0, ...all);
+  let hi = Math.max(0, ...all);
+  if (hi - lo < 1e-9) [lo, hi] = [-1, 1];
+  const ticks = niceTicks(lo, hi, 3);
+  const bottom = Math.min(lo, ticks[0]);
+  const top = Math.max(hi, ticks[ticks.length - 1]);
   let crossings = 0;
   for (let i = 1; i < n; i++) {
     const a = histogram[i - 1];
     const b = histogram[i];
     if (a !== null && b !== null && Math.sign(a) !== Math.sign(b) && b !== 0) crossings++;
   }
-  const label = `MACD(12, 26, 9) of the daily index. The MACD line crossed its signal line ${crossings} times.`;
+  const firstMacd = signal.findIndex((v) => v !== null);
+  const label = `MACD(12, 26, 9) of the daily index${firstMacd >= 0 ? `, from ${fmtDate(model.daily[firstMacd].date)} after a ${firstMacd}-day warm-up` : ""}. The MACD line crossed its signal line ${crossings} times.`;
   return (
     <figure className="gh-figure">
       <figcaption>MACD(12, 26, 9)</figcaption>
       <Chart height={H} label={label}>
         {(w) => {
           const x = linear(0, Math.max(1, n - 1), M.left, w - M.right);
-          const y = linear(-span, span, H - M.bottom, M.top);
+          const y = linear(bottom, top, H - M.bottom, M.top);
           const barW = Math.max(1, (x(1) - x(0)) * 0.8);
           let hist = "";
           histogram.forEach((v, i) => {
@@ -247,6 +272,7 @@ function MacdChart({ model }: { model: MarketModel }) {
               <YGrid ticks={ticks} y={y} x0={M.left} x1={w - M.right} />
               <XLabels ticks={monthTicks(model.daily.map((d) => d.date), x, 48)} y={H - 6} />
               <path className="gh-hist" d={hist} />
+              <WarmupNote x0={M.left} x1={firstMacd > 0 ? x(firstMacd) : M.left} y={M.top + 10} />
               <path className="gh-line gh-line--macd" d={linePath(macd.map((_, i) => x(i)), macd.map((v) => (v === null ? null : y(v))))} />
               <path className="gh-line gh-line--signal" d={linePath(signal.map((_, i) => x(i)), signal.map((v) => (v === null ? null : y(v))))} />
             </>
@@ -268,10 +294,44 @@ function marketCaveats(insights: GitHubInsights, model: MarketModel, unit: strin
   const mo = model.momentum;
   const items = [
     `The index is smoothed ${unit}, not a price, and nothing is traded. RSI, MACD and Bollinger bands are borrowed from trading as ways to describe momentum and volatility; they are not shown to predict anything here.`,
-    `The EWMA smooths the daily series, so the indicators lag real changes by days. The first weeks have no SMA or bands until enough history exists.`,
+    `The candle chart uses a log scale, so equal distances mean equal percentage changes: going from 50 to 100 looks as big as going from 400 to 800. This keeps one busy stretch from flattening the rest of the year.`,
+    bandCaveat(model),
+    `The EWMA smooths the daily series, so the indicators lag real changes by days. Each indicator is left blank until it has enough history: 4 weeks for the SMA, 8 for the bands, 14 days for RSI and 33 days for MACD.${macdAfterBurst(model) ? " MACD still starts well below zero: the index is falling back from an early burst, and the slow average still remembers it." : ""}`,
     `${mo.n} weeks is a small sample for an autocorrelation test${mo.significant ? "" : ": a modest real persistence could still miss the 5% threshold"}.`,
     `The trend-rule backtest scores ${plural(model.trendBacktest.n, "prediction")}; a few weeks either way changes the accuracy by several points.`
   ];
   if (insights.source === "rest-events") items.push("This profile has about 13 weeks of public events, so both tests have very little data to work with.");
   return items;
+}
+
+/** True when the first plotted MACD value is negative because the index peaked before MACD's warm-up ended. */
+function macdAfterBurst(model: MarketModel) {
+  const { macd } = model.indicators.macd;
+  const first = macd.findIndex((v) => v !== null);
+  if (first < 0) return false;
+  const prices = model.daily.map((d) => d.price);
+  const peakDay = prices.indexOf(Math.max(...prices));
+  return peakDay < first && (macd[first] as number) < 0;
+}
+
+/** Points at the busiest week when the widest Bollinger band falls within the 8 weeks it stays in the window. */
+function bandCaveat(model: MarketModel) {
+  const { upper, lower, middle } = model.indicators.bollinger;
+  let widest = -1;
+  let widestWidth = 0;
+  middle.forEach((m, i) => {
+    if (m === null || upper[i] === null || lower[i] === null || m <= 0) return;
+    const width = ((upper[i] as number) - (lower[i] as number)) / m;
+    if (width > widestWidth) {
+      widestWidth = width;
+      widest = i;
+    }
+  });
+  let peak = 0;
+  model.candles.forEach((c, i) => {
+    if (c.high > model.candles[peak].high) peak = i;
+  });
+  const general = "Bollinger bands are 2 standard deviations of the last 8 weekly closes, so one unusual week widens them for 8 weeks and then drops out.";
+  if (widest < 0 || widest < peak || widest - peak >= 8) return general;
+  return `The bands get much wider after the busy week of ${fmtDate(model.candles[peak].start)}, because that week stays inside the 8-week window (bands are 2 standard deviations of the last 8 weekly closes). They narrow again once it drops out. Where the lower band would fall below the chart, it is drawn at the bottom edge.`;
 }

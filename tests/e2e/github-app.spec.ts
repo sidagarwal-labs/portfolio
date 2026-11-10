@@ -159,6 +159,19 @@ test("lab tabs follow the ARIA tabs pattern and show model output", async ({ pag
   await expect(marketPanel.locator('[data-metric="momentum"]')).toContainText(`p = ${fmtP(market.momentum.pValue)}, ${market.momentum.significant ? "significant" : "not significant"}`);
   await expect(metric(marketPanel, "trend")).toHaveText(fmtPct(market.trendBacktest.accuracy, 1));
   await expect(marketPanel.locator("g.gh-candle")).toHaveCount(market.candles.length);
+  const priceFigure = marketPanel.locator("figure").first();
+  await expect(priceFigure.locator("figcaption")).toContainText("log scale");
+  await expect(priceFigure.locator("svg")).toHaveAttribute("aria-label", /log scale/);
+  // Log-axis ticks are doublings, so each is twice the one below it.
+  const priceTicks = (await priceFigure.locator("svg > g.gh-axis").first().locator("text").allTextContents()).map((t) => Number(t.replace(/,/g, "")));
+  expect(priceTicks.length).toBeGreaterThanOrEqual(3);
+  for (let i = 1; i < priceTicks.length; i++) expect(priceTicks[i] / priceTicks[i - 1]).toBeCloseTo(2, 9);
+  const paths = await marketPanel.locator("svg path, svg rect, svg line").evaluateAll((els) =>
+    els.flatMap((el) => ["d", "x", "y", "width", "height", "x1", "x2", "y1", "y2"].map((name) => el.getAttribute(name) ?? ""))
+  );
+  expect(paths.filter((v) => /NaN|Infinity/.test(v))).toEqual([]);
+  await expect(marketPanel.getByRole("img", { name: /MACD\(12, 26, 9\).*after a 33-day warm-up/ })).toBeVisible();
+  await expect(marketPanel.getByRole("img", { name: /RSI\(14\).*after a 14-day warm-up/ })).toBeVisible();
 
   await page.keyboard.press("ArrowRight");
   await expect(tab("Launch")).toBeFocused();
