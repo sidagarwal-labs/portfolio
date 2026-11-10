@@ -31,6 +31,12 @@ export interface GitHubRepoInsight {
    * source "graphql": commit contributions; source "rest-events": public events.
    */
   activity: DayCount[];
+  /**
+   * All-time commits by this user on the default branch (GraphQL `history(author:)`), so it includes years
+   * outside `range`. Only repositories with commit contributions in the range get one; absent from
+   * "rest-events" data and from snapshots written before the field existed.
+   */
+  allTimeCommits?: number;
 }
 
 /**

@@ -88,6 +88,8 @@
 .gh-repo__bar { height: 8px; overflow: hidden; border-radius: 4px; background: #eef1f5; }
 .gh-repo__bar span { display: block; height: 100%; border-radius: 4px; background: #40c463; }
 .gh-repo__value { font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gh-repo.has-total { row-gap: 0; }
+.gh-repo__total { grid-column: 3; grid-row: 2; color: #6b7383; font-size: 12px; font-variant-numeric: tabular-nums; line-height: 1.4; white-space: nowrap; }
 .gh-link-button { justify-self: start; padding: 2px 0; border: 0; background: none; color: #2a4fbf; font: inherit; font-size: 13px; cursor: pointer; }
 .gh-link-button:hover { text-decoration: underline; }
 .gh-note { padding: 8px 10px; border: 1px solid #d0d5dd; border-radius: 8px; background: #f3f5f8; font-size: 13px; overflow-wrap: anywhere; }
@@ -275,6 +277,9 @@
   .gh-cols, .gh-grid2 { grid-template-columns: minmax(0, 1fr); }
   .gh-repo { grid-template-columns: minmax(0, 1fr) auto; }
   .gh-repo__bar { grid-column: 1 / -1; grid-row: 2; }
+  .gh-repo.has-total { row-gap: 4px; }
+  .gh-repo.has-total .gh-repo__bar { grid-column: 1; }
+  .gh-repo__total { grid-column: 2; }
   .gh-tabs { justify-self: stretch; }
 }
 
@@ -296,7 +301,7 @@
 .os--retro .gh-tabs { background: #c0c0c0; }
 .os--retro .gh-tab[aria-selected="true"] { background: #000080; color: #fff; box-shadow: none; }
 .os--retro .gh-repo.is-highlighted { background: #000080; box-shadow: none; }
-.os--retro .gh-repo.is-highlighted a, .os--retro .gh-repo.is-highlighted .gh-repo__value, .os--retro .gh-repo.is-highlighted .gh-muted { color: #fff; }
+.os--retro .gh-repo.is-highlighted a, .os--retro .gh-repo.is-highlighted .gh-repo__value, .os--retro .gh-repo.is-highlighted .gh-muted, .os--retro .gh-repo.is-highlighted .gh-repo__total { color: #fff; }
 .os--retro .gh-stat, .os--retro .gh-metric, .os--retro .gh-stage { background: #fff; border-color: #808080; }
 
 /* File view: a Markdown file from one of the owner's repositories, laid out like GitHub's file page */

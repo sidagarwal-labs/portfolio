@@ -15,6 +15,8 @@ export interface RepoTotal {
   activeDays: number;
   /** Share of all repo-attributed activity (shares sum to 1). */
   share: number;
+  /** All-time default-branch commits by the user, when the data has it (GraphQL only). */
+  allTimeCommits?: number;
 }
 
 export interface ActivityStats {
@@ -93,7 +95,10 @@ export function computeStats(insights: GitHubInsights): ActivityStats {
   const repoRows = insights.repos
     .map((r) => {
       const inRange = r.activity.filter((a) => a.count > 0 && a.date >= from && a.date <= to);
-      return { name: r.name, nameWithOwner: r.nameWithOwner, url: r.url, total: sum(inRange.map((a) => a.count)), activeDays: inRange.length };
+      return {
+        name: r.name, nameWithOwner: r.nameWithOwner, url: r.url, total: sum(inRange.map((a) => a.count)), activeDays: inRange.length,
+        ...(r.allTimeCommits === undefined ? {} : { allTimeCommits: r.allTimeCommits })
+      };
     })
     .filter((r) => r.total > 0);
   const repoSum = sum(repoRows.map((r) => r.total));

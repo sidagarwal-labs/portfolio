@@ -148,7 +148,7 @@ function LeaderboardsPage() {
   const select = (key: "arena" | "bench", value: string) => {
     const next = new URLSearchParams(params);
     next.set(key, value);
-    setParams(next, { replace: true, state: { keepScroll: true } });
+    setParams(next, { replace: true });
   };
 
   const leaders = [

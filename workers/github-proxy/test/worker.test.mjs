@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import worker from "../src/index.mjs";
-import { graphqlData } from "./fixtures.mjs";
+import { graphqlUpstream } from "./fixtures.mjs";
 
 const TOKEN = "ghp_test_token_should_never_leak";
 const base = "https://api.agarwal-labs.com";
@@ -27,7 +27,7 @@ const realCaches = globalThis.caches;
 beforeEach(() => {
   cache = new FakeCache();
   upstreamCalls = [];
-  upstream = async () => new Response(JSON.stringify({ data: graphqlData() }), { status: 200 });
+  upstream = graphqlUpstream();
   globalThis.caches = { default: cache };
   globalThis.fetch = async (url, init) => {
     upstreamCalls.push({ url, init });
@@ -119,21 +119,34 @@ describe("GET /github/v1/users/:login", () => {
     assert.equal(body.version, 1);
     assert.equal(body.source, "graphql");
     assert.ok(!JSON.stringify(body).includes("secret-plan"));
+    assert.equal(body.repos.find((item) => item.name === "busy").allTimeCommits, 42);
+    assert.equal(upstreamCalls.length, 2);
     assert.equal(JSON.parse(upstreamCalls[0].init.body).variables.login, "octo");
-    assert.equal(upstreamCalls[0].init.headers.Authorization, `bearer ${TOKEN}`);
+    assert.deepEqual(JSON.parse(upstreamCalls[1].init.body).variables, { ids: ["R_busy", "R_quiet"], userId: "U_octo" });
+    assert.ok(upstreamCalls.every((item) => item.init.headers.Authorization === `bearer ${TOKEN}`));
     assert.deepEqual([...cache.store.keys()], [`${base}/github/v1/users/octo`]);
     assert.equal(cache.store.get(`${base}/github/v1/users/octo`).headers.get("Access-Control-Allow-Origin"), null);
   });
 
   it("serves cache hits without calling GitHub", async () => {
     await call("/github/v1/users/octo");
-    assert.equal(upstreamCalls.length, 1);
+    assert.equal(upstreamCalls.length, 2);
     const response = await call("/github/v1/users/OCTO", { origin: "http://localhost:5173" });
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("X-Cache"), "HIT");
     assert.equal(response.headers.get("Access-Control-Allow-Origin"), "http://localhost:5173");
     assert.equal((await response.json()).login, "Octo");
-    assert.equal(upstreamCalls.length, 1);
+    assert.equal(upstreamCalls.length, 2);
+  });
+
+  it("answers without all-time counts when only that request fails", async () => {
+    const answer = graphqlUpstream();
+    upstream = async (url, init) => (JSON.parse(init.body).variables.ids ? new Response("unavailable", { status: 502 }) : answer(url, init));
+    const response = await call("/github/v1/users/octo");
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.ok(body.repos.length > 0 && body.repos.every((item) => !("allTimeCommits" in item)));
+    assert.equal(upstreamCalls.length, 2);
   });
 
   it("maps a missing user to a cached 404", async () => {

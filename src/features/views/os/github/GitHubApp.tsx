@@ -69,7 +69,8 @@ function Profile({ insights, focus, own }: { insights: GitHubInsights; focus: Re
   const rest = insights.source === "rest-events";
   const unit = rest ? "events" : "contributions";
   const repoFocus = focus && focus.login.toLowerCase() === insights.login.toLowerCase() ? focus : null;
-  const sourceLabel = rest ? "public events from the GitHub REST API" : own ? "contribution calendar, saved at build time" : "contribution calendar from the GitHub GraphQL API";
+  const sourceLabel = rest ? "public events from the GitHub REST API" : own ? "contribution calendar" : "contribution calendar from the GitHub GraphQL API";
+  const asOf = <time dateTime={insights.generatedAt}>{fmtDate(insights.generatedAt)}</time>;
 
   return (
     <div className="gh-main">
@@ -80,7 +81,10 @@ function Profile({ insights, focus, own }: { insights: GitHubInsights; focus: Re
           <p className="gh-head__login">@{insights.login}</p>
           {insights.bio && <p className="gh-head__bio">{insights.bio}</p>}
           <p className="gh-head__meta">
-            {fmtRange(insights.range.from, insights.range.to)} · {sourceLabel} · data as of {fmtDate(insights.generatedAt)}
+            {fmtRange(insights.range.from, insights.range.to)} · {sourceLabel}
+          </p>
+          <p className="gh-head__meta gh-head__fresh">
+            {own ? <>Data as of {asOf} · refreshed on each deploy and daily</> : <>Fetched live · data as of {asOf}</>}
           </p>
         </div>
         <a className="os-button gh-head__open" href={insights.htmlUrl} target="_blank" rel="noreferrer">

@@ -226,11 +226,13 @@ html[data-os-style="retro"] {
 
 /* ---------- Start menu ---------- */
 
-.os-menu { position: absolute; bottom: calc(var(--os-taskbar) + 6px); left: 6px; z-index: 5; display: flex; width: min(540px, calc(100% - 12px)); max-height: calc(100% - var(--os-taskbar) - 16px); overflow: auto; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; background: rgba(24, 28, 40, 0.95); -webkit-backdrop-filter: blur(24px) saturate(1.3); backdrop-filter: blur(24px) saturate(1.3); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); color: #e8ebf2; animation: os-menu 0.14s ease-out; }
+.os-menu { position: absolute; bottom: calc(var(--os-taskbar) + 6px); left: 6px; z-index: 5; display: flex; width: min(540px, calc(100% - 12px)); height: min(720px, calc(100% - var(--os-taskbar) - 16px)); overflow: auto; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; background: rgba(24, 28, 40, 0.95); -webkit-backdrop-filter: blur(24px) saturate(1.3); backdrop-filter: blur(24px) saturate(1.3); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); color: #e8ebf2; animation: os-menu 0.14s ease-out; }
 
 .os-menu__band { display: none; }
 
-.os-menu__main { flex: 1; min-width: 0; padding: 14px; }
+.os-menu__main { display: flex; flex: 1; flex-direction: column; min-width: 0; padding: 14px; }
+
+.os-menu__main > * { flex: none; }
 
 .os-menu__who { display: flex; align-items: center; gap: 12px; padding: 2px 4px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
 
@@ -240,7 +242,9 @@ html[data-os-style="retro"] {
 
 .os-menu__who span { display: block; color: rgba(232, 235, 242, 0.7); font-size: 12.5px; }
 
-.os-menu__cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 18px; padding-top: 6px; }
+.os-menu__main > .os-menu__cols { display: grid; flex: 1 1 0; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); gap: 4px 18px; min-height: 120px; padding-top: 6px; }
+
+.os-menu__cols > * { min-height: 0; margin: 0 -4px; padding: 0 4px 4px; overflow-y: auto; scrollbar-color: rgba(255, 255, 255, 0.28) transparent; scrollbar-width: thin; }
 
 .os-menu__heading { margin: 10px 0 4px; padding: 0 10px; color: rgba(232, 235, 242, 0.55); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; line-height: 1.4; text-transform: uppercase; }
 
@@ -251,6 +255,20 @@ html[data-os-style="retro"] {
 .os-menu__item:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
 
 .os-menu__item svg { flex: none; opacity: 0.85; }
+
+.os-menu__text { display: flex; flex: 1; flex-wrap: wrap; align-items: baseline; column-gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+
+.os-menu__where { color: rgba(232, 235, 242, 0.58); font-size: 12px; }
+
+.os-menu__item .os-menu__chevron { opacity: 0.6; transition: transform 0.12s ease; }
+
+.os-menu__folder[aria-expanded="true"] .os-menu__chevron { transform: rotate(90deg); }
+
+.os-menu__sub { margin: 1px 0 3px 17px; padding-left: 6px; border-left: 1px solid rgba(255, 255, 255, 0.14); }
+
+.os-menu__sub[hidden] { display: none; }
+
+.os-menu__empty { margin: 4px 0; padding: 0 10px; color: rgba(232, 235, 242, 0.7); font-size: 13px; }
 
 .os-menu__seg { display: inline-flex; gap: 2px; margin: 2px 10px 4px; padding: 3px; border-radius: 9px; background: rgba(255, 255, 255, 0.08); }
 
@@ -389,7 +407,7 @@ html[data-os-style="retro"] {
 .os--retro .os-style-toggle:hover { background: transparent; box-shadow: var(--bevel-thin-out); }
 
 /* Start menu */
-.os--retro .os-menu { bottom: var(--os-taskbar); left: 2px; width: min(460px, calc(100% - 4px)); max-height: calc(100% - var(--os-taskbar) - 8px); padding: 3px; border: 0; border-radius: 0; background: #c0c0c0; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: var(--bevel-out); color: #000; animation: none; }
+.os--retro .os-menu { bottom: var(--os-taskbar); left: 2px; width: min(460px, calc(100% - 4px)); height: min(600px, calc(100% - var(--os-taskbar) - 8px)); padding: 3px; border: 0; border-radius: 0; background: #c0c0c0; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: var(--bevel-out); color: #000; animation: none; }
 
 .os--retro .os-menu__band { display: flex; flex: none; align-items: flex-end; width: 26px; padding: 8px 0; background: linear-gradient(0deg, #000080, #1084d0); }
 
@@ -410,6 +428,18 @@ html[data-os-style="retro"] {
 .os--retro .os-menu__item { padding: 4px 6px; border-radius: 0; font-size: 12.5px; }
 
 .os--retro .os-menu__item:hover, .os--retro .os-menu__item:focus-visible { background: #000080; color: #fff; outline: none; }
+
+.os--retro .os-menu__where { color: #404040; font-size: 11.5px; }
+
+.os--retro .os-menu__item:hover .os-menu__where, .os--retro .os-menu__item:focus-visible .os-menu__where { color: inherit; }
+
+.os--retro .os-menu__item .os-menu__chevron { opacity: 1; transition: none; }
+
+.os--retro .os-menu__sub { margin: 0 0 2px 13px; padding-left: 4px; border-left: 1px dotted #808080; }
+
+.os--retro .os-menu__cols > * { scrollbar-color: auto; scrollbar-width: auto; }
+
+.os--retro .os-menu__empty { padding: 0 6px; color: #000; font-size: 12.5px; }
 
 .os--retro .os-menu__seg { gap: 0; margin: 2px 6px 4px; padding: 0; border-radius: 0; background: none; }
 
@@ -460,6 +490,11 @@ html[data-os-style="retro"] {
   .os-home .os-icon { font-size: 11px; }
   .os-home .os-icon__label { overflow-wrap: normal; }
   .os--retro .os-home .os-icon__label { padding: 0; }
+}
+
+/* Four columns leave about 68px per label, too narrow for "leaderboards" in wider Linux fonts. */
+@media (max-width: 340px) {
+  .os-home__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 .os-home__footer { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: auto; }
@@ -517,6 +552,6 @@ html[data-os-style="retro"] {
 @keyframes os-menu { from { opacity: 0; transform: translateY(-6px); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .os-win, .os--phone .os-win, .os-menu { animation: none; transition: none; }
+  .os-win, .os--phone .os-win, .os-menu, .os-menu__item .os-menu__chevron { animation: none; transition: none; }
   .os-win.is-minimized { transition: none; }
 }

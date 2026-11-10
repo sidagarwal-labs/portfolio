@@ -5,18 +5,18 @@
   "avatarUrl": "https://avatars.githubusercontent.com/u/90481432?u=f7f80f4bd6bac83b64fa0daa4ad0836ea006a715&v=4",
   "htmlUrl": "https://github.com/sidagarwal-labs",
   "bio": "Trying to quantify and explain the unknown",
-  "generatedAt": "2026-11-10T15:58:52.092Z",
+  "generatedAt": "2026-11-10T18:21:25.650Z",
   "range": {
     "from": "2025-11-09",
     "to": "2026-11-10"
   },
   "source": "graphql",
   "totals": {
-    "contributions": 455,
-    "commits": 356,
-    "pullRequests": 4,
+    "contributions": 478,
+    "commits": 368,
+    "pullRequests": 8,
     "reviews": 0,
-    "issues": 0,
+    "issues": 7,
     "repositories": 12,
     "restricted": 83
   },
@@ -1487,7 +1487,7 @@
     },
     {
       "date": "2026-11-10",
-      "count": 0
+      "count": 23
     }
   ],
   "repos": [
@@ -1538,7 +1538,8 @@
           "date": "2025-11-19",
           "count": 8
         }
-      ]
+      ],
+      "allTimeCommits": 83
     },
     {
       "name": "arxiv-search",
@@ -1611,7 +1612,8 @@
           "date": "2026-11-06",
           "count": 4
         }
-      ]
+      ],
+      "allTimeCommits": 76
     },
     {
       "name": "models",
@@ -1688,7 +1690,8 @@
           "date": "2026-11-02",
           "count": 5
         }
-      ]
+      ],
+      "allTimeCommits": 64
     },
     {
       "name": "portfolio",
@@ -1714,11 +1717,11 @@
           "size": 3107
         }
       ],
-      "diskUsageKb": 2237,
+      "diskUsageKb": 2451,
       "stars": 0,
       "forks": 0,
       "createdAt": "2025-06-30T04:36:34Z",
-      "pushedAt": "2026-11-10T04:54:01Z",
+      "pushedAt": "2026-11-10T18:18:35Z",
       "isFork": false,
       "activity": [
         {
@@ -1768,8 +1771,13 @@
         {
           "date": "2026-11-09",
           "count": 7
+        },
+        {
+          "date": "2026-11-10",
+          "count": 12
         }
-      ]
+      ],
+      "allTimeCommits": 99
     },
     {
       "name": "Applied-Machine-Learning",
@@ -1834,7 +1842,8 @@
           "date": "2026-04-22",
           "count": 2
         }
-      ]
+      ],
+      "allTimeCommits": 27
     },
     {
       "name": "Analyzing-Yelp-Reviews---Philadelphia-Restaurants",
@@ -1863,7 +1872,8 @@
           "date": "2026-02-19",
           "count": 2
         }
-      ]
+      ],
+      "allTimeCommits": 17
     },
     {
       "name": "Intro-to-Modeling-",
@@ -1892,7 +1902,8 @@
           "date": "2026-01-18",
           "count": 1
         }
-      ]
+      ],
+      "allTimeCommits": 14
     },
     {
       "name": "gdp-dashboard",
@@ -1917,7 +1928,8 @@
           "date": "2025-11-13",
           "count": 11
         }
-      ]
+      ],
+      "allTimeCommits": 11
     },
     {
       "name": "HireMe-AI",
@@ -1958,7 +1970,8 @@
           "date": "2026-05-04",
           "count": 4
         }
-      ]
+      ],
+      "allTimeCommits": 10
     },
     {
       "name": "NVDocs_RAG",
@@ -1987,7 +2000,8 @@
           "date": "2026-04-22",
           "count": 4
         }
-      ]
+      ],
+      "allTimeCommits": 4
     },
     {
       "name": "LLMs",
@@ -2007,7 +2021,8 @@
           "date": "2026-09-15",
           "count": 2
         }
-      ]
+      ],
+      "allTimeCommits": 2
     },
     {
       "name": "DSBA-6188-Text-Analytics",
@@ -2032,7 +2047,8 @@
           "date": "2026-09-08",
           "count": 1
         }
-      ]
+      ],
+      "allTimeCommits": 1
     },
     {
       "name": "DSBA-6165-AI-Deep-Learning",
@@ -2057,7 +2073,8 @@
           "date": "2026-09-08",
           "count": 1
         }
-      ]
+      ],
+      "allTimeCommits": 1
     },
     {
       "name": "gdp-dashboard-1",
@@ -2082,7 +2099,8 @@
           "date": "2025-11-13",
           "count": 1
         }
-      ]
+      ],
+      "allTimeCommits": 1
     },
     {
       "name": "odin-recipes",
