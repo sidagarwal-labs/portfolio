@@ -10,6 +10,7 @@ import { siteViews } from "../siteViews";
 import { contactLinks, roleLine } from "../viewData";
 import { apps, phoneApps, startApps, type AppId } from "./apps";
 import { isOsMessage, openInNewTab, type OsMessage } from "./embed";
+import { isLinkApp, routeLink } from "./linkRoutes";
 import OsWindow, { clamp } from "./OsWindow";
 import type { DeskSize, OsActions, OsWin, Rect } from "./types";
 import { SignalStatus, SignalsProvider } from "./Signals";
@@ -139,6 +140,7 @@ function DesktopShell() {
   const frames = useRef(new Map<string, HTMLIFrameElement>());
   const zRef = useRef(1);
   const idRef = useRef(0);
+  const targetSeq = useRef(0);
   const launched = useRef(false);
   /* Deep links like /#writing open Sid Search at that section. */
   const initialHash = useRef(location.hash);
@@ -196,7 +198,7 @@ function DesktopShell() {
     });
   }, []);
 
-  const open = useCallback((app: AppId) => {
+  const open = useCallback((app: AppId, targetValue?: string) => {
     setMenuOpen(false);
     setCalendarOpen(false);
     setDesktopWindows([]);
@@ -205,8 +207,10 @@ function DesktopShell() {
       openInNewTab(profileContent.resumeHref);
       return;
     }
+    const target = targetValue === undefined ? undefined : { value: targetValue, seq: ++targetSeq.current };
     const existing = current.find((win) => win.app === app);
     if (existing) {
+      if (target) setWindows((list) => list.map((win) => (win.id === existing.id ? { ...win, target } : win)));
       focus(existing.id);
       return;
     }
@@ -221,7 +225,8 @@ function DesktopShell() {
       minimized: false,
       src: def.kind === "site" ? `${import.meta.env.BASE_URL}${def.path?.slice(1) ?? ""}${hash}` : undefined,
       history: [],
-      index: -1
+      index: -1,
+      target
     };
     setWindows((list) => (list.some((item) => item.app === app) ? list : [...list, win]));
   }, [focus]);
@@ -292,7 +297,9 @@ function DesktopShell() {
       const windowId = id;
       const message = event.data;
       if (message.type === "labos:open") open("resume");
-      else if (message.type === "labos:boot") setBooting(true);
+      else if (message.type === "labos:link") {
+        if (isLinkApp(message.app) && typeof message.target === "string") open(message.app, message.target.slice(0, 200));
+      } else if (message.type === "labos:boot") setBooting(true);
       else if (message.type === "labos:focus") {
         focus(windowId);
         setMenuOpen(false);
@@ -357,6 +364,15 @@ function DesktopShell() {
     if (phone || !isPlainClick(event)) return;
     event.preventDefault();
     open("resume");
+  };
+
+  /* Contact links to Sid's GitHub open the GitHub app; other contact links keep their normal behavior. */
+  const openContact = (event: ReactMouseEvent<HTMLAnchorElement>, href: string) => {
+    setMenuOpen(false);
+    const route = routeLink(href);
+    if (!route || !isPlainClick(event)) return;
+    event.preventDefault();
+    open(route.app, route.target);
   };
 
   const shutDown = () => {
@@ -442,7 +458,7 @@ function DesktopShell() {
                 <div className="os-widget__actions">
                   <a className="os-button os-button--primary" href={profileContent.resumeHref} target="_blank" rel="noreferrer">Resume</a>
                   {contactLinks.map((link) => (
-                    <a key={link.label} className="os-button" href={link.href} target={link.href.startsWith("http") ? "_blank" : undefined} rel="noreferrer">{link.label}</a>
+                    <a key={link.label} className="os-button" href={link.href} target={link.href.startsWith("http") ? "_blank" : undefined} rel="noreferrer" onClick={(event) => openContact(event, link.href)}>{link.label}</a>
                   ))}
                 </div>
               </section>
@@ -488,7 +504,7 @@ function DesktopShell() {
               {contactLinks.map((link) => {
                 const Icon = contactIcons[link.label] ?? Mail;
                 return (
-                  <a key={link.label} href={link.href} target={link.href.startsWith("http") ? "_blank" : undefined} rel="noreferrer" title={link.label} aria-label={link.label}>
+                  <a key={link.label} href={link.href} target={link.href.startsWith("http") ? "_blank" : undefined} rel="noreferrer" title={link.label} aria-label={link.label} onClick={(event) => openContact(event, link.href)}>
                     <Icon size={16} strokeWidth={2} aria-hidden="true" />
                   </a>
                 );
@@ -563,7 +579,7 @@ function DesktopShell() {
                       const Icon = contactIcons[link.label] ?? Mail;
                       return (
                         <li key={link.label}>
-                          <a className="os-menu__item" href={link.href} target={link.href.startsWith("http") ? "_blank" : undefined} rel="noreferrer" onClick={() => setMenuOpen(false)}>
+                          <a className="os-menu__item" href={link.href} target={link.href.startsWith("http") ? "_blank" : undefined} rel="noreferrer" onClick={(event) => openContact(event, link.href)}>
                             <Icon size={16} strokeWidth={1.9} aria-hidden="true" />
                             {link.label}
                           </a>

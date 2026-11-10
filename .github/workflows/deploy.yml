@@ -39,10 +39,17 @@ jobs:
       - name: Refresh leaderboard data
         run: npm run data:leaderboards
 
+      # Keeps the committed snapshot if the token cannot read the data (see README, GitHub app data).
+      - name: Refresh GitHub data
+        run: npm run data:github
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build app
         run: npm run build
         env:
           VITE_FINNHUB_KEY: ${{ secrets.VITE_FINNHUB_KEY }}
+          VITE_GITHUB_PROXY_URL: ${{ vars.GITHUB_PROXY_URL }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

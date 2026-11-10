@@ -1,4 +1,5 @@
 import { courseworkProjects, currentResearchNotes, earlierBuildoutEditions } from "../../../content/journalContent";
+import { libraryCategories, podcasts, spotifyShowUrl } from "../../../content/library";
 import { profileContent } from "../../../content/siteContent";
 import { contactLinks, earlierProjects, marketTracker, viewProjects } from "../viewData";
 
@@ -19,6 +20,7 @@ const siteNames: Record<string, string> = {
   "github.com": "GitHub",
   "linkedin.com": "LinkedIn",
   "amazon.com": "Amazon",
+  "open.spotify.com": "Spotify",
   "agarwal-labs.com": "Agarwal Labs",
   "arxiv.agarwal-labs.com": "arXiv Search"
 };
@@ -150,7 +152,15 @@ export const searchDocs: SearchDoc[] = [
     title: book.title,
     href: book.href,
     snippet: `${book.author}. ${book.note}`,
-    keywords: ["book reading bookshelf", ...book.tags].join(" ")
+    keywords: ["book reading bookshelf library", ...book.tags].join(" ")
+  })),
+  ...podcasts.map((podcast) => ({
+    id: `podcast-${podcast.slug}`,
+    kind: "Podcast",
+    title: podcast.title,
+    href: spotifyShowUrl(podcast.spotifyId),
+    snippet: `${podcast.host}. ${podcast.note}`,
+    keywords: ["podcast podcasts listening spotify library", ...libraryCategories.filter((category) => podcast.categories.includes(category.id)).map((category) => category.label)].join(" ")
   })),
   {
     id: "resume",

@@ -3,6 +3,9 @@ import type { AppId } from "./apps";
 
 export type Rect = { x: number; y: number; w: number; h: number };
 
+/* What a routed link asked a native app to show; seq changes on every request so repeating a link re-applies it. */
+export type OsTarget = { value: string; seq: number };
+
 export type OsWin = Rect & {
   id: string;
   app: AppId;
@@ -18,10 +21,12 @@ export type OsWin = Rect & {
   pending?: string;
   /* Sid Search's current query, for the address bar. */
   query?: string;
+  /* Native apps: the item a link opened them on. */
+  target?: OsTarget;
 };
 
 export type OsActions = {
-  open: (app: AppId) => void;
+  open: (app: AppId, target?: string) => void;
   focus: (id: string) => void;
   close: (id: string) => void;
   minimize: (id: string) => void;

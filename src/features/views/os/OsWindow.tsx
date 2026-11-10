@@ -155,7 +155,7 @@ function OsWindow({ win, active, phone, desk, actions }: OsWindowProps) {
       {def.kind === "site" && !phone && <BrowserBar win={win} actions={actions} />}
 
       <div className="os-win__body">
-        <AppBody id={win.id} app={win.app} src={win.src} active={active} phone={phone} actions={actions} />
+        <AppBody id={win.id} app={win.app} src={win.src} target={win.target} active={active} phone={phone} actions={actions} />
         {/* A PDF viewer swallows clicks, so an inactive one is covered until the window is focused. */}
         {def.kind === "pdf" && !active && <div className="os-win__shield" aria-hidden="true" />}
       </div>
