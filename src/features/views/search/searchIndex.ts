@@ -1,5 +1,5 @@
 import { arxivSearchRepoHref } from "../../../content/arxivSearch";
-import { courseworkProjects, currentResearchNotes, earlierBuildoutEditions } from "../../../content/journalContent";
+import { archivedResearchNotes, courseworkProjects, featuredResearchNotes } from "../../../content/journalContent";
 import { libraryCategories, podcasts, spotifyShowUrl } from "../../../content/library";
 import { robotNames } from "../../../content/robotics";
 import { profileContent } from "../../../content/siteContent";
@@ -134,7 +134,7 @@ export const searchDocs: SearchDoc[] = [
     snippet: `${project.note}.`,
     keywords: "coursework class school deep learning machine learning"
   })),
-  ...[...currentResearchNotes, ...earlierBuildoutEditions].map((note) => ({
+  ...[...featuredResearchNotes, ...archivedResearchNotes].map((note) => ({
     id: `note-${note.slug}`,
     kind: "Research note",
     title: note.title,

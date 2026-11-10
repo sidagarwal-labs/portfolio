@@ -18,6 +18,24 @@ const buildoutEditions = researchNotes
   .filter((note) => note.slug.startsWith(buildoutPrefix))
   .sort((a, b) => b.slug.localeCompare(a.slug));
 
+// Most recently updated first; Array.prototype.sort is stable, so ties keep list order.
+const topicNotes = researchNotes
+  .filter((note) => !note.slug.startsWith(buildoutPrefix))
+  .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+
+const featuredCount = 3;
+
+/* The writing lists show these: the newest AI buildout edition, then the most recently updated topic notes. */
+export const featuredResearchNotes = [...buildoutEditions.slice(0, 1), ...topicNotes].slice(0, featuredCount);
+
+/* Every other note, collapsed under "All research notes": the remaining topics, then the earlier editions. */
+export const archivedResearchNotes = [
+  ...topicNotes.filter((note) => !featuredResearchNotes.includes(note)),
+  ...buildoutEditions.slice(1)
+];
+
+export const marketsInsightsPath = "/markets?tab=insights";
+
 export const currentResearchNotes = [
   ...buildoutEditions.slice(0, 1),
   ...researchNotes.filter((note) => !note.slug.startsWith(buildoutPrefix))
