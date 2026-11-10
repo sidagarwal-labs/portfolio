@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type RefObject } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type RefObject } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Briefcase, CodeXml, FileText, Mail, Monitor, Palette, Power, RotateCcw, Search, Wifi, WifiOff } from "lucide-react";
 import { profileContent } from "../../../content/siteContent";
@@ -8,13 +8,15 @@ import { hasBooted, rememberBoot } from "../search/bootState";
 import { useSiteView } from "../SiteViewContext";
 import { siteViews } from "../siteViews";
 import { contactLinks, roleLine } from "../viewData";
-import { apps, phoneApps, startApps, type AppId } from "./apps";
+import { apps, type AppId } from "./apps";
 import { isOsMessage, openInNewTab, type OsMessage } from "./embed";
 import { isLinkApp, routeLink } from "./linkRoutes";
 import OsWindow, { clamp } from "./OsWindow";
 import type { DeskSize, OsActions, OsWin, Rect } from "./types";
 import { SignalStatus, SignalsProvider } from "./Signals";
 import DesktopIcons, { iconAreaWidth } from "./DesktopIcons";
+import StartMenuApps from "./StartMenuApps";
+import PhoneHomeApps from "./PhoneHomeApps";
 import "../search/search.css";
 import "./os.css";
 
@@ -148,7 +150,6 @@ function DesktopShell() {
   live.current = { windows, desk, phone };
   const now = useClock();
   const retro = style === "retro";
-  const visibleApps = startApps.filter((id) => `${apps[id].label} ${apps[id].blurb}`.toLowerCase().includes(appQuery.trim().toLowerCase()));
   const calendarStart = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
   const calendarDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const calendarCells = Array.from({ length: Math.ceil((calendarStart + calendarDays) / 7) * 7 }, (_, index) => {
@@ -464,20 +465,7 @@ function DesktopShell() {
               </section>
               <p className="os-home__date"><time dateTime={now.toISOString()}>{dayFormat.format(now)}</time></p>
               <SignalStatus open={open} />
-              <ul className="os-home__grid" aria-label="Apps">
-                {phoneApps.map((id) => {
-                  const def = apps[id];
-                  const Icon = def.icon;
-                  return (
-                    <li key={id}>
-                      <button type="button" className="os-icon" onClick={() => open(id)}>
-                        <span className="os-icon__tile" style={{ "--tint": def.tint } as CSSProperties} aria-hidden="true"><Icon size={26} strokeWidth={1.7} /></span>
-                        <span className="os-icon__label">{def.label}</span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
+              <PhoneHomeApps open={open} />
               <div className="os-home__footer">
                 <button type="button" className="os-button" onClick={() => changeStyle(retro ? "modern" : "retro")}>
                   <Palette size={15} strokeWidth={2} aria-hidden="true" />
@@ -555,22 +543,7 @@ function DesktopShell() {
               </label>
               <div className="os-menu__cols">
                 <div>
-                  <h2 className="os-menu__heading">Apps</h2>
-                  <ul className="os-menu__list" aria-label="Apps">
-                    {visibleApps.map((id) => {
-                      const def = apps[id];
-                      const Icon = def.icon;
-                      return (
-                        <li key={id}>
-                          <button type="button" className="os-menu__item" onClick={() => open(id)}>
-                            <Icon size={16} strokeWidth={1.9} aria-hidden="true" />
-                            {def.label}
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  {visibleApps.length === 0 && <p role="status">No apps match this search.</p>}
+                  <StartMenuApps query={appQuery} open={open} />
                 </div>
                 <div>
                   <h2 className="os-menu__heading">Contact</h2>
