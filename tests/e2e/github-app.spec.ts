@@ -238,16 +238,27 @@ test("training animates epoch by epoch, pauses, and skips to the trainer's resul
   await panel.getByRole("button", { name: "Skip to result" }).click();
   const result = createTrainer(snapshot.days).finish();
   await expect(epoch).toHaveText(`Epoch ${result.config.epochs} of ${result.config.epochs}`);
+  const results = panel.getByRole("region", { name: "Results", exact: true });
+  // Lead with the classifier, then count error against every simple predictor (always-0 included).
+  await expect(results.locator("[data-metric]").first()).toHaveAttribute("data-metric", "auc");
+  await expect(metric(panel, "auc")).toHaveText(result.model.auc === null ? "n/a" : fmtNum(result.model.auc));
+  await expect(metric(panel, "log-loss")).toContainText(`${fmtNum(result.model.logLoss, 3)} vs `);
+  if (result.model.auc !== null) await expect(results.locator(".gh-lab__lead")).toContainText(`AUC ${fmtNum(result.model.auc)}`);
   await expect(metric(panel, "model-mae")).toHaveText(fmtNum(result.model.mae));
   await expect(metric(panel, "best-baseline")).toHaveText(fmtNum(result.bestBaseline.mae));
   await expect(metric(panel, "zero-mae")).toHaveText(fmtNum(result.referenceZeroMae));
-  await expect(metric(panel, "auc")).toHaveText(result.model.auc === null ? "n/a" : fmtNum(result.model.auc));
+  const zeroWins = result.referenceZeroMae <= result.model.mae;
+  const beatsAll = result.beatsBaselines && !zeroWins;
+  await expect(panel.locator('[data-metric="model-mae"]')).toHaveClass(beatsAll ? /gh-metric--good/ : result.beatsBaselines ? /gh-metric--neutral/ : /gh-metric--bad/);
+  if (zeroWins) {
+    await expect(results).toContainText(`always predicting 0 scores ${fmtNum(result.referenceZeroMae)}, lower still`);
+    await expect(results).not.toContainText("lower than all");
+  }
   const bt = result.backtestSummary;
   await expect(metric(panel, "backtest")).toHaveText(`${fmtNum(bt.modelMae)} vs ${fmtNum(bt.baselineMae)}`);
   await expect(metric(panel, "forecast")).toHaveText(fmtNum(result.forecastWeeks[0].expected, 1));
   await expect(panel.locator('[data-metric="forecast"]')).toContainText(`${fmtInt(result.forecastWeeks[0].low)}–${fmtInt(result.forecastWeeks[0].high)}`);
   await expect(panel).toContainText(bt.modelMae < bt.baselineMae ? "the model wins" : "the model loses");
-  if (result.referenceZeroMae <= result.model.mae) await expect(panel).toContainText("Always predicting 0 scores");
   await expect(panel.getByRole("button", { name: "Train again" })).toBeVisible();
   await expect(panel.getByRole("button", { name: "Pause" })).toHaveCount(0);
 });

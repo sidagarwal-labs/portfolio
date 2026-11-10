@@ -355,45 +355,61 @@ function TrainingResults({ insights, result, unit }: { insights: GitHubInsights;
   const week1 = r.forecastWeeks[0];
   const coverage = Math.round((r.forecastMethod.highQuantile - r.forecastMethod.lowQuantile) * 100);
   const zeroWins = r.referenceZeroMae <= r.model.mae;
+  const beatsAll = r.beatsBaselines && !zeroWins;
   const btWins = bt.modelMae < bt.baselineMae;
+  const llBetter = r.model.logLoss < constant.logLoss;
+  const brierBetter = r.model.brier < constant.brier;
+  const auc = r.model.auc;
+  const aucTone = auc === null ? undefined : auc >= 0.7 ? "good" : auc <= 0.55 ? "bad" : "neutral";
 
+  // Lead with how well the model separates active from quiet days; MAE on a zero-heavy series favors predicting 0.
   const metrics: MetricItem[] = [
-    { id: "model-mae", label: "Model MAE (validation)", value: fmtNum(r.model.mae), note: `per day; RMSE ${fmtNum(r.model.rmse)}`, tone: r.beatsBaselines ? "good" : "bad" },
+    { id: "auc", label: "AUC, active vs quiet days", value: auc === null ? "n/a" : fmtNum(auc), note: "0.50 is chance", tone: aucTone },
+    {
+      id: "log-loss",
+      label: "Log loss vs constant rate",
+      value: `${fmtNum(r.model.logLoss, 3)} vs ${fmtNum(constant.logLoss, 3)}`,
+      note: `lower is better; Brier ${fmtNum(r.model.brier, 3)} vs ${fmtNum(constant.brier, 3)}`,
+      tone: llBetter ? "good" : "bad"
+    },
+    { id: "model-mae", label: "Model MAE (validation)", value: fmtNum(r.model.mae), note: `per day; RMSE ${fmtNum(r.model.rmse)}`, tone: beatsAll ? "good" : r.beatsBaselines ? "neutral" : "bad" },
     { id: "best-baseline", label: "Best baseline MAE", value: fmtNum(r.bestBaseline.mae), note: r.bestBaseline.label },
     { id: "zero-mae", label: "Always-0 MAE", value: fmtNum(r.referenceZeroMae), note: zeroWins ? "lower than the model" : "higher than the model", tone: zeroWins ? "bad" : "good" },
-    { id: "auc", label: "AUC, active vs quiet days", value: r.model.auc === null ? "n/a" : fmtNum(r.model.auc), note: "0.50 is chance" },
     { id: "backtest", label: "Weekly backtest MAE", value: `${fmtNum(bt.modelMae)} vs ${fmtNum(bt.baselineMae)}`, note: `model vs ${lowerFirst(btLabel)}, ${plural(bt.weeks, "week")}`, tone: btWins ? "good" : "bad" },
     ...(week1
       ? [{ id: "forecast", label: `Forecast, ${fmtRange(week1.start, week1.end)}`, value: fmtNum(week1.expected, 1), note: `${coverage}% interval ${fmtInt(week1.low)}–${fmtInt(week1.high)}` }]
       : [])
   ];
 
-  const verdict: string[] = [];
-  verdict.push(
-    r.beatsBaselines
-      ? `On the ${r.split.validDays} validation days the model's mean absolute error is ${fmtNum(r.model.mae)} ${unit} per day, lower than all ${r.baselines.length} baselines. The best of them, ${lowerFirst(r.bestBaseline.label)}, scores ${fmtNum(r.bestBaseline.mae)}, so the model is ${fmtPct(r.skillVsBest, 1)} better.`
-      : `On the ${r.split.validDays} validation days the model's mean absolute error is ${fmtNum(r.model.mae)} ${unit} per day. It does not beat the best baseline, ${lowerFirst(r.bestBaseline.label)}, at ${fmtNum(r.bestBaseline.mae)}.`
-  );
-  if (zeroWins) {
-    verdict.push(
-      `Always predicting 0 scores ${fmtNum(r.referenceZeroMae)}, lower than the model. MAE rewards predicting the median, and the median day here has no activity, so a lower MAE is not the whole story.`
-    );
-  }
-  verdict.push(
+  const scores = `log loss ${fmtNum(r.model.logLoss, 3)} and Brier score ${fmtNum(r.model.brier, 3)}, against ${fmtNum(constant.logLoss, 3)} and ${fmtNum(constant.brier, 3)} for a constant ${fmtPct(constant.rate, 1)} chance of activity`;
+  const headline =
+    auc === null
+      ? `On the ${r.split.validDays} validation days the model scores ${scores}. AUC is not defined because the validation days are all active or all quiet.`
+      : llBetter && brierBetter && auc >= 0.7
+        ? `The model is best at telling active days from quiet ones. On the ${r.split.validDays} validation days it reaches AUC ${fmtNum(auc)} (0.50 is chance), with ${scores}.`
+        : `As a classifier of active versus quiet days the model reaches AUC ${fmtNum(auc)} on the ${r.split.validDays} validation days (0.50 is chance), with ${scores}${llBetter && brierBetter ? "" : llBetter || brierBetter ? ": it only partly beats that constant" : ": it does not beat that constant"}.`;
+
+  const predictors = r.baselines.length + 1;
+  const best = `${lowerFirst(r.bestBaseline.label)} at ${fmtNum(r.bestBaseline.mae)}`;
+  const zero = `always predicting 0 scores ${fmtNum(r.referenceZeroMae)}`;
+  const maeLine = beatsAll
+    ? `Its mean absolute error, ${fmtNum(r.model.mae)} ${unit} per day, is lower than all ${predictors} simple predictors. The best baseline, ${best}, is ${fmtPct(r.skillVsBest, 1)} worse, and ${zero}.`
+    : r.beatsBaselines
+      ? `On count error the picture is mixed. Its mean absolute error, ${fmtNum(r.model.mae)} ${unit} per day, beats all ${r.baselines.length} baselines (best: ${best}), but ${zero}, lower still. MAE rewards predicting the median, and the median day here has no activity.`
+      : zeroWins
+        ? `Its mean absolute error, ${fmtNum(r.model.mae)} ${unit} per day, does not beat the best baseline, ${best}, and ${zero}, lower still. MAE rewards predicting the median, and the median day here has no activity.`
+        : `Its mean absolute error, ${fmtNum(r.model.mae)} ${unit} per day, does not beat the best baseline, ${best}.`;
+
+  const verdict = [
+    headline,
+    maeLine,
     `In the weekly walk-forward backtest (refit at each of ${plural(bt.weeks, "week")}), the model's error on weekly totals is ${fmtNum(bt.modelMae)} against ${fmtNum(bt.baselineMae)} for the ${lowerFirst(btLabel)} baseline: the model ${btWins ? "wins" : "loses"}.`
-  );
-  if (r.model.auc !== null) {
-    const llBetter = r.model.logLoss < constant.logLoss;
-    const brierBetter = r.model.brier < constant.brier;
-    verdict.push(
-      `As a classifier of active versus quiet days it reaches AUC ${fmtNum(r.model.auc)}. Its log loss (${fmtNum(r.model.logLoss, 3)}) and Brier score (${fmtNum(r.model.brier, 3)}) ${llBetter && brierBetter ? "beat" : llBetter || brierBetter ? "partly beat" : "do not beat"} a constant ${fmtPct(constant.rate, 1)} chance of activity (${fmtNum(constant.logLoss, 3)} and ${fmtNum(constant.brier, 3)}).`
-    );
-  }
+  ];
 
   return (
     <LabSection title="Results">
       <Metrics items={metrics} />
-      {verdict.map((text) => <p key={text}>{text}</p>)}
+      {verdict.map((text, i) => <p key={text} className={i === 0 ? "gh-lab__lead" : undefined}>{text}</p>)}
       <div className="gh-table-wrap">
         <table className="gh-table">
           <caption>Validation error per day, {fmtRange(r.split.validFrom, r.split.validTo)}</caption>
