@@ -45,6 +45,24 @@ export function postToOs(message: OsMessage) {
   if (embeddedView) window.parent.postMessage(message, window.location.origin);
 }
 
+/* The site's entry script's file name carries a content hash, so it names the deployed build. */
+const entryScripts = (doc: Document) =>
+  Array.from(doc.querySelectorAll<HTMLScriptElement>('script[type="module"][src]'), (script) => script.src)
+    .filter((src) => src.startsWith(`${window.location.origin}/`))
+    .join(" ");
+
+/* Lab OS keeps running the build it started with, while a window that opens or reloads after a deploy loads the new
+   one. An OS from an older build can misread a link target it does not know yet (issue #43: an older GitHub app showed
+   a research note's repository instead of the note), so a window only hands links to an OS running its own build. */
+export function osRunsThisBuild() {
+  if (!embeddedView) return false;
+  try {
+    return entryScripts(window.parent.document) === entryScripts(document);
+  } catch {
+    return false;
+  }
+}
+
 export function isResumeUrl(url: URL) {
   return url.pathname === new URL(profileContent.resumeHref, window.location.href).pathname || url.pathname.toLowerCase().endsWith(".pdf");
 }

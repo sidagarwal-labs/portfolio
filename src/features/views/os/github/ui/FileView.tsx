@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { BookMarked, ExternalLink, FileText, LoaderCircle, TriangleAlert } from "lucide-react";
+import { researchNotes } from "../../../../../content/journalContent";
+import { useResearchNoteDates } from "../../../../../hooks/useResearchNoteDates";
 import { fileBlobUrl, fileName, fileRawUrl, folderUrl, repoUrl, type GitHubFile } from "../fileTarget";
 import { parseMarkdown } from "../markdown";
+import { fmtDate } from "./format";
 import { HEADING_ID_PREFIX, Markdown } from "./Markdown";
 
 /* Notes are a few dozen KB; anything far larger is not a note and would be slow to parse. */
 const MAX_CHARS = 500_000;
+/* A stalled connection shows the error (with Open on GitHub) instead of loading forever. */
+const LOAD_TIMEOUT_MS = 15_000;
 const CACHE_SIZE = 12;
 /* Recently opened files, so going back and forth between notes does not refetch them. */
 const cache = new Map<string, string>();
@@ -43,6 +48,27 @@ function lineCount(text: string) {
   return text.split("\n").length - (text.endsWith("\n") ? 1 : 0);
 }
 
+type ResearchNote = (typeof researchNotes)[number];
+const notesByUrl = new Map<string, ResearchNote>(researchNotes.map((note) => [note.href.toLowerCase(), note]));
+
+/* A research note's title and the date of its last commit, as the site's notes lists show them. */
+function NoteInfo({ note }: { note: ResearchNote }) {
+  const dates = useResearchNoteDates();
+  const updated = dates[note.slug] ?? note.updatedAt;
+  return (
+    <p className="gh-file__note">
+      <strong>{note.title}</strong>
+      <span>Research note</span>
+      <span>
+        Updated{" "}
+        <time dateTime={updated} title={`Last GitHub commit: ${updated}`}>
+          {fmtDate(updated)}
+        </time>
+      </span>
+    </p>
+  );
+}
+
 type FileViewProps = {
   file: GitHubFile;
   /** Changes on every open, so opening the same file again scrolls back to the top or to its section. */
@@ -57,6 +83,7 @@ type FileViewProps = {
 export function FileView({ file, seq, description, onOpenFile, onOpenOwner, onOpenRepo }: FileViewProps) {
   const rawUrl = fileRawUrl(file);
   const blobUrl = fileBlobUrl(file, true);
+  const note = notesByUrl.get(fileBlobUrl(file).toLowerCase());
   const name = fileName(file);
   const folders = file.path.slice(0, -1);
   const [load, setLoad] = useState<Load>({ url: rawUrl, status: "loading" });
@@ -76,6 +103,11 @@ export function FileView({ file, seq, description, onOpenFile, onOpenOwner, onOp
       return;
     }
     const ctrl = new AbortController();
+    let timedOut = false;
+    const timer = window.setTimeout(() => {
+      timedOut = true;
+      ctrl.abort();
+    }, LOAD_TIMEOUT_MS);
     setLoad({ url: rawUrl, status: "loading" });
     fetch(rawUrl, { signal: ctrl.signal, credentials: "omit", referrerPolicy: "no-referrer" })
       .then(async (response) => {
@@ -92,10 +124,14 @@ export function FileView({ file, seq, description, onOpenFile, onOpenOwner, onOp
           if (!ctrl.signal.aborted) setLoad({ url: rawUrl, status: "ready", text });
         },
         (error: unknown) => {
-          if (!ctrl.signal.aborted) setLoad({ url: rawUrl, status: "error", kind: error instanceof FileError ? error.kind : "network" });
+          if (!ctrl.signal.aborted || timedOut) setLoad({ url: rawUrl, status: "error", kind: error instanceof FileError ? error.kind : "network" });
         }
-      );
-    return () => ctrl.abort();
+      )
+      .finally(() => window.clearTimeout(timer));
+    return () => {
+      window.clearTimeout(timer);
+      ctrl.abort();
+    };
   }, [rawUrl, seq, attempt]);
 
   const text = current.status === "ready" ? current.text : null;
@@ -201,7 +237,7 @@ export function FileView({ file, seq, description, onOpenFile, onOpenOwner, onOp
           Open on GitHub
           <ExternalLink size={14} strokeWidth={2} aria-hidden="true" />
         </a>
-        {description && <p className="gh-file__desc">{description}</p>}
+        {note ? <NoteInfo note={note} /> : description && <p className="gh-file__desc">{description}</p>}
       </div>
 
       <div className="gh-file__box">

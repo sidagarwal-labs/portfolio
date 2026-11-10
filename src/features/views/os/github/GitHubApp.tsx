@@ -20,17 +20,33 @@ type Lookup =
 const OWN = OWN_GITHUB_LOGIN.toLowerCase();
 const REPO_PATTERN = /^[A-Za-z0-9._-]{1,100}$/;
 
-/** "login", "login/repo", "@login" or a github.com URL; logins are case-insensitive. */
+/** "login", "login/repo", "@login" or a github.com URL of either; logins are case-insensitive. Anything else is null. */
 function parseGitHubTarget(value: string): { login: string; repo?: string } | null {
   const path = value
     .trim()
     .replace(/[?#].*$/, "")
     .replace(/^(?:https?:\/\/)?(?:www\.)?github\.com\//i, "")
     .replace(/^@/, "");
-  const [first, second] = path.split("/").filter(Boolean);
-  if (!first) return null;
+  const parts = path.split("/").filter(Boolean);
+  if (parts.length === 0 || parts.length > 2 || !isValidLogin(normalizeLogin(parts[0]))) return null;
+  const [first, second] = parts;
   const repo = second && REPO_PATTERN.test(second) ? second.replace(/\.git$/i, "") : undefined;
   return { login: normalizeLogin(first), repo };
+}
+
+/** The github.com page for a target this app cannot show, or the owner's profile when it is not one. */
+function githubPageUrl(value: string): string {
+  const input = value.trim();
+  try {
+    const url = /^https?:\/\//i.test(input) ? new URL(input) : /^[a-z][a-z0-9+.-]*:|^\/\//i.test(input) ? null : new URL(input.replace(/^\/+/, ""), "https://github.com/");
+    if (url && (url.hostname === "github.com" || url.hostname === "www.github.com") && !url.port && !url.username && !url.password) {
+      url.protocol = "https:";
+      return url.href;
+    }
+  } catch {
+    /* Not a URL: fall through to the profile. */
+  }
+  return `https://github.com/${OWN_GITHUB_LOGIN}`;
 }
 
 function errorCopy(lookup: Extract<Lookup, { status: "error" }>) {
@@ -135,6 +151,28 @@ function Profile({ insights, focus, own }: { insights: GitHubInsights; focus: Re
   );
 }
 
+/* Shown for a GitHub page the app cannot show, in place of an unrelated view; the page opens on GitHub instead. */
+function ElsewhereView({ href, seq }: { href: string; seq: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const body = ref.current?.closest<HTMLElement>(".os-win__body");
+    if (body) body.scrollTop = 0;
+    ref.current?.focus({ preventScroll: true });
+  }, [seq]);
+  return (
+    <div className="gh-file gh-away" ref={ref} tabIndex={-1} role="group" aria-label="GitHub page">
+      <div className="gh-notice" role="alert">
+        <Info size={16} strokeWidth={2} aria-hidden="true" />
+        <p>This GitHub page can't be shown here. It opens on GitHub in a new tab.</p>
+        <a className="os-button" href={href} target="_blank" rel="noopener noreferrer">
+          Open on GitHub
+          <ExternalLink size={14} strokeWidth={2} aria-hidden="true" />
+        </a>
+      </div>
+    </div>
+  );
+}
+
 export default function GitHubApp({ target }: { target?: OsTarget; actions: OsActions }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [own, setOwn] = useState<GitHubInsights | null>(null);
@@ -144,6 +182,8 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
   const [query, setQuery] = useState("");
   const [focus, setFocus] = useState<RepoFocus | null>(null);
   const [file, setFile] = useState<{ file: GitHubFile; seq: number } | null>(null);
+  /* A GitHub page a link asked for that this app cannot show; it offers the page on GitHub instead. */
+  const [elsewhere, setElsewhere] = useState<{ href: string; seq: number } | null>(null);
   const controller = useRef<AbortController | null>(null);
   const otherLogin = useRef<string | null>(null);
   const focusSeq = useRef(0);
@@ -153,7 +193,7 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
   /* Where the profile was scrolled when a file opened, restored by the back button. */
   const profileScroll = useRef<number | null>(null);
   otherLogin.current = other?.login.toLowerCase() ?? null;
-  fileOpen.current = file !== null;
+  fileOpen.current = file !== null || elsewhere !== null;
 
   const loadOwn = useCallback(() => {
     setOwnError(null);
@@ -177,6 +217,7 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
   const closeFile = useCallback((restoreProfile = false) => {
     if (!restoreProfile) profileScroll.current = null;
     setFile(null);
+    setElsewhere(null);
   }, []);
 
   const showOwn = useCallback(
@@ -242,7 +283,21 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
       controller.current = null;
       setLookup({ status: "idle" });
       if (!fileOpen.current) profileScroll.current = scrollBody()?.scrollTop ?? 0;
+      setElsewhere(null);
       setFile({ file: next, seq: ++fileSeq.current });
+    },
+    [scrollBody]
+  );
+
+  /* Never stands in an unrelated view (such as the repository's profile) for a page the app cannot show. */
+  const openElsewhere = useCallback(
+    (href: string) => {
+      controller.current?.abort();
+      controller.current = null;
+      setLookup({ status: "idle" });
+      if (!fileOpen.current) profileScroll.current = scrollBody()?.scrollTop ?? 0;
+      setFile(null);
+      setElsewhere({ href, seq: ++fileSeq.current });
     },
     [scrollBody]
   );
@@ -251,31 +306,36 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
 
   /* Closing the file shows the profile again: restore its scroll when going back, and keep focus in the app. */
   const hadFile = useRef(false);
+  const away = file !== null || elsewhere !== null;
   useLayoutEffect(() => {
-    const closed = hadFile.current && !file;
-    hadFile.current = file !== null;
+    const closed = hadFile.current && !away;
+    hadFile.current = away;
     if (!closed) return;
     const body = scrollBody();
     if (body && profileScroll.current !== null) body.scrollTop = profileScroll.current;
     profileScroll.current = null;
     if (!document.activeElement || document.activeElement === document.body) paneRef.current?.focus({ preventScroll: true });
-  }, [file, scrollBody]);
+  }, [away, scrollBody]);
 
-  /* A link asked for a Markdown file, "login" or "login/repo"; a new seq re-applies the same request. */
+  /* A link asked for a Markdown file, "login" or "login/repo"; a new seq re-applies the same request. Anything else
+     (another kind of GitHub page, or a target from a newer build) offers that page on GitHub. */
   const targetSeq = target?.seq;
   const targetValue = target?.value;
   useEffect(() => {
-    if (targetSeq === undefined || targetValue === undefined) return;
+    if (targetSeq === undefined || targetValue === undefined || !targetValue.trim()) return;
     const note = parseFileTarget(targetValue);
     if (note) {
       openFile(note);
       return;
     }
     const parsed = parseGitHubTarget(targetValue);
-    if (!parsed) return;
+    if (!parsed) {
+      openElsewhere(githubPageUrl(targetValue));
+      return;
+    }
     setQuery(parsed.login === OWN ? "" : parsed.login);
     runLookup(parsed.login, parsed.repo);
-  }, [targetSeq, targetValue, runLookup, openFile]);
+  }, [targetSeq, targetValue, runLookup, openFile, openElsewhere]);
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -292,8 +352,8 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
 
   return (
     <div className="gh" ref={rootRef}>
-      <div className={file ? "gh-toolbar gh-toolbar--file" : "gh-toolbar"}>
-        {file ? (
+      <div className={away ? "gh-toolbar gh-toolbar--file" : "gh-toolbar"}>
+        {away ? (
           <button type="button" className="os-button" onClick={backFromFile}>
             <ArrowLeft size={14} strokeWidth={2} aria-hidden="true" />
             Back to {insights?.name ?? insights?.login ?? OWN_GITHUB_LOGIN}
@@ -353,7 +413,8 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
           onOpenRepo={(repo) => runLookup(OWN, repo)}
         />
       )}
-      <div className="gh-pane" ref={paneRef} tabIndex={-1} hidden={!!file}>
+      {elsewhere && <ElsewhereView href={elsewhere.href} seq={elsewhere.seq} />}
+      <div className="gh-pane" ref={paneRef} tabIndex={-1} hidden={away}>
         {insights ? (
           <Profile insights={insights} focus={focus} own={!other} />
         ) : ownError ? (
