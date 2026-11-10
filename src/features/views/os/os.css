@@ -226,11 +226,13 @@ html[data-os-style="retro"] {
 
 /* ---------- Start menu ---------- */
 
-.os-menu { position: absolute; bottom: calc(var(--os-taskbar) + 6px); left: 6px; z-index: 5; display: flex; width: min(540px, calc(100% - 12px)); max-height: calc(100% - var(--os-taskbar) - 16px); overflow: auto; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; background: rgba(24, 28, 40, 0.95); -webkit-backdrop-filter: blur(24px) saturate(1.3); backdrop-filter: blur(24px) saturate(1.3); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); color: #e8ebf2; animation: os-menu 0.14s ease-out; }
+.os-menu { position: absolute; bottom: calc(var(--os-taskbar) + 6px); left: 6px; z-index: 5; display: flex; width: min(540px, calc(100% - 12px)); height: min(720px, calc(100% - var(--os-taskbar) - 16px)); overflow: auto; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; background: rgba(24, 28, 40, 0.95); -webkit-backdrop-filter: blur(24px) saturate(1.3); backdrop-filter: blur(24px) saturate(1.3); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); color: #e8ebf2; animation: os-menu 0.14s ease-out; }
 
 .os-menu__band { display: none; }
 
-.os-menu__main { flex: 1; min-width: 0; padding: 14px; }
+.os-menu__main { display: flex; flex: 1; flex-direction: column; min-width: 0; padding: 14px; }
+
+.os-menu__main > * { flex: none; }
 
 .os-menu__who { display: flex; align-items: center; gap: 12px; padding: 2px 4px 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
 
@@ -240,7 +242,9 @@ html[data-os-style="retro"] {
 
 .os-menu__who span { display: block; color: rgba(232, 235, 242, 0.7); font-size: 12.5px; }
 
-.os-menu__cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 18px; padding-top: 6px; }
+.os-menu__main > .os-menu__cols { display: grid; flex: 1 1 0; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); gap: 4px 18px; min-height: 120px; padding-top: 6px; }
+
+.os-menu__cols > * { min-height: 0; margin: 0 -4px; padding: 0 4px 4px; overflow-y: auto; scrollbar-color: rgba(255, 255, 255, 0.28) transparent; scrollbar-width: thin; }
 
 .os-menu__heading { margin: 10px 0 4px; padding: 0 10px; color: rgba(232, 235, 242, 0.55); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; line-height: 1.4; text-transform: uppercase; }
 
@@ -403,7 +407,7 @@ html[data-os-style="retro"] {
 .os--retro .os-style-toggle:hover { background: transparent; box-shadow: var(--bevel-thin-out); }
 
 /* Start menu */
-.os--retro .os-menu { bottom: var(--os-taskbar); left: 2px; width: min(460px, calc(100% - 4px)); max-height: calc(100% - var(--os-taskbar) - 8px); padding: 3px; border: 0; border-radius: 0; background: #c0c0c0; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: var(--bevel-out); color: #000; animation: none; }
+.os--retro .os-menu { bottom: var(--os-taskbar); left: 2px; width: min(460px, calc(100% - 4px)); height: min(600px, calc(100% - var(--os-taskbar) - 8px)); padding: 3px; border: 0; border-radius: 0; background: #c0c0c0; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: var(--bevel-out); color: #000; animation: none; }
 
 .os--retro .os-menu__band { display: flex; flex: none; align-items: flex-end; width: 26px; padding: 8px 0; background: linear-gradient(0deg, #000080, #1084d0); }
 
@@ -432,6 +436,8 @@ html[data-os-style="retro"] {
 .os--retro .os-menu__item .os-menu__chevron { opacity: 1; transition: none; }
 
 .os--retro .os-menu__sub { margin: 0 0 2px 13px; padding-left: 4px; border-left: 1px dotted #808080; }
+
+.os--retro .os-menu__cols > * { scrollbar-color: auto; scrollbar-width: auto; }
 
 .os--retro .os-menu__empty { padding: 0 6px; color: #000; font-size: 12.5px; }
 
