@@ -63,8 +63,11 @@ test("book and podcast links open the Library on that title", async ({ page }) =
   expect(opened).toEqual([]);
 });
 
-test("links to Sid's GitHub open the GitHub app, while deeper GitHub pages and other sites open a new tab", async ({ page }) => {
+test("links to Sid's GitHub open the GitHub app, research notes open in its file view, and other pages open a new tab", async ({ page }) => {
   await page.context().route(/^https:\/\/(www\.linkedin\.com|github\.com)\//, (route) => route.fulfill({ contentType: "text/html", body: "<p>Outside site</p>" }));
+  await page.route("https://raw.githubusercontent.com/**", (route) =>
+    route.fulfill({ contentType: "text/plain; charset=utf-8", headers: { "access-control-allow-origin": "*" }, body: "# Routed Note\n\nFrom Sid Search.\n" })
+  );
   const frame = await openSearch(page);
 
   await frame.locator("#contact").getByRole("link", { name: "GitHub", exact: true }).click();
@@ -90,8 +93,23 @@ test("links to Sid's GitHub open the GitHub app, while deeper GitHub pages and o
   await frame.locator("#contact").getByRole("link", { name: "LinkedIn", exact: true }).click();
   await expect(await linkedIn).toHaveURL("https://www.linkedin.com/in/sid-agarwal-labs/");
 
-  const note = page.context().waitForEvent("page");
-  await frame.locator('a[href^="https://github.com/sidagarwal-labs/models/blob/"]').first().click();
-  await expect(await note).toHaveURL(/^https:\/\/github\.com\/sidagarwal-labs\/models\/blob\//);
-  await expect(page.locator('.os-win[data-app="github"]')).toHaveCount(1);
+  await bringSearchForward(page);
+  await frame.locator('a[href^="https://github.com/sidagarwal-labs/models/blob/"][href$=".md"]').first().click();
+  await expect(github).toHaveClass(/is-active/);
+  await expect(github.getByRole("article", { name: "Routed Note" })).toBeVisible();
+  await expect(github).toHaveCount(1);
+
+  // Code and other files on GitHub are not routed.
+  const codeUrl = "https://github.com/sidagarwal-labs/models/blob/main/src/model.py";
+  await bringSearchForward(page);
+  await frame.locator("body").evaluate((body, href) => {
+    const link = Object.assign(document.createElement("a"), { href, textContent: "Model code" });
+    link.style.cssText = "position: fixed; top: 8px; left: 8px; z-index: 99999; background: #fff;";
+    body.append(link);
+  }, codeUrl);
+  const code = page.context().waitForEvent("page");
+  await frame.getByRole("link", { name: "Model code" }).click();
+  await expect(await code).toHaveURL(codeUrl);
+  await expect(github.getByRole("article", { name: "Routed Note" })).toBeAttached();
+  await expect(github).toHaveCount(1);
 });

@@ -1,6 +1,7 @@
 import { findLibraryItem } from "../../../content/library";
 import { findReaderArticle } from "../../../content/readerLinks";
 import { OWN_GITHUB_LOGIN } from "./github/contract";
+import { fileTargetFromUrl } from "./github/fileTarget";
 
 /* Native Lab OS apps that outside links can open in place of a new tab. */
 export type LinkApp = "library" | "reader" | "github";
@@ -10,10 +11,12 @@ const linkApps = new Set<string>(["library", "reader", "github"] satisfies LinkA
 
 export const isLinkApp = (app: unknown): app is LinkApp => typeof app === "string" && linkApps.has(app);
 
-/* Only the profile and repository home pages open the GitHub app. Deeper pages (a file, note, or commit)
-   are what the reader asked to see, so they still open on GitHub. */
+/* The profile, repository home pages, and Markdown files (research notes) open the GitHub app. Other deep
+   pages (code, commits, folders) are what the reader asked to see, so they still open on GitHub. */
 export function githubTarget(url: URL): string | undefined {
   if (url.hostname !== "github.com" && url.hostname !== "www.github.com") return undefined;
+  const file = fileTargetFromUrl(url);
+  if (file) return file;
   const [login, repo, ...rest] = url.pathname.split("/").filter(Boolean);
   if (login?.toLowerCase() !== OWN_GITHUB_LOGIN || rest.length > 0) return undefined;
   return repo ? `${OWN_GITHUB_LOGIN}/${repo}` : OWN_GITHUB_LOGIN;
