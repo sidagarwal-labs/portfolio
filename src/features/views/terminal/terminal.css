@@ -101,7 +101,7 @@ html[data-view="terminal"] .skip-link:focus { top: calc(var(--tm-ticker, 47px) +
 
 .tm-keys .tm-keys__split { margin-left: auto; }
 
-.tm-key { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 11px 0 4px; border: 1px solid var(--line); background: var(--tm-raised); color: var(--ink); font: 12px/1 var(--tm-mono); text-decoration: none; white-space: nowrap; transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease; }
+.tm-key { position: relative; display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 11px 0 4px; border: 1px solid var(--line); background: var(--tm-raised); color: var(--ink); font: 12px/1 var(--tm-mono); text-decoration: none; white-space: nowrap; transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease; }
 
 .tm-key:hover { border-color: var(--link); color: var(--ink); }
 

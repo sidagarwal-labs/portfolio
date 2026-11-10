@@ -138,6 +138,113 @@ test("the launch tracker shows a live launch, plays streams in place, and lists 
   await expect(page.getByText("Not SpaceX")).toHaveCount(0);
 });
 
+for (const cached of [false, true]) {
+  test(`the launch tracker waits for both feeds before showing empty results (cached: ${cached})`, async ({ page }) => {
+    if (cached) {
+      await page.addInitScript(() => {
+        const feed = { fetchedAt: Date.now() - 24 * 60 * 60 * 1000, launches: [] };
+        localStorage.setItem("spacex-tracker-v1", JSON.stringify({ upcoming: feed, previous: feed }));
+      });
+    }
+    let releaseUpcoming!: () => void;
+    let releasePrevious!: () => void;
+    const upcomingGate = new Promise<void>((resolve) => { releaseUpcoming = resolve; });
+    const previousGate = new Promise<void>((resolve) => { releasePrevious = resolve; });
+    await page.route(upcomingApi, async (route) => {
+      await upcomingGate;
+      await route.fulfill({ json: { results: [launch("next-loading", "Loaded mission", Date.now() + 24 * hour)] } });
+    });
+    await page.route(previousApi, async (route) => {
+      await previousGate;
+      await route.fulfill({ json: { results: [] } });
+    });
+    try {
+      await page.goto("./launches");
+      await expect(page.getByText("Loading the SpaceX schedule...", { exact: true })).toBeVisible();
+      await expect(page.getByText("Loading recent launches...", { exact: true })).toBeVisible();
+      await expect(page.getByText("No SpaceX launches are on the schedule right now.")).toHaveCount(0);
+      await expect(page.getByText("No recent SpaceX launches to show.")).toHaveCount(0);
+
+      releaseUpcoming();
+      await expect(page.getByRole("heading", { name: "Loaded mission" })).toBeVisible();
+      await expect(page.getByText("Loading recent launches...", { exact: true })).toBeVisible();
+      releasePrevious();
+      await expect(page.getByText("No recent SpaceX launches to show.")).toBeVisible();
+      await expect(page.getByText("Loading recent launches...", { exact: true })).toHaveCount(0);
+    } finally {
+      releaseUpcoming();
+      releasePrevious();
+    }
+  });
+}
+
+test("the launch tracker only reports an empty schedule after a successful response", async ({ page }) => {
+  await page.goto("./launches");
+  await expect(page.getByText("No SpaceX launches are on the schedule right now.")).toBeVisible();
+  await expect(page.getByText("No recent SpaceX launches to show.")).toBeVisible();
+  await expect(page.getByText("Loading the SpaceX schedule...", { exact: true })).toHaveCount(0);
+});
+
+test("the launch tracker keeps saved launches visible while refreshing and after a timeout", async ({ page }) => {
+  await page.clock.install();
+  await page.route(upcomingApi, (route) => route.fulfill({
+    json: { results: [launch("saved-next", "Saved upcoming mission", Date.now() + 24 * hour)] }
+  }));
+  await page.route(previousApi, (route) => route.fulfill({
+    json: { results: [launch("saved-previous", "Saved recent mission", Date.now() - 24 * hour, { status: ["Success", "Launch Successful"] })] }
+  }));
+  await page.goto("./launches");
+  await expect(page.getByRole("heading", { name: "Saved upcoming mission" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Saved recent mission" })).toBeVisible();
+  await page.evaluate(() => {
+    const cache = JSON.parse(localStorage.getItem("spacex-tracker-v1") ?? "{}");
+    cache.upcoming.fetchedAt = cache.previous.fetchedAt = Date.now() - 24 * 60 * 60 * 1000;
+    localStorage.setItem("spacex-tracker-v1", JSON.stringify(cache));
+  });
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  await page.route(upcomingApi, async (route) => { await gate; await route.abort(); });
+  await page.route(previousApi, async (route) => { await gate; await route.abort(); });
+  try {
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Saved upcoming mission" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Saved recent mission" })).toBeVisible();
+    await expect(page.getByText("Loading the SpaceX schedule...", { exact: true })).toHaveCount(0);
+    await page.clock.fastForward(20_001);
+    await expect(page.getByText(/saved copy; the next check is retrying/)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Saved upcoming mission" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Saved recent mission" })).toBeVisible();
+  } finally {
+    release();
+  }
+});
+
+test("the launch tracker stops loading after 20 seconds and shows failures", async ({ page }) => {
+  await page.clock.install();
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  await page.route(upcomingApi, async (route) => { await gate; await route.abort(); });
+  await page.route(previousApi, async (route) => { await gate; await route.abort(); });
+  try {
+    await page.goto("./launches");
+    await expect(page.getByText("Loading the SpaceX schedule...", { exact: true })).toBeVisible();
+    await expect(page.getByText("Loading recent launches...", { exact: true })).toBeVisible();
+    await page.clock.fastForward(19_000);
+    await expect(page.getByText("Loading the SpaceX schedule...", { exact: true })).toBeVisible();
+    await page.clock.fastForward(1_001);
+    await expect(page.getByText("The launch schedule could not load right now.", { exact: false })).toBeVisible();
+    await expect(page.getByText("Recent launches could not load right now.")).toBeVisible();
+    await expect(page.getByText("No SpaceX launches are on the schedule right now.")).toHaveCount(0);
+    await page.clock.fastForward(11 * 60_000);
+    await expect(page.getByText("Loading the SpaceX schedule...", { exact: true })).toBeVisible();
+    await expect(page.getByText("Loading recent launches...", { exact: true })).toBeVisible();
+    await page.clock.fastForward(20_001);
+    await expect(page.getByText("Recent launches could not load right now.")).toBeVisible();
+  } finally {
+    release();
+  }
+});
+
 test("the launch tracker explains failures and keeps the page usable", async ({ page }) => {
   await page.unroute(upcomingApi);
   await page.unroute(previousApi);
@@ -175,9 +282,10 @@ test("AI leaderboards read Arena live, keep tabs linkable, and fall back to the 
 
   const arenaTabs = page.getByRole("tablist", { name: "Arena boards" });
   await arenaTabs.scrollIntoViewIfNeeded();
+  const scroll = await page.evaluate(() => scrollY) + 150;
   await page.mouse.wheel(0, 150);
-  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
-  const scroll = await page.evaluate(() => scrollY);
+  // Wheel input returns before scrolling finishes; wait for the full movement.
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(scroll);
   await arenaTabs.getByRole("tab", { name: "WebDev" }).click();
   await expect(page).toHaveURL(/\/leaderboards\?arena=webdev$/);
   await expect(arenaTabs.getByRole("tab", { name: "WebDev" })).toHaveAttribute("aria-selected", "true");

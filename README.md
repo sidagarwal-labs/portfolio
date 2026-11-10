@@ -85,6 +85,12 @@ With the Vite dev server running, open `/?launch-preview=soon` for a labeled moc
 
 `npm run data:leaderboards` runs `scripts/update-leaderboards.mjs`, which writes `src/content/generated/leaderboards.json`. The deploy workflow runs it before every build and also runs daily at 09:17 UTC, so benchmarks stay current without a commit. A source that fails keeps its previous snapshot, and the script never fails the deploy. GitHub disables scheduled workflows after 60 days without repository activity; re-enable it from the Actions tab if that happens.
 
+The launch schedule and recent launches show loading messages while requests are pending, including when rechecking an expired empty cache or retrying a failed request. Previously loaded launch details stay visible during refreshes. An empty-state message appears only after a successful empty response; failed requests (including the 20-second timeout) show an unavailable message when no saved response exists.
+
+The **Test portfolio** GitHub Actions workflow builds and runs the full Playwright suite in Chromium on pull requests to `main` and on manual dispatch. Failed runs upload Playwright's screenshots, traces, and videos for seven days. This check does not deploy the site.
+
+Responsive checks require zero horizontal page overflow, including when keyboard focus scrolls Terminal shortcuts into view on a 320px screen. The compact shortcut labels retain their full accessible names.
+
 ## Verification
 
 ```sh
