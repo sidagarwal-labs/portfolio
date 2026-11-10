@@ -29,9 +29,6 @@ export type AppDef = {
 
 const app = (def: AppDef) => def;
 
-export const designApps: AppId[] = ["training", "terminal", "journal"];
-export const gameApps: AppId[] = ["snake", "mines", "blocks", "rankit", "nexttoken"];
-
 export const apps: Record<AppId, AppDef> = {
   search: app({ id: "search", title: "Sid Search", label: "Sid Search", blurb: "Projects, writing, and background as a search engine.", icon: Search, tint: "linear-gradient(145deg, #4c7df0, #2a4fbf)", kind: "site", view: "search", size: "fill" }),
   library: app({ id: "library", title: "Library", label: "Library", blurb: "Books and podcasts I keep coming back to, grouped by topic.", icon: LibraryBig, tint: "linear-gradient(145deg, #d9825b, #9c4a2c)", kind: "app", size: { w: 1060, h: 780 } }),
@@ -43,8 +40,8 @@ export const apps: Record<AppId, AppDef> = {
   terminal: app({ id: "terminal", title: "Terminal", label: "Terminal", blurb: "A market terminal for my work and research.", icon: SquareTerminal, tint: "linear-gradient(145deg, #3a4150, #161a22)", kind: "site", view: "terminal", size: { w: 1140, h: 800 } }),
   resume: app({ id: "resume", title: "Resume.pdf", label: "Resume.pdf", blurb: "One page: experience, education, and skills.", icon: FileText, tint: "linear-gradient(145deg, #ef6b6b, #c43f3f)", kind: "pdf", size: { w: 800, h: 980 } }),
   readme: app({ id: "readme", title: "README.txt", label: "README.txt", blurb: "What this is and where to start.", icon: NotebookText, tint: "linear-gradient(145deg, #f1c053, #c99418)", kind: "note", size: { w: 540, h: 520 } }),
-  designs: app({ id: "designs", title: "Other designs", label: "Other designs", blurb: "Training run, Terminal, and Journal: other ways to explore the portfolio.", icon: Folder, tint: "linear-gradient(145deg, #f1c053, #c99418)", kind: "folder", children: designApps, size: { w: 580, h: 350 } }),
-  games: app({ id: "games", title: "Games", label: "Games", blurb: "Snake, Mines, Blocks, and two machine-learning games.", icon: Folder, tint: "linear-gradient(145deg, #5dbf78, #2f8a4b)", kind: "folder", children: gameApps, size: { w: 580, h: 350 } }),
+  designs: app({ id: "designs", title: "Other designs", label: "Other designs", blurb: "Training run, Terminal, and Journal: other ways to explore the portfolio.", icon: Folder, tint: "linear-gradient(145deg, #f1c053, #c99418)", kind: "folder", children: ["training", "terminal", "journal"], size: { w: 580, h: 350 } }),
+  games: app({ id: "games", title: "Games", label: "Games", blurb: "Snake, Mines, Blocks, and two machine-learning games.", icon: Folder, tint: "linear-gradient(145deg, #5dbf78, #2f8a4b)", kind: "folder", children: ["snake", "mines", "blocks", "rankit", "nexttoken"], size: { w: 580, h: 350 } }),
   blocks: app({ id: "blocks", title: "Blocks", label: "Blocks", blurb: "A Tetris-style falling-block puzzle with original visuals.", icon: Blocks, tint: "linear-gradient(145deg, #a487de, #5d428c)", kind: "game", size: { w: 440, h: 820 } }),
   markets: app({ id: "markets", title: "Markets", label: "Markets", blurb: "Charts, volume, financials, and news for the AI companies I follow.", icon: ChartCandlestick, tint: "linear-gradient(145deg, #4cb5ba, #22616f)", kind: "site", view: "journal", path: "/markets", size: { w: 1180, h: 820 } }),
   launches: app({ id: "launches", title: "SpaceX launches", label: "Launches", blurb: "A SpaceX launch tracker with countdowns, live streams, and replays.", icon: Rocket, tint: "linear-gradient(145deg, #4f5b86, #1b2140)", kind: "site", view: "journal", path: "/launches", size: { w: 1120, h: 820 } }),
@@ -62,7 +59,20 @@ export const desktopRows: AppId[][] = [
 ];
 export const desktopDocuments: AppId[] = ["resume", "readme"];
 export const desktopApps: AppId[] = [...desktopRows.flat(), ...desktopDocuments];
-/* Reader is opened by Microsoft links rather than from the desktop. */
-export const startApps: AppId[] = [...desktopApps, "reader", ...designApps, ...gameApps];
 
-export const phoneApps: AppId[] = ["search", "library", "github", "reader", "journal", "forward", "training", "terminal", "resume", "markets", "launches", "leaderboards", "readme", ...gameApps];
+export type MenuSection = { label: string; items: AppId[] };
+
+/* Reader is opened by Microsoft links rather than from the desktop, so only the menus list it, after GitHub. */
+const menuApps = desktopRows.flat().flatMap((id): AppId[] => (id === "github" ? [id, "reader"] : [id]));
+const isFolder = (id: AppId) => apps[id].kind === "folder";
+
+/* The Start menu and the phone home screen, built from the desktop groups: apps, then folders, then documents. */
+export const menuSections: MenuSection[] = [
+  { label: "Apps", items: [...menuApps.filter((id) => !isFolder(id)), ...menuApps.filter(isFolder)] },
+  { label: "Documents", items: desktopDocuments }
+];
+
+export function folderApps(id: AppId): AppId[] {
+  const def = apps[id];
+  return def.kind === "folder" ? def.children : [];
+}
