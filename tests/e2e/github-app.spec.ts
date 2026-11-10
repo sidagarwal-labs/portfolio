@@ -192,6 +192,28 @@ test("lab tabs follow the ARIA tabs pattern and show model output", async ({ pag
   await expect(tab("Data science lab")).toBeFocused();
 });
 
+test("method and caveat notes start folded and expand on demand", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const win = await openGitHub(page);
+  const panel = win.getByRole("tabpanel", { name: "Training run", exact: true });
+  await expect(panel.getByRole("region", { name: "Results", exact: true }).getByRole("button", { name: /details/ })).toHaveCount(0);
+  for (const title of ["Caveats", "Method"]) {
+    const section = panel.getByRole("region", { name: title, exact: true });
+    const body = section.locator(".gh-lab__fold-body");
+    const show = section.getByRole("button", { name: `Show details for ${title}` });
+    await expect(show).toHaveAttribute("aria-expanded", "false");
+    await expect(show).toHaveAttribute("aria-controls", (await body.getAttribute("id"))!);
+    await expect(body).toBeHidden();
+    await show.click();
+    await expect(section.getByRole("button", { name: `Hide details for ${title}` })).toHaveAttribute("aria-expanded", "true");
+    await expect(body).toBeVisible();
+  }
+  await expect(panel.locator(".gh-caveats li").first()).toBeVisible();
+  await panel.getByRole("button", { name: "Hide details for Method" }).click();
+  await expect(panel.getByRole("region", { name: "Method", exact: true }).locator(".gh-lab__fold-body")).toBeHidden();
+  await expect(panel.getByRole("button", { name: "Show details for Method" })).toBeFocused();
+});
+
 test("training animates epoch by epoch, pauses, and skips to the trainer's result", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const win = await openGitHub(page, { reducedMotion: false });
@@ -347,7 +369,11 @@ test("fits a phone without horizontal overflow", async ({ page }) => {
   await page.addStyleTag({ content: "*, *::before, *::after { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }" });
   for (const name of ["Training run", "Market", "Launch", "Data science lab"]) {
     await win.getByRole("tab", { name, exact: true }).click();
-    await expect(win.getByRole("tabpanel", { name, exact: true }).locator(".gh-lab__section").first()).toBeVisible();
+    const panel = win.getByRole("tabpanel", { name, exact: true });
+    await expect(panel.locator(".gh-lab__section").first()).toBeVisible();
+    // Folded notes are checked too.
+    const show = panel.getByRole("button", { name: /^Show details for / });
+    while (await show.count()) await show.first().click();
     expect(await overflow()).toEqual({ page: 0, body: 0 });
   }
 });
