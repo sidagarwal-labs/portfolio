@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "generatedAt": "2026-11-09T23:01:59.965Z",
+  "generatedAt": "2026-11-10T22:21:16.575Z",
   "meta": {
     "repo": "https://github.com/sidagarwal-labs/arxiv-search",
     "commit": "ffd60e206843976efd7d610f83ee27206b5d9906",
@@ -27,8 +27,8 @@
       "description": "AI-graded, not human-validated: GPT-5.4 mini 0/1/2 grades with 100 ASTRA reference overrides, plus a top-20 completion layer of additional AI grades (arxiv-search README, 'Relevance labels').",
       "gradesFromOriginalSnapshot": 30,
       "originalSnapshot": {
-        "path": "data/results/score-fusion-dev/labels.json",
-        "pairs": 3294,
+        "path": "data/results/shared-labels/labels-d47.json",
+        "pairs": 3579,
         "note": "Every one of its grades is unchanged in the 3,678-pair pool (checked by this script)."
       }
     },
@@ -39,11 +39,11 @@
         "description": "Tuned BM25 over titles (counted twice), abstracts and authors, exact terms plus stems, k1=0.8, b=0.75.",
         "run": "data/results/dev/bm25+exact+stems+authors+title2x+k1=0.8,b=0.75.run.json",
         "runDepth": 100,
-        "ndcg10": 0.5187,
-        "judgments": 3294,
-        "labels": "data/results/score-fusion-dev/labels.json",
-        "source": "docs/10-reproduction-guide.md#historical-retrieval-milestones (Tuned BM25)",
-        "recomputed": 0.5187
+        "ndcg10": 0.5068,
+        "judgments": 3579,
+        "labels": "data/results/shared-labels/labels-d47.json",
+        "source": "docs/06-charts.md (milestone M1, Tuned BM25)",
+        "recomputed": 0.5068
       },
       "reranker": {
         "label": "AI reranker",
@@ -58,7 +58,7 @@
         "recomputed": 0.8418
       }
     },
-    "caveat": "Both nDCG@10 numbers use the same 100 dev queries but different judgment pools (3,294 vs 3,678), so the change is not a like-for-like gain. Settings were tuned on these queries, so scores are optimistic.",
+    "caveat": "Both nDCG@10 numbers use the same 100 dev queries but different judgment pools (3,579 vs 3,678), so the change is not a like-for-like gain. Settings were tuned on these queries, so scores are optimistic.",
     "samePoolNdcg10": {
       "judgments": 3678,
       "bm25": 0.5026,

@@ -121,7 +121,7 @@ const keyStats: { value: ReactNode; label: string; note?: string; text?: boolean
   { value: "Power BI and Viva Engage", label: "Shipped as Copilot content sources", text: true },
   { value: "23,304", label: "arXiv papers indexed", note: "arXiv search project" },
   {
-    value: <>0.52 <span aria-hidden="true">→</span><span className="tm-sr-only">to</span> 0.84</>,
+    value: <>0.51 <span aria-hidden="true">→</span><span className="tm-sr-only">to</span> 0.84</>,
     label: "nDCG@10",
     note: "Across arXiv search evaluation milestones"
   }

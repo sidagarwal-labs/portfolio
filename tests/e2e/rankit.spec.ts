@@ -45,7 +45,7 @@ test("Rank It data is real, consistent, and fair", () => {
   expect(meta.site).toBe("https://arxiv.agarwal-labs.com/");
   expect(meta.siteQueryParam).toBe("q");
   expect(grades).toEqual([0, 1, 2]);
-  expect([meta.systems.bm25.ndcg10, meta.systems.bm25.judgments]).toEqual([0.5187, 3294]);
+  expect([meta.systems.bm25.ndcg10, meta.systems.bm25.judgments]).toEqual([0.5068, 3579]);
   expect([meta.systems.reranker.ndcg10, meta.systems.reranker.judgments]).toEqual([0.8418, 3678]);
   expect(meta.judgments.pairs).toBe(3678);
   expect(rounds.length).toBeGreaterThanOrEqual(5);
@@ -107,7 +107,7 @@ test("Rank It plays every round against both systems with the keyboard", async (
   const docs = page.locator(".rankit__doc");
   await expect(game).not.toContainText(/illustrative/i);
   await expect(game.locator(".rankit__fine")).toContainText(`commit ${data.meta.commit.slice(0, 7)}`);
-  await expect(game.locator(".rankit__fine")).toContainText("0.52 to 0.84");
+  await expect(game.locator(".rankit__fine")).toContainText("0.51 to 0.84");
 
   const played: { you: number; bm25: number; reranker: number }[] = [];
   for (const [index, round] of data.rounds.entries()) {
