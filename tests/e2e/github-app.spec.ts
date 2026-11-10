@@ -196,8 +196,29 @@ test("lab tabs follow the ARIA tabs pattern and show model output", async ({ pag
   await expect(labPanel.locator("circle.gh-point")).toHaveCount(lab.points.length);
   const frames = lab.iterations.length;
   await expect(labPanel.locator(".gh-frames__label")).toContainText(`Frame ${frames} of ${frames}`);
+  const updates = frames - lab.k;
+  const last = lab.iterations[frames - 1];
+  await expect(labPanel.locator(".gh-frames__label")).toContainText(`Update ${updates}: centroids move to cluster means, ${plural(last.changed, "repository", "repositories")} changed cluster; inertia ${fmtNum(last.inertia)}`);
+  await expect(metric(labPanel, "updates")).toHaveText(String(updates));
   await labPanel.getByRole("button", { name: "Previous frame" }).click();
   await expect(labPanel.locator(".gh-frames__label")).toContainText(`Frame ${frames - 1} of ${frames}`);
+  for (let i = frames - 1; i > 1; i--) await labPanel.getByRole("button", { name: "Previous frame" }).click();
+  await expect(labPanel.locator(".gh-frames__count")).toHaveText(`Frame 1 of ${frames}`);
+  await expect(labPanel.locator(".gh-frames__step")).toHaveText(`Seed 1 of ${lab.k}: one repository picked at random; inertia ${fmtNum(lab.iterations[0].inertia)}`);
+  await expect(labPanel.getByRole("button", { name: "Previous frame" })).toBeDisabled();
+  await expect(labPanel.locator(".gh-centroid")).toHaveCount(1);
+  await labPanel.getByRole("button", { name: "Next frame" }).click();
+  await expect(labPanel.locator(".gh-frames__label")).toContainText(`Seed 2 of ${lab.k}: picked at random, favoring repositories far from earlier seeds`);
+  await expect(labPanel.locator(".gh-centroid")).toHaveCount(2);
+
+  const caveats = labPanel.getByRole("region", { name: "Caveats" });
+  const largestK = lab.silhouetteByK.at(-1)!.k;
+  await expect(caveats.getByText("the largest k tried", { exact: false })).toHaveCount(lab.k === largestK ? 1 : 0);
+  await expect(labPanel.locator(".gh-figure rect.gh-bar")).toHaveCount(lab.silhouetteByK.length);
+  const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  for (const feature of lab.droppedFeatures) await expect(caveats).toContainText(new RegExp(escape(feature), "i"));
+  if (lab.droppedFeatures.length === 1) await expect(caveats).toContainText("was left out because it is the same for every repository here.");
+  await expect(labPanel).toContainText(`which leaves ${lab.featureNames.length} features here`);
   await labPanel.locator("circle.gh-point").first().focus();
   await expect(labPanel.locator(".gh-scatter__readout")).toContainText(lab.points[0].name);
 

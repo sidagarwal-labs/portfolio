@@ -5,14 +5,17 @@ import { safeDiv } from "./util";
 /**
  * "Data science lab": k-means on repositories, visualized with PCA.
  *
- * Features per repo (then z-scored; zero-variance features become 0):
+ * Candidate features per repo:
  *   log1p(disk KB), log1p(contributions in range), log1p(active days), log1p(age in days),
  *   log1p(stars + forks), log1p(days since last push), and one-hot language family
  *   (python-like incl. Jupyter Notebook / web incl. TypeScript, JavaScript, HTML, CSS / other).
+ * Features that are constant across the pool (after the log / one-hot transform) carry no information and
+ * are dropped (listed in `droppedFeatures`); the rest are z-scored.
  * Logs tame the heavy right tails of size and activity. Forks are excluded by default (their size
  * reflects upstream work). k-means++ init, Lloyd iterations to convergence (≤ 50), 10 restarts per k,
  * k ∈ 2..min(maxK, n − 1) chosen by mean silhouette. PCA = Jacobi eigen-decomposition of the
  * covariance of the standardized features (used for display only; clustering runs in full space).
+ * The best run for the chosen k is recorded frame by frame: one frame per k-means++ seed, then one per Lloyd update.
  */
 
 export const REPO_FEATURES = [
@@ -44,6 +47,8 @@ const WEB = new Set(["TypeScript", "JavaScript", "HTML", "CSS", "SCSS", "Sass", 
 const DAY_MS = 86_400_000;
 const RESTARTS = 10;
 const MAX_ITERATIONS = 50;
+const DEFAULT_MAX_K = 7;
+const CONSTANT_EPS = 1e-9;
 
 export interface RepoLabOptions {
   seed?: number;
@@ -54,15 +59,26 @@ export interface RepoLabOptions {
 }
 
 export interface KMeansFrame {
+  /** Frame index (0-based). */
   iteration: number;
+  /** "seed": a k-means++ seed was just picked; "update": one Lloyd step (centroids to cluster means, then reassign). */
+  phase: "seed" | "update";
+  /** 1-based: seeds picked so far for "seed" frames, Lloyd update number for "update" frames. */
+  step: number;
+  /** Nearest-centroid assignment (final cluster ids) using the centroids picked so far. */
   assignments: number[];
-  /** Centroids projected onto (PC1, PC2). */
-  centroids: [number, number][];
+  /** Centroids projected onto (PC1, PC2), indexed by final cluster id; null for seeds not picked yet. */
+  centroids: ([number, number] | null)[];
   inertia: number;
+  /** Repositories whose cluster differs from the previous frame (0 for the first frame). */
+  changed: number;
 }
 
 export interface RepoLab {
+  /** Features actually used (constant ones are dropped). */
   featureNames: string[];
+  /** Candidate features left out because they have the same value for every repository. */
+  droppedFeatures: string[];
   points: {
     name: string;
     nameWithOwner: string;
@@ -78,6 +94,8 @@ export interface RepoLab {
   k: number;
   silhouette: number;
   silhouetteByK: { k: number; score: number }[];
+  /** True when the chosen k is the largest k tried, i.e. the score was still rising at the edge of the search. */
+  atSearchLimit: boolean;
   /** Variance ratio of PC1 and PC2. */
   explainedVariance: [number, number];
   /** Unit eigenvector components. */
@@ -130,11 +148,16 @@ export function buildRepoLab(repos: GitHubRepoInsight[], opts: RepoLabOptions = 
       family === "other" ? 1 : 0
     ];
   });
-  const Z = zScore(X);
+  const used = REPO_FEATURES.map((_, j) => j).filter((j) => !isConstant(X.map((row) => row[j])));
+  const droppedFeatures = REPO_FEATURES.filter((_, j) => !used.includes(j));
+  if (!used.length) return { insufficient: "Every repository has the same features, so there is nothing to cluster." };
+  const featureNames = used.map((j) => REPO_FEATURES[j]);
+  const Xu = X.map((row) => used.map((j) => row[j]));
+  const Z = zScore(Xu);
   const pca = principalComponents(Z);
 
   const seed = opts.seed ?? 42;
-  const maxK = Math.max(2, Math.min(opts.maxK ?? 5, pool.length - 1));
+  const maxK = Math.max(2, Math.min(opts.maxK ?? DEFAULT_MAX_K, pool.length - 1));
   let best: { k: number; run: KMeansRun; score: number; restartInertias: number[] } | null = null;
   const silhouetteByK: RepoLab["silhouetteByK"] = [];
   for (let k = 2; k <= maxK; k++) {
@@ -164,19 +187,28 @@ export function buildRepoLab(repos: GitHubRepoInsight[], opts: RepoLabOptions = 
   const centroidsZ = order.map((old) => run.centroids[old]);
   const silhouettes = pointSilhouettes(Z, assignments, k);
 
-  const iterations: KMeansFrame[] = run.frames.map((f, i) => ({
-    iteration: i,
-    assignments: f.assignments.map((c) => remap[c]),
-    centroids: order.map((old) => [project(f.centroids[old], pca.vectors[0]), project(f.centroids[old], pca.vectors[1])] as [number, number]),
-    inertia: f.inertia
-  }));
+  const iterations: KMeansFrame[] = run.frames.map((f, i) => {
+    const prev = run.frames[i - 1];
+    return {
+      iteration: i,
+      phase: f.phase,
+      step: f.step,
+      assignments: f.assignments.map((c) => remap[c]),
+      centroids: order.map((old) => {
+        const c = f.centroids[old];
+        return c ? ([project(c, pca.vectors[0]), project(c, pca.vectors[1])] as [number, number]) : null;
+      }),
+      inertia: f.inertia,
+      changed: prev ? f.assignments.filter((c, p) => c !== prev.assignments[p]).length : 0
+    };
+  });
 
   const labels: string[] = [];
   const clusters = centroidsZ.map((centroid, id) => {
     const members = pool.filter((_, i) => assignments[i] === id).map((r) => r.name);
     // Language indicators only describe a cluster when over-represented ("Non-Python" says little).
     const ranked = centroid
-      .map((z, j) => ({ z, j }))
+      .map((z, u) => ({ z, j: used[u] }))
       .filter((r) => r.j < 6 || r.z > 0)
       .sort((a, b) => Math.abs(b.z) - Math.abs(a.z));
     const phrase = (r: { z: number; j: number }) => PHRASES[r.j][r.z >= 0 ? 0 : 1];
@@ -186,11 +218,12 @@ export function buildRepoLab(repos: GitHubRepoInsight[], opts: RepoLabOptions = 
     for (let extra = parts.length; labels.includes(label) && extra < ranked.length; extra++) label = `${label} · ${phrase(ranked[extra])}`;
     if (labels.includes(label)) label = `${label} ${id + 1}`;
     labels.push(label);
-    return { id, size: members.length, label, members, centroid: Object.fromEntries(REPO_FEATURES.map((f, j) => [f, centroid[j]])) };
+    return { id, size: members.length, label, members, centroid: Object.fromEntries(featureNames.map((f, u) => [f, centroid[u]])) };
   });
 
   return {
-    featureNames: [...REPO_FEATURES],
+    featureNames,
+    droppedFeatures,
     points: pool.map((r, i) => ({
       name: r.name,
       nameWithOwner: r.nameWithOwner,
@@ -199,14 +232,15 @@ export function buildRepoLab(repos: GitHubRepoInsight[], opts: RepoLabOptions = 
       y: project(Z[i], pca.vectors[1]),
       cluster: assignments[i],
       silhouette: silhouettes[i],
-      features: Object.fromEntries(REPO_FEATURES.map((f, j) => [f, X[i][j]])),
+      features: Object.fromEntries(featureNames.map((f, u) => [f, Xu[i][u]])),
       raw: raws[i]
     })),
     k,
     silhouette: best!.score,
     silhouetteByK,
+    atSearchLimit: k === maxK,
     explainedVariance: [pca.ratios[0] ?? 0, pca.ratios[1] ?? 0],
-    loadings: REPO_FEATURES.map((feature, j) => ({ feature, pc1: pca.vectors[0][j], pc2: pca.vectors[1][j] })),
+    loadings: featureNames.map((feature, u) => ({ feature, pc1: pca.vectors[0][u], pc2: pca.vectors[1][u] })),
     iterations,
     inertia: run.inertia,
     restarts: RESTARTS,
@@ -229,6 +263,11 @@ function referenceTime(repos: GitHubRepoInsight[]): number {
   return Number.isFinite(latest) ? latest : 0;
 }
 
+function isConstant(values: number[]): boolean {
+  const mu = values.reduce((s, v) => s + v, 0) / Math.max(1, values.length);
+  return Math.sqrt(values.reduce((s, v) => s + (v - mu) ** 2, 0) / Math.max(1, values.length)) <= CONSTANT_EPS;
+}
+
 /** Column z-scores with population SD; constant columns map to 0. */
 export function zScore(X: number[][]): number[][] {
   const d = X[0]?.length ?? 0;
@@ -236,7 +275,7 @@ export function zScore(X: number[][]): number[][] {
   const sd = new Array(d).fill(0);
   for (const row of X) row.forEach((v, j) => (mu[j] += v / X.length));
   for (const row of X) row.forEach((v, j) => (sd[j] += (v - mu[j]) ** 2 / X.length));
-  return X.map((row) => row.map((v, j) => (Math.sqrt(sd[j]) > 1e-9 ? (v - mu[j]) / Math.sqrt(sd[j]) : 0)));
+  return X.map((row) => row.map((v, j) => (Math.sqrt(sd[j]) > CONSTANT_EPS ? (v - mu[j]) / Math.sqrt(sd[j]) : 0)));
 }
 
 function sqDist(a: number[], b: number[]): number {
@@ -255,14 +294,23 @@ interface KMeansRun {
   assignments: number[];
   centroids: number[][];
   inertia: number;
-  frames: { assignments: number[]; centroids: number[][]; inertia: number }[];
+  /** Seed frames hold only the centroids picked so far (later slots are undefined). */
+  frames: { phase: "seed" | "update"; step: number; assignments: number[]; centroids: (number[] | undefined)[]; inertia: number }[];
 }
 
-/** One k-means++ initialization followed by Lloyd iterations. Frame i shows centroids and the nearest-centroid assignment. */
+/**
+ * One k-means++ initialization followed by Lloyd iterations. Records one frame per seed (assignment to the
+ * nearest seed so far), then one per Lloyd update; the last frame is the result.
+ */
 export function kMeans(Z: number[][], k: number, rand: Rng): KMeansRun {
   const n = Z.length;
   const centroids: number[][] = [[...Z[randInt(rand, n)]]];
+  const frames: KMeansRun["frames"] = [];
+  const snapshot = (phase: "seed" | "update", step: number, a: number[], inertia: number) =>
+    frames.push({ phase, step, assignments: [...a], centroids: Array.from({ length: k }, (_, c) => (centroids[c] ? [...centroids[c]] : undefined)), inertia });
   while (centroids.length < k) {
+    const seeded = assign(centroids);
+    snapshot("seed", centroids.length, seeded.a, seeded.inertia);
     const d2 = Z.map((z) => Math.min(...centroids.map((c) => sqDist(z, c))));
     const total = d2.reduce((s, v) => s + v, 0);
     let pick = randInt(rand, n);
@@ -279,7 +327,7 @@ export function kMeans(Z: number[][], k: number, rand: Rng): KMeansRun {
     centroids.push([...Z[pick]]);
   }
 
-  const assign = (cs: number[][]) => {
+  function assign(cs: number[][]) {
     let inertia = 0;
     const a = Z.map((z) => {
       let bestC = 0;
@@ -295,10 +343,10 @@ export function kMeans(Z: number[][], k: number, rand: Rng): KMeansRun {
       return bestC;
     });
     return { a, inertia };
-  };
+  }
 
   let { a: assignments, inertia } = assign(centroids);
-  const frames: KMeansRun["frames"] = [{ assignments: [...assignments], centroids: centroids.map((c) => [...c]), inertia }];
+  snapshot("seed", k, assignments, inertia);
   for (let iter = 1; iter <= MAX_ITERATIONS; iter++) {
     const d = Z[0].length;
     const next = Array.from({ length: k }, () => new Array(d).fill(0));
@@ -328,7 +376,7 @@ export function kMeans(Z: number[][], k: number, rand: Rng): KMeansRun {
     centroids.splice(0, k, ...next);
     assignments = result.a;
     inertia = result.inertia;
-    frames.push({ assignments: [...assignments], centroids: centroids.map((c) => [...c]), inertia });
+    snapshot("update", iter, assignments, inertia);
     if (!changed) break;
   }
   return { assignments, centroids, inertia, frames };
