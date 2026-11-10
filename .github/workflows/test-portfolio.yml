@@ -33,6 +33,14 @@ jobs:
       - name: Build and test portfolio
         run: npm run test:e2e
 
+      - name: Upload browser-check build
+        uses: actions/upload-artifact@v4
+        with:
+          name: portfolio-browser-check
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Upload failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4

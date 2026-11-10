@@ -8,12 +8,12 @@ import { hasBooted, rememberBoot } from "../search/bootState";
 import { useSiteView } from "../SiteViewContext";
 import { siteViews } from "../siteViews";
 import { contactLinks, roleLine } from "../viewData";
-import { apps, desktopApps, gameApps, phoneApps, type AppId } from "./apps";
+import { apps, phoneApps, startApps, type AppId } from "./apps";
 import { isOsMessage, openInNewTab, type OsMessage } from "./embed";
 import OsWindow, { clamp } from "./OsWindow";
 import type { DeskSize, OsActions, OsWin, Rect } from "./types";
 import { SignalStatus, SignalsProvider } from "./Signals";
-import DesktopIcons, { iconCell } from "./DesktopIcons";
+import DesktopIcons, { iconAreaWidth } from "./DesktopIcons";
 import "../search/search.css";
 import "./os.css";
 
@@ -80,16 +80,11 @@ function useClock() {
   return now;
 }
 
-function iconColumnsWidth(deskHeight: number) {
-  const rows = Math.max(1, Math.floor((deskHeight - 16) / iconCell));
-  return 8 + Math.ceil(desktopApps.length / rows) * iconCell;
-}
-
 /* Sid Search fills the desktop beside the icons; everything else opens centered, cascading. */
 function initialRect(app: AppId, desk: DeskSize, count: number): Rect & { maximized: boolean } {
   const size = apps[app].size;
   if (size === "fill") {
-    const x = iconColumnsWidth(desk.h) + 12;
+    const x = iconAreaWidth + 12;
     const w = desk.w - x - 16;
     return { x, y: 12, w, h: desk.h - 24, maximized: w < 640 };
   }
@@ -151,7 +146,7 @@ function DesktopShell() {
   live.current = { windows, desk, phone };
   const now = useClock();
   const retro = style === "retro";
-  const visibleApps = [...desktopApps.filter((id) => id !== "games"), ...gameApps].filter((id) => `${apps[id].label} ${apps[id].blurb}`.toLowerCase().includes(appQuery.trim().toLowerCase()));
+  const visibleApps = startApps.filter((id) => `${apps[id].label} ${apps[id].blurb}`.toLowerCase().includes(appQuery.trim().toLowerCase()));
   const calendarStart = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
   const calendarDays = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const calendarCells = Array.from({ length: Math.ceil((calendarStart + calendarDays) / 7) * 7 }, (_, index) => {

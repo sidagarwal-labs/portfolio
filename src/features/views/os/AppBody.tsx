@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, Download, ExternalLink, FileText, Lock, RotateCw
 import { profileContent } from "../../../content/siteContent";
 import { siteViews } from "../siteViews";
 import { contactLinks, roleLine } from "../viewData";
-import { apps, gameApps, type AppId } from "./apps";
+import { apps, type AppDef, type AppId } from "./apps";
 import { frameName, siteUrl } from "./embed";
 import type { OsActions, OsWin } from "./types";
 
@@ -97,12 +97,13 @@ function ResumeViewer() {
 }
 
 function Readme({ actions }: { actions: OsActions }) {
-  const appList: AppId[] = ["search", "journal", "forward", "training", "terminal"];
+  const appList: AppId[] = ["search", "forward", "designs"];
   return (
     <div className="os-note">
       <p><strong>Hi, I'm Sid Agarwal.</strong> {roleLine}.</p>
       <p>This site is a browser-based desktop simulation, and its apps are my portfolio. It does not control your computer or files.</p>
       <p>Drag desktop icons to arrange them; Shift + arrow keys also move a focused icon. Positions are saved in this browser. Drag title bars to move windows, their edges or corners to resize, and double-click a title bar to maximize. The taskbar restores minimized apps.</p>
+      <p>Other designs holds Training run, Terminal, and Journal. Start search and the phone home screen still open individual apps directly. Resume and README.txt start at the bottom-left of the desktop.</p>
       <ul>
         {appList.map((id) => (
           <li key={id}>
@@ -145,10 +146,10 @@ function Readme({ actions }: { actions: OsActions }) {
   );
 }
 
-function GamesFolder({ actions }: { actions: OsActions }) {
+function AppFolder({ folder, actions }: { folder: Extract<AppDef, { kind: "folder" }>; actions: OsActions }) {
   return (
-    <ul className="os-folder">
-      {gameApps.map((id) => {
+    <ul className="os-folder" aria-label={`${folder.label} apps`}>
+      {folder.children.map((id) => {
         const def = apps[id];
         const Icon = def.icon;
         return (
@@ -183,7 +184,7 @@ function AppBody({ id, app, src, active, actions }: AppBodyProps) {
   }
   if (def.kind === "pdf") return <ResumeViewer />;
   if (def.kind === "note") return <Readme actions={actions} />;
-  if (def.kind === "folder") return <GamesFolder actions={actions} />;
+  if (def.kind === "folder") return <AppFolder folder={def} actions={actions} />;
   const Game = games[app as keyof typeof games];
   return (
     <Suspense fallback={<p className="os-loading">Loading…</p>}>

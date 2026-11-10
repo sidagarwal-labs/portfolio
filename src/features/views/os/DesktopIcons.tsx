@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { apps, desktopApps, type AppId } from "./apps";
+import { apps, desktopApps, desktopDocuments, desktopRows, type AppId } from "./apps";
 import type { DeskSize } from "./types";
 import { clamp } from "./OsWindow";
 
 export const iconCell = 92;
+export const iconAreaWidth = 8 + Math.max(desktopDocuments.length, ...desktopRows.map((row) => row.length)) * iconCell;
 type Position = { col: number; row: number };
 type Positions = Partial<Record<AppId, Position>>;
-const key = "lab-os-icons-v1";
+// Version the layout once; subsequent manual arrangements keep their normal persistence.
+const key = "lab-os-icons-v2";
 
 function readPositions(): Positions {
   try {
@@ -35,8 +37,12 @@ function DesktopIcons({ desk, open, reset }: { desk: DeskSize; open: (id: AppId)
   const positions = useMemo(() => {
     const result: Positions = {};
     const used = new Set<number>();
-    for (const [index, id] of desktopApps.entries()) {
-      const desired = saved[id] ?? { col: Math.floor(index / rows), row: index % rows };
+    const layout = [
+      ...desktopRows.flatMap((items, row) => items.map((id, col) => ({ id, col, row }))),
+      ...desktopDocuments.map((id, col) => ({ id, col, row: rows - 1 }))
+    ];
+    for (const { id, col, row } of layout) {
+      const desired = saved[id] ?? { col, row };
       let slot = clamp(desired.col, 0, columns - 1) * rows + clamp(desired.row, 0, rows - 1);
       if (used.has(slot)) {
         slot = 0;
