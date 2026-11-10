@@ -197,18 +197,21 @@ test("AI / LLM Stack Tracker links open the Markets window", async ({ page }) =>
   await expect(page.locator(`${searchWin} .os-address__text`)).toHaveText(/^agarwal-labs\.com\/search\?q=/);
   await expect(frame.locator("#se-query")).toHaveValue("Sid Agarwal");
 
-  /* An open Markets window is navigated rather than duplicated, and keeps its own history. */
+  /* An open Markets window is navigated rather than duplicated, and keeps its own history. Picking a company replaces
+     the window's page instead of adding to it. */
   await app.locator("#mk-layer-chips").getByRole("link", { name: /^NVDA/ }).click();
   await expect(address).toHaveText("agarwal-labs.com/markets?symbol=NVDA");
+  await expect(app.locator("#mk-preview-title")).toHaveText("NVIDIA");
+  await expect(markets.getByRole("button", { name: "Back" })).toBeDisabled();
   await bringSearchForward(page);
   await tracker.click();
   await expect(markets).toHaveClass(/is-active/);
   await expect(markets).toHaveCount(1);
   await expect(address).toHaveText("agarwal-labs.com/markets");
-  await expect(app.locator(".mk-detail")).toHaveCount(0);
+  await expect(app.locator("#mk-preview-title")).toHaveText("MP Materials");
   await markets.getByRole("button", { name: "Back" }).click();
   await expect(address).toHaveText("agarwal-labs.com/markets?symbol=NVDA");
-  await expect(app.locator(".mk-detail").getByRole("heading", { name: "NVIDIA", level: 2 })).toBeVisible();
+  await expect(app.locator("#mk-preview-title")).toHaveText("NVIDIA");
 
   /* Links between the live pages open each page's own app too. */
   await app.getByRole("navigation", { name: "Live pages" }).getByRole("link", { name: "Launches" }).click();
@@ -241,20 +244,20 @@ test("old AI stack links open Markets in Lab OS without leaving the old address 
   const address = markets.locator(".os-address__text");
   const app = page.frameLocator('.os-win[data-app="markets"] iframe');
   await expect(markets).toHaveClass(/is-active/);
-  await expect(app.locator(".mk-detail").getByRole("heading", { name: "NVIDIA", level: 2 })).toBeVisible();
+  await expect(app.locator("#mk-preview-title")).toHaveText("NVIDIA");
   await expect(address).toHaveText("agarwal-labs.com/markets?symbol=NVDA");
   await expect(markets.getByRole("button", { name: "Back" })).toBeDisabled();
 
   await legacyLink("/markets?view=stack");
   await expect(markets).toHaveCount(1);
   await expect(address).toHaveText("agarwal-labs.com/markets");
-  await expect(app.locator(".mk-detail")).toHaveCount(0);
+  await expect(app.locator("#mk-preview-title")).toHaveText("MP Materials");
   await markets.getByRole("button", { name: "Back" }).click();
   await expect(address).toHaveText("agarwal-labs.com/markets?symbol=NVDA");
   await expect(markets.getByRole("button", { name: "Back" })).toBeDisabled();
   await markets.getByRole("button", { name: "Forward" }).click();
   await expect(address).toHaveText("agarwal-labs.com/markets");
-  await expect(app.locator(".mk-detail")).toHaveCount(0);
+  await expect(app.locator("#mk-preview-title")).toHaveText("MP Materials");
 });
 
 test("outside Lab OS, AI / LLM Stack Tracker links go to Markets", async ({ page }) => {
