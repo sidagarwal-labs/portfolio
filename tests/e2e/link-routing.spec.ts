@@ -45,6 +45,32 @@ test("Microsoft links in Sid Search open their summaries in one Reader window", 
   expect(opened).toEqual([]);
 });
 
+test("Pitt Pirates links stay in Sid Search and its match videos play in the window", async ({ page }) => {
+  const opened = trackNewTabs(page);
+  await page.route("https://www.youtube-nocookie.com/embed/**", (route) => route.fulfill({ contentType: "text/html", body: "<p>Player</p>" }));
+  await page.route(/^https:\/\/(i\.ytimg\.com|www\.pittpiratesrobotics\.com)\//, (route) => route.abort());
+  const frame = await openSearch(page);
+  const address = page.locator(`${searchWin} .os-address__text`);
+  const windows = await page.locator(".os-win").count();
+
+  await frame.locator(".se-panel").getByRole("link", { name: "the Pitt Pirates, FRC Team 2642", exact: true }).click();
+  await expect(address).toHaveText(/#robotics$/);
+  await expect(frame.getByRole("heading", { name: "Robotics", exact: true, level: 2 })).toBeInViewport();
+  await expect(frame.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Robotics", exact: true })).toHaveAttribute("aria-current", "location");
+
+  await frame.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "About", exact: true }).click();
+  await expect(address).toHaveText(/#impact$/);
+  await frame.locator("#impact").getByRole("link", { name: "the Pitt Pirates, FRC Team 2642", exact: true }).click();
+  await expect(address).toHaveText(/#robotics$/);
+  await expect(frame.locator("#robotics")).toBeInViewport();
+
+  await frame.getByRole("button", { name: "Play 2017 Raleigh District, Final 3" }).click();
+  await expect(frame.locator("#robotics iframe")).toHaveAttribute("src", "https://www.youtube-nocookie.com/embed/VzhwTXsN2io?autoplay=1&rel=0");
+  await expect(page.locator(".os-win")).toHaveCount(windows);
+  await expect(page.locator(searchWin)).toHaveClass(/is-active/);
+  expect(opened).toEqual([]);
+});
+
 test("book and podcast links open the Library on that title", async ({ page }) => {
   const opened = trackNewTabs(page);
   const frame = await openSearch(page);
@@ -60,6 +86,40 @@ test("book and podcast links open the Library on that title", async ({ page }) =
   await frame.locator('a[href^="https://open.spotify.com/show/7Fj0XEuUQLUqoMZQdsLXqp"]').first().click();
   await expect(library.getByRole("complementary", { name: "Acquired" })).toBeVisible();
   await expect(library).toHaveCount(1);
+  expect(opened).toEqual([]);
+});
+
+test("Sid Search's Library filters in place and opens its titles and the app in the Library window", async ({ page }) => {
+  const opened = trackNewTabs(page);
+  const frame = await openSearch(page);
+  const address = page.locator(`${searchWin} .os-address__text`);
+  const library = page.locator('.os-win[data-app="library"]');
+
+  await frame.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Library", exact: true }).click();
+  await expect(address).toHaveText(/#library$/);
+  const section = frame.locator("#library");
+  const founders = section.getByRole("button", { name: /^Founders & companies/ });
+  await founders.click();
+  await expect(founders).toHaveAttribute("aria-pressed", "true");
+  await expect(section.locator(".se-shelf > li")).toHaveCount(8);
+  await expect(section.getByRole("status")).toContainText("Founders & companies: 4 books and 4 podcasts");
+  await expect(address).toHaveText(/#library$/);
+
+  await section.getByRole("link", { name: /Acquired/ }).click();
+  await expect(library).toHaveClass(/is-active/);
+  await expect(library.getByRole("complementary", { name: "Acquired" })).toBeVisible();
+  await page.getByRole("button", { name: "Close Library" }).click();
+  await expect(library).toHaveCount(0);
+
+  await bringSearchForward(page);
+  await expect(section.getByRole("link", { name: "Open Lab OS" })).toHaveCount(0);
+  await section.getByRole("button", { name: "Open Library" }).click();
+  await expect(library).toHaveClass(/is-active/);
+  await bringSearchForward(page);
+  await section.getByRole("button", { name: "Open Library" }).click();
+  await expect(library).toHaveClass(/is-active/);
+  await expect(library).toHaveCount(1);
+  await expect(founders).toHaveAttribute("aria-pressed", "true");
   expect(opened).toEqual([]);
 });
 

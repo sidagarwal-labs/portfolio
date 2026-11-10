@@ -1,5 +1,6 @@
 import { courseworkProjects, currentResearchNotes, earlierBuildoutEditions } from "../../../content/journalContent";
 import { libraryCategories, podcasts, spotifyShowUrl } from "../../../content/library";
+import { robotNames } from "../../../content/robotics";
 import { profileContent } from "../../../content/siteContent";
 import { contactLinks, earlierProjects, marketTracker, viewProjects } from "../viewData";
 
@@ -21,6 +22,9 @@ const siteNames: Record<string, string> = {
   "linkedin.com": "LinkedIn",
   "amazon.com": "Amazon",
   "open.spotify.com": "Spotify",
+  "youtube.com": "YouTube",
+  "thebluealliance.com": "The Blue Alliance",
+  "pittpiratesrobotics.com": "Pitt Pirates Robotics",
   "agarwal-labs.com": "Agarwal Labs",
   "arxiv.agarwal-labs.com": "arXiv Search"
 };
@@ -78,10 +82,9 @@ const background: SearchDoc[] = [
     id: "bg-robotics",
     kind: "Background",
     title: "Pitt Pirates, FRC Team 2642",
-    href: "/robotics",
-    route: true,
-    snippet: "Captained and mentored the Pitt Pirates, FRC Team 2642.",
-    keywords: "robotics first frc leadership mentoring captain team"
+    href: "#robotics",
+    snippet: "Captained and mentored the Pitt Pirates, FRC Team 2642. On the team from 2013 through 2018 and captain for the 2017 FIRST Steamworks season. The team won five official events and made four FIRST Championship appearances.",
+    keywords: `robotics robot robots first frc leadership mentoring captain team steamworks championship houston chairman's award match video ${robotNames.join(" ")}`
   }
 ];
 

@@ -157,7 +157,7 @@ test("the search box ranks portfolio content with BM25 and explains the ranking"
 
 test("the search tabs jump to each section and highlight it on desktop and phones", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  const tabs = [["Projects", "lab"], ["Writing", "writing"], ["About", "impact"], ["Books", "library"], ["All", "intro"]];
+  const tabs = [["Projects", "lab"], ["Writing", "writing"], ["About", "impact"], ["Robotics", "robotics"], ["Library", "library"], ["All", "intro"]];
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 800 });
     await page.goto("./?view=search");
@@ -173,6 +173,174 @@ test("the search tabs jump to each section and highlight it on desktop and phone
   }
   await expect(page.locator("#impact")).toContainText("UNC Charlotte");
   await expect(page.locator("#impact")).toContainText("People also ask");
+});
+
+test("Sid Search keeps Pitt Pirates links on its Robotics section and plays matches inline", async ({ page }) => {
+  await page.route("https://www.youtube-nocookie.com/embed/**", (route) => route.fulfill({ contentType: "text/html", body: "<p>Player</p>" }));
+  await page.route(/^https:\/\/(i\.ytimg\.com|www\.pittpiratesrobotics\.com)\//, (route) => route.abort());
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("./?view=search");
+
+  const robotics = page.locator("#robotics");
+  await expect(page.locator("#impact").getByRole("link", { name: "the Pitt Pirates, FRC Team 2642", exact: true })).toHaveAttribute("href", "#robotics");
+  await page.locator(".se-panel").getByRole("link", { name: "the Pitt Pirates, FRC Team 2642", exact: true }).click();
+  await expect(page).toHaveURL(/\?view=search#robotics$/);
+  await expect(page.getByRole("heading", { name: "Robotics", exact: true, level: 2 })).toBeInViewport();
+  await expect(page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Robotics", exact: true })).toHaveAttribute("aria-current", "location");
+
+  const team = robotics.getByRole("article", { name: "Pitt Pirates" });
+  await expect(team).toContainText("FRC Team 2642");
+  await expect(team).toContainText("2013-2018");
+  await expect(team).toContainText("Team captain in 2017");
+  await expect(team).toContainText("5 official events");
+  await expect(team).toContainText("2014, 2016, 2017, 2018");
+  await expect(team.getByRole("link", { name: "The Blue Alliance" })).toHaveAttribute("href", "https://www.thebluealliance.com/team/2642/history");
+
+  const seasons = robotics.locator(".se-results--seasons .se-result__title");
+  await expect(seasons).toHaveText(["2013 season: Ashley Whippet", "2014 season: JoJo", "2016 season: Excalibot", "2017 season: Gemini", "2018 season: Riptide"]);
+  await expect(seasons.nth(3)).toHaveAttribute("href", "https://www.thebluealliance.com/team/2642/2017");
+
+  const images = robotics.locator(".se-image");
+  await expect(images).toHaveCount(3);
+  await images.last().scrollIntoViewIfNeeded();
+  await expect(images.getByText("Photo unavailable")).toHaveCount(3);
+  await expect(images.first().getByRole("link", { name: /^Original photo: Gemini/ })).toHaveAttribute("href", /pittpiratesrobotics\.com\/wp-content\/uploads\//);
+
+  await expect(robotics.locator(".se-video iframe")).toHaveCount(0);
+  await robotics.getByRole("button", { name: "Play 2017 Houston Championship, Roebling Qualification 14" }).click();
+  const player = robotics.locator(".se-video").first().locator("iframe");
+  await expect(player).toHaveAttribute("src", "https://www.youtube-nocookie.com/embed/23Ge6Ods51A?autoplay=1&rel=0");
+  await expect(player).toHaveAttribute("title", "2017 Houston Championship, Roebling Qualification 14");
+  await expect(robotics.locator(".se-video").first()).toHaveClass(/is-playing/);
+  await expect(robotics.getByRole("button", { name: "Play 2017 Raleigh District, Final 3" })).toBeVisible();
+  await expect(robotics.getByRole("link", { name: "2017 robot code" })).toHaveAttribute("href", "https://github.com/FRC2642/2017Robot");
+
+  await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "All", exact: true }).click();
+  await page.getByLabel("Search Sid's work").fill("robotics");
+  const result = page.locator(".se-matches .se-result__title").first();
+  await expect(result).toHaveAttribute("href", "#robotics");
+  await expect(page.locator(".se-matches .se-source__site").first()).toHaveText("Agarwal Labs");
+  await page.getByLabel("Search Sid's work").fill("riptide");
+  await expect(result).toHaveText("Pitt Pirates, FRC Team 2642");
+  await result.click();
+  await expect(page).toHaveURL(/\?view=search#robotics$/);
+  await expect(robotics).toBeInViewport();
+});
+
+test("Sid Search's Robotics section fits a phone", async ({ page }) => {
+  await page.route(/^https:\/\/(i\.ytimg\.com|www\.pittpiratesrobotics\.com)\//, (route) => route.abort());
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("./?view=search#robotics");
+    await expect(page.locator("#robotics")).toBeInViewport();
+    const section = await page.locator("#robotics").boundingBox();
+    for (const box of [".se-team", ".se-video__player", ".se-image__thumb", ".se-links a"]) {
+      for (const element of await page.locator(`#robotics ${box}`).all()) {
+        const rect = await element.boundingBox();
+        expect(rect!.x + rect!.width, `${box} at ${width}px`).toBeLessThanOrEqual(section!.x + section!.width + 0.5);
+      }
+    }
+    /* Videos stack above their details, and the lead photo spans the image grid. */
+    const video = await page.locator("#robotics .se-video__player").first().boundingBox();
+    expect(video!.width).toBeGreaterThan(section!.width - 1);
+    const lead = await page.locator("#robotics .se-image__thumb").first().boundingBox();
+    expect(lead!.width).toBeGreaterThan(section!.width - 1);
+    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
+  }
+});
+
+test("Sid Search's Library mixes books and podcasts and filters them by topic in place", async ({ page }) => {
+  await page.route(/^https:\/\/(i\.scdn\.co|m\.media-amazon\.com)\//, (route) => route.abort());
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("./?view=search");
+
+  await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Library", exact: true }).click();
+  await expect(page).toHaveURL(/\?view=search#library$/);
+  await expect(page.getByRole("heading", { name: "Library", exact: true, level: 2 })).toBeInViewport();
+  await expect(page.locator(".se-sitelinks").getByRole("link", { name: "Library", exact: true })).toHaveAttribute("href", "#library");
+  await expect(page.getByText(/bookshelf/i)).toHaveCount(0);
+
+  const library = page.locator("#library");
+  const chips = library.getByRole("group", { name: "Library topics" }).getByRole("button");
+  const items = library.locator(".se-shelf > li");
+  const status = library.getByRole("status");
+  await expect(chips).toHaveText([/^All\s*27$/, /^Markets & investing\s*8$/, /^Founders & companies\s*8$/, /^AI, search & chips\s*7$/, /^Science & how to think\s*5$/]);
+  await expect(chips.first()).toHaveAttribute("aria-pressed", "true");
+  await expect(status).toHaveText("All topics: 11 books and 16 podcasts");
+  await expect(items).toHaveCount(27);
+  await expect(library.locator(".se-badge", { hasText: "Book" })).toHaveCount(11);
+  await expect(library.locator(".se-badge", { hasText: "Podcast" })).toHaveCount(16);
+
+  const nvidia = items.filter({ hasText: "The Nvidia Way" });
+  await expect(nvidia.getByRole("link")).toHaveAttribute("href", /^https:\/\/www\.amazon\.com\//);
+  await expect(nvidia).toContainText("Tae Kim");
+  const acquired = items.filter({ hasText: "Acquired" });
+  await expect(acquired.getByRole("link")).toHaveAttribute("href", "https://open.spotify.com/show/7Fj0XEuUQLUqoMZQdsLXqp");
+  await expect(acquired.locator(".se-badge")).toHaveText("Podcast");
+  await expect(acquired).toContainText("Ben Gilbert & David Rosenthal");
+
+  const ai = library.getByRole("button", { name: /^AI, search & chips/ });
+  await ai.click();
+  await expect(ai).toHaveAttribute("aria-pressed", "true");
+  await expect(chips.first()).toHaveAttribute("aria-pressed", "false");
+  await expect(items).toHaveCount(7);
+  await expect(status).toContainText("AI, search & chips: 2 books and 5 podcasts");
+  await expect(nvidia).toHaveCount(1);
+  await expect(acquired).toHaveCount(0);
+
+  await library.getByRole("button", { name: /^Science & how to think/ }).click();
+  await expect(items).toHaveCount(5);
+  await expect(status).toContainText("Science & how to think: 3 books and 2 podcasts");
+  await expect(ai).toHaveAttribute("aria-pressed", "false");
+
+  await chips.first().click();
+  await expect(items).toHaveCount(27);
+  await expect(page).toHaveURL(/\?view=search#library$/);
+
+  /* Outside Lab OS the Library app is a page away. */
+  await library.getByRole("link", { name: "Open Lab OS" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-view", "os");
+});
+
+test("Sid Search finds podcasts by kind and by show name", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("./?view=search");
+  const query = page.getByLabel("Search Sid's work");
+  const results = page.locator(".se-matches .se-result");
+
+  await query.fill("podcast");
+  await expect(page.locator(".se-matches .se-stats")).toHaveText(/^16 results/);
+  await expect(results).toHaveCount(8);
+  await expect(results.locator(".se-kind")).toHaveText(Array(8).fill("Podcast"));
+
+  await query.fill("Acquired");
+  await expect(results.first().locator("h3")).toHaveText("Acquired");
+  await expect(results.first().locator(".se-kind")).toHaveText("Podcast");
+  await expect(results.first().locator(".se-result__title")).toHaveAttribute("href", "https://open.spotify.com/show/7Fj0XEuUQLUqoMZQdsLXqp");
+});
+
+test("Sid Search's Library fits a phone", async ({ page }) => {
+  await page.route(/^https:\/\/(i\.scdn\.co|m\.media-amazon\.com)\//, (route) => route.abort());
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("./?view=search#library");
+    await expect(page.locator("#library")).toBeInViewport();
+    const section = await page.locator("#library").boundingBox();
+    for (const box of [".se-filters button", ".se-shelf > li", ".se-section__head .se-button"]) {
+      for (const element of await page.locator(`#library ${box}`).all()) {
+        const rect = await element.boundingBox();
+        expect(rect!.x + rect!.width, `${box} at ${width}px`).toBeLessThanOrEqual(section!.x + section!.width + 0.5);
+      }
+    }
+    const tops = await page.locator("#library .se-shelf > li").evaluateAll((cards) => cards.slice(0, 3).map((card) => Math.round(card.getBoundingClientRect().top)));
+    expect(tops[0], `two covers per row at ${width}px`).toBe(tops[1]);
+    expect(tops[2]).toBeGreaterThan(tops[0]);
+    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
+  }
 });
 
 for (const embedded of [false, true]) {
@@ -327,7 +495,7 @@ test("Lab OS runs Sid Search in a window with its own address bar and history", 
   await frame.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "About", exact: true }).click();
   await expect(address).toHaveText(/#impact$/);
   await expect(frame.locator("#impact")).toBeInViewport();
-  await frame.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Books", exact: true }).click();
+  await frame.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Library", exact: true }).click();
   await expect(address).toHaveText(/#library$/);
 
   await page.locator(searchWin).getByRole("button", { name: "Back" }).click();
