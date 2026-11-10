@@ -70,6 +70,8 @@ async function load({ model: id, revision, dtype, temperatures: grid, cacheOnly 
   // The site serves an HTML fallback for unknown paths, so never look for model files on this origin.
   env.allowLocalModels = false;
   env.cacheKey = MODEL_CACHE_NAME;
+  // Tokenizer discovery in transformers.js 4.3.2 omits the revision. Pin its metadata lookups too.
+  env.remotePathTemplate = `{model}/resolve/${encodeURIComponent(revision)}/`;
   // local_files_only conflicts with allowLocalModels=false in transformers.js. Guard its
   // remote fetch instead, so cache eviction cannot silently trigger a fresh model download.
   env.fetch = (input, options) => {

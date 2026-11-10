@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Page, type Worker } from "@playwright/test";
-import type { LiveRequest } from "../../src/features/views/os/games/next-token/nextToken.worker";
+import type { LiveRequest, LiveResponse } from "../../src/features/views/os/games/next-token/nextToken.worker";
 
 type Token = { id: number; text: string; logit: number };
 type Prompt = { text: string; note: string; tokens: number; top: Token[]; lse: number[]; rest: number[]; choices: number[] };
@@ -406,6 +406,43 @@ test("the real worker never redownloads files evicted between cache inspection a
   await load.click();
   await expect(game.getByRole("alert")).toContainText("Couldn't download the model", { timeout: 15_000 });
   expect(requests.length).toBeGreaterThan(0);
+});
+
+test("the real worker restores tokenizer metadata from the pinned cache without probing main", async ({ page }) => {
+  const requests = recordModelRequests(page);
+  await page.addInitScript(() => {
+    const NativeWorker = window.Worker;
+    window.Worker = class extends NativeWorker {
+      constructor(url: string | URL, options?: WorkerOptions) {
+        super(url, options);
+        if (String(url).includes("nextToken.worker")) {
+          this.addEventListener("message", ({ data }: MessageEvent<LiveResponse>) => {
+            if (data.type === "status") document.documentElement.dataset.modelStatus = data.message;
+          });
+        }
+      }
+    };
+  });
+  await page.goto("./");
+  await cacheModel(page);
+  await page.evaluate(async ({ model, revision }) => {
+    const cache = await caches.open("transformers-cache");
+    const base = `https://huggingface.co/${model}/resolve/${revision}/`;
+    await cache.put(base + "tokenizer_config.json", Response.json({ tokenizer_class: "PreTrainedTokenizer", unk_token: "[UNK]" }));
+    await cache.put(base + "tokenizer.json", Response.json({
+      version: "1.0", truncation: null, padding: null, added_tokens: [],
+      normalizer: null, pre_tokenizer: { type: "Whitespace" }, post_processor: null, decoder: null,
+      model: { type: "WordLevel", vocab: { "[UNK]": 0, Hello: 1 }, unk_token: "[UNK]" }
+    }));
+    // Stop after genuine tokenizer restoration, before an inference engine or large weights are needed.
+    await cache.put(base + "config.json", Response.json({ model_type: "unsupported-test-fixture" }));
+  }, meta);
+  const game = await openNextToken(page);
+  await expect(page.locator("html")).toHaveAttribute("data-model-status", "Restoring the saved model weights", { timeout: 15_000 });
+  await expect(game.getByRole("alert")).toContainText("unsupported-test-fixture");
+  await expect(game.getByLabel("Prompt", { exact: true })).toHaveValue("The capital of France is");
+  await expect(game.getByRole("button", { name: /^Load model/ })).toHaveCount(0);
+  expect(requests).toEqual([]);
 });
 
 test("a delayed cache check does not override an explicitly selected game tab", async ({ page }) => {
