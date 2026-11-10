@@ -265,7 +265,8 @@ function due(feed: FeedCache | undefined, lifetime: number, now: number) {
 }
 
 function feedStatus(feed: FeedCache | undefined, loading: boolean): FeedStatus {
-  if (!feed) return loading ? "loading" : "unavailable";
+  if (loading && !feed?.launches.length) return "loading";
+  if (!feed) return "unavailable";
   if (!feed.fetchedAt) return "unavailable";
   return feed.retryAt ? "stale" : "ready";
 }
@@ -321,10 +322,10 @@ export function useLaunchTracker() {
         upcoming: due(latest.upcoming, latest.upcoming ? upcomingLifetime(latest.upcoming, time) : 0, time),
         previous: due(latest.previous, previousLifetime(latest, time), time)
       };
-      setLoading((state) => ({
-        upcoming: state.upcoming && wants.upcoming,
-        previous: state.previous && wants.previous
-      }));
+      setLoading({
+        upcoming: wants.upcoming || inFlight.has("upcoming"),
+        previous: wants.previous || inFlight.has("previous")
+      });
       for (const feed of ["upcoming", "previous"] as const) {
         if (wants[feed] && !inFlight.has(feed)) void load(feed);
       }
