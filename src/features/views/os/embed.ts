@@ -25,7 +25,8 @@ export type OsMessage =
   | { type: "labos:page"; app: PageApp; path: string }
   | { type: "labos:boot" }
   | { type: "labos:focus" }
-  | { type: "labos:location"; path: string }
+  /* replace: the page swapped its own state (such as a Markets preview) rather than going somewhere new. */
+  | { type: "labos:location"; path: string; replace?: boolean }
   | { type: "labos:query"; query: string }
   | { type: "labos:navigate"; path: string };
 
@@ -33,6 +34,12 @@ export function isOsMessage(data: unknown): data is OsMessage {
   const type = typeof data === "object" && data !== null ? (data as { type?: unknown }).type : undefined;
   return typeof type === "string" && type.startsWith(framePrefix);
 }
+
+/* Router state, or a link's data-labos-history="replace", marking an in-page change the window's back/forward
+   history should replace instead of push. */
+export const replaceHistoryState = { labosHistory: "replace" } as const;
+export const isReplaceState = (state: unknown) =>
+  typeof state === "object" && state !== null && (state as { labosHistory?: unknown }).labosHistory === "replace";
 
 export function postToOs(message: OsMessage) {
   if (embeddedView) window.parent.postMessage(message, window.location.origin);
