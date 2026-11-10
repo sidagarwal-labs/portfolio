@@ -68,7 +68,7 @@ function TradingViewWidget({ widget, config, height, attribution, href, label }:
         {state !== "ready" && (
           <p className="tv-widget__status" role={state === "failed" ? "alert" : undefined}>
             {state === "failed"
-              ? <>The {label} could not load here. <a href={href} target="_blank" rel="noopener noreferrer">Open it on TradingView</a>.</>
+              ? <span>The {label} could not load here. <a href={href} target="_blank" rel="noopener noreferrer">Open it on TradingView</a>.</span>
               : `Loading ${label}...`}
           </p>
         )}

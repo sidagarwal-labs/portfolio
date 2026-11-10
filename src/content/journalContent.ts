@@ -30,7 +30,7 @@ export const selectedProjects = [
     title: "arXiv Search",
     href: "https://github.com/sidagarwal-labs/arxiv-search",
     websiteHref: "https://arxiv.agarwal-labs.com/",
-    description: "Built and deployed an AI research assistant for 23,304 arXiv papers, with cited summaries and paper-specific chat. Combined Python, NumPy, BM25 keyword search, OpenAI embeddings, and LLM reranking. Progressed from an early keyword-search baseline at 0.52 to the latest reranked system at 0.84 nDCG@10 on AI-graded development evaluations, with expanded relevance labels along the way. A hands-on exploration of RAG, citation faithfulness, and balancing search quality against latency and API cost."
+    description: "Built and deployed an AI research assistant for 23,304 arXiv papers, with cited summaries and paper-specific chat. Combined Python, NumPy, BM25 keyword search, OpenAI embeddings, and LLM reranking. Progressed from an early keyword-search baseline at 0.51 to the latest reranked system at 0.84 nDCG@10 on AI-graded development evaluations, with expanded relevance labels along the way. A hands-on exploration of RAG, citation faithfulness, and balancing search quality against latency and API cost."
   },
   {
     title: "NVDocs RAG",

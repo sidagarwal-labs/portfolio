@@ -62,7 +62,7 @@ test("arXiv Search summary covers the product, technologies, and scoped experime
   const description = page.locator(".project-list > li").filter({ has: page.getByRole("link", { name: "arXiv Search", exact: true }) }).locator("p");
   await expect(description).toContainText("cited summaries and paper-specific chat");
   await expect(description).toContainText("Python, NumPy, BM25 keyword search, OpenAI embeddings, and LLM reranking");
-  await expect(description).toContainText("early keyword-search baseline at 0.52 to the latest reranked system at 0.84 nDCG@10");
+  await expect(description).toContainText("early keyword-search baseline at 0.51 to the latest reranked system at 0.84 nDCG@10");
   await expect(description).toContainText("AI-graded development evaluations, with expanded relevance labels along the way");
   await expect(description).toContainText("RAG, citation faithfulness, and balancing search quality against latency and API cost");
   await expect(description).not.toContainText("remain pending");

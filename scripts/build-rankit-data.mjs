@@ -34,7 +34,7 @@ const paths = {
   rubric: "arxiv_search/evaluate/judge_prompts.py",
   metric: "arxiv_search/evaluate/metrics.py",
   labels: "data/results/top20-label-completion/labels.json",
-  bm25Labels: "data/results/score-fusion-dev/labels.json",
+  bm25Labels: "data/results/shared-labels/labels-d47.json",
   bm25Run: "data/results/dev/bm25+exact+stems+authors+title2x+k1=0.8,b=0.75.run.json",
   rerankerRun: "data/results/top20-confirm/llm-gpt54-refine20+d=20+avg2+scores+pin1-d46.run.json"
 };
@@ -93,7 +93,7 @@ const round4 = (value) => Math.round(value * 1e4) / 1e4;
 
 // Check the published numbers before trusting any per-query data.
 const published = {
-  bm25: { ndcg10: 0.5187, judgments: 3294, labels: bm25Labels, run: bm25Run },
+  bm25: { ndcg10: 0.5068, judgments: 3579, labels: bm25Labels, run: bm25Run },
   reranker: { ndcg10: 0.8418, judgments: 3678, labels, run: rerankerRun }
 };
 for (const [name, entry] of Object.entries(published)) {
@@ -106,7 +106,7 @@ for (const [name, entry] of Object.entries(published)) {
 }
 for (const query of dev) {
   for (const [paper, grade] of Object.entries(bm25Labels[query] ?? {})) {
-    if (labels[query]?.[paper] !== grade) fail(`Grade for ${query}/${paper} changed between the 3,294- and 3,678-pair pools.`);
+    if (labels[query]?.[paper] !== grade) fail(`Grade for ${query}/${paper} changed between the 3,579- and 3,678-pair pools.`);
   }
 }
 
@@ -284,7 +284,7 @@ const output = {
       rubric: paths.rubric,
       description: "AI-graded, not human-validated: GPT-5.4 mini 0/1/2 grades with 100 ASTRA reference overrides, plus a top-20 completion layer of additional AI grades (arxiv-search README, 'Relevance labels').",
       gradesFromOriginalSnapshot: selected.reduce((sum, round) => sum + round.ids.filter((paper) => paper in bm25Labels[round.id]).length, 0),
-      originalSnapshot: { path: paths.bm25Labels, pairs: 3294, note: "Every one of its grades is unchanged in the 3,678-pair pool (checked by this script)." }
+      originalSnapshot: { path: paths.bm25Labels, pairs: 3579, note: "Every one of its grades is unchanged in the 3,678-pair pool (checked by this script)." }
     },
     systems: {
       bm25: {
@@ -296,7 +296,7 @@ const output = {
         ndcg10: published.bm25.ndcg10,
         judgments: published.bm25.judgments,
         labels: paths.bm25Labels,
-        source: "docs/10-reproduction-guide.md#historical-retrieval-milestones (Tuned BM25)",
+        source: "docs/06-charts.md (milestone M1, Tuned BM25)",
         recomputed: round4(published.bm25.recomputed)
       },
       reranker: {
@@ -312,7 +312,7 @@ const output = {
         recomputed: round4(published.reranker.recomputed)
       }
     },
-    caveat: "Both nDCG@10 numbers use the same 100 dev queries but different judgment pools (3,294 vs 3,678), so the change is not a like-for-like gain. Settings were tuned on these queries, so scores are optimistic.",
+    caveat: "Both nDCG@10 numbers use the same 100 dev queries but different judgment pools (3,579 vs 3,678), so the change is not a like-for-like gain. Settings were tuned on these queries, so scores are optimistic.",
     samePoolNdcg10: { judgments: 3678, bm25: round4(meanNdcg10(bm25Run, labels).value), reranker: round4(published.reranker.recomputed), note: "Recomputed by this script from the saved runs; not a published project number." },
     metric: {
       name: "nDCG@5",

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { canonicalMarketsPath } from "../../live/marketsPath";
-import { embeddedView, isOsMessage, isResumeUrl, openInNewTab, postToOs, routerPath } from "./embed";
+import { embeddedView, isOsMessage, isReplaceState, isResumeUrl, openInNewTab, postToOs, replaceHistoryState, routerPath } from "./embed";
 import { pageApp, routeLink, type PageApp } from "./linkRoutes";
 
 const embedded = embeddedView !== undefined;
@@ -55,7 +55,7 @@ export function useFrameBridge() {
         const path = routerPath(url);
         const app = pageApp(path);
         if (app && app !== pageApp(routerPath(new URL(window.location.href)))) openPage(app, path);
-        else navigateRef.current(path, { replace: true });
+        else navigateRef.current(path, { replace: true, state: anchor.dataset.labosHistory === "replace" ? replaceHistoryState : undefined });
       }
     };
     const onPointerDown = () => postToOs({ type: "labos:focus" });
@@ -81,5 +81,6 @@ export function useFrameBridge() {
 
   /* An old Markets link is reported as the page it redirects to, so the window's address bar and back/forward
      history never hold the old address. */
-  useEffect(() => postToOs({ type: "labos:location", path: canonicalMarketsPath(path) }), [path]);
+  const replace = isReplaceState(location.state);
+  useEffect(() => postToOs({ type: "labos:location", path: canonicalMarketsPath(path), ...(replace ? { replace } : {}) }), [path, replace]);
 }
