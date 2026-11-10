@@ -139,6 +139,7 @@ function DesktopShell() {
   const frames = useRef(new Map<string, HTMLIFrameElement>());
   const zRef = useRef(1);
   const idRef = useRef(0);
+  const targetSeq = useRef(0);
   const launched = useRef(false);
   /* Deep links like /#writing open Sid Search at that section. */
   const initialHash = useRef(location.hash);
@@ -196,7 +197,7 @@ function DesktopShell() {
     });
   }, []);
 
-  const open = useCallback((app: AppId) => {
+  const open = useCallback((app: AppId, targetValue?: string) => {
     setMenuOpen(false);
     setCalendarOpen(false);
     setDesktopWindows([]);
@@ -205,8 +206,10 @@ function DesktopShell() {
       openInNewTab(profileContent.resumeHref);
       return;
     }
+    const target = targetValue === undefined ? undefined : { value: targetValue, seq: ++targetSeq.current };
     const existing = current.find((win) => win.app === app);
     if (existing) {
+      if (target) setWindows((list) => list.map((win) => (win.id === existing.id ? { ...win, target } : win)));
       focus(existing.id);
       return;
     }
@@ -221,7 +224,8 @@ function DesktopShell() {
       minimized: false,
       src: def.kind === "site" ? `${import.meta.env.BASE_URL}${def.path?.slice(1) ?? ""}${hash}` : undefined,
       history: [],
-      index: -1
+      index: -1,
+      target
     };
     setWindows((list) => (list.some((item) => item.app === app) ? list : [...list, win]));
   }, [focus]);

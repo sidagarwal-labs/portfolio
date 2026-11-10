@@ -5,7 +5,7 @@ import { siteViews } from "../siteViews";
 import { contactLinks, roleLine } from "../viewData";
 import { apps, type AppDef, type AppId } from "./apps";
 import { frameName, siteUrl } from "./embed";
-import type { OsActions, OsWin } from "./types";
+import type { OsActions, OsTarget, OsWin } from "./types";
 
 const games = {
   snake: lazy(() => import("./games/Snake")),
@@ -13,6 +13,10 @@ const games = {
   mines: lazy(() => import("./games/Mines")),
   rankit: lazy(() => import("./games/RankIt")),
   nexttoken: lazy(() => import("./games/NextToken"))
+};
+
+const nativeApps = {
+  library: lazy(() => import("./library/Library"))
 };
 
 const host = "agarwal-labs.com";
@@ -97,7 +101,7 @@ function ResumeViewer() {
 }
 
 function Readme({ actions }: { actions: OsActions }) {
-  const appList: AppId[] = ["search", "forward", "designs"];
+  const appList: AppId[] = ["search", "library", "forward", "designs"];
   return (
     <div className="os-note">
       <p><strong>Hi, I'm Sid Agarwal.</strong> {roleLine}.</p>
@@ -170,12 +174,13 @@ type AppBodyProps = {
   id: string;
   app: AppId;
   src?: string;
+  target?: OsTarget;
   active: boolean;
   phone: boolean;
   actions: OsActions;
 };
 
-function AppBody({ id, app, src, active, actions }: AppBodyProps) {
+function AppBody({ id, app, src, target, active, actions }: AppBodyProps) {
   const def = apps[app];
   const frameRef = useCallback((frame: HTMLIFrameElement | null) => actions.registerFrame(id, frame), [actions, id]);
 
@@ -185,6 +190,14 @@ function AppBody({ id, app, src, active, actions }: AppBodyProps) {
   if (def.kind === "pdf") return <ResumeViewer />;
   if (def.kind === "note") return <Readme actions={actions} />;
   if (def.kind === "folder") return <AppFolder folder={def} actions={actions} />;
+  if (def.kind === "app") {
+    const Native = nativeApps[app as keyof typeof nativeApps];
+    return (
+      <Suspense fallback={<p className="os-loading">Loading…</p>}>
+        <Native target={target} actions={actions} />
+      </Suspense>
+    );
+  }
   const Game = games[app as keyof typeof games];
   return (
     <Suspense fallback={<p className="os-loading">Loading…</p>}>

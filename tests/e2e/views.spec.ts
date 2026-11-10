@@ -676,7 +676,7 @@ for (const style of ["modern", "retro"]) {
       const search = (await page.locator(searchWin).boundingBox())!;
       const desk = (await page.locator(".os-desktop").boundingBox())!;
       await page.getByRole("button", { name: "Show desktop", exact: true }).click();
-      const rows = [["Sid Search"], ["Forward pass", "Other designs"], ["Games", "Markets", "Launches", "AI leaderboards"]];
+      const rows = [["Sid Search", "Library"], ["Forward pass", "Other designs"], ["Games", "Markets", "Launches", "AI leaderboards"]];
       const labels = [...rows.flat(), "Resume.pdf", "README.txt"];
       await expect(page.locator(".os-icons .os-icon__label")).toHaveText(labels);
       const boxes = await page.locator(".os-icons > li").evaluateAll((icons) => icons.map((icon) => {
@@ -697,7 +697,8 @@ for (const style of ["modern", "retro"]) {
       });
       expect(new Set(boxes.map(({ x, y }) => `${x},${y}`)).size).toBe(labels.length);
       if (viewport.width === 1440) {
-        expect(search.x).toBeGreaterThanOrEqual(boxes[6].x + boxes[6].width + 12);
+        const widest = boxes[labels.indexOf("AI leaderboards")];
+        expect(search.x).toBeGreaterThanOrEqual(widest.x + widest.width + 12);
         expect(search.width).toBeGreaterThanOrEqual(640);
       }
       expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
