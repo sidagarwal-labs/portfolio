@@ -1,19 +1,25 @@
-import { useLayoutEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLayoutEffect, useRef } from "react";
+import { useLocation, type Location } from "react-router-dom";
+
+/* The home page's views (Journal, Sid Search, Lab OS, …) share "/" and differ only by ?view=, so the view is part of
+   the page. Other query parameters (a Markets ticker, a Leaderboards tab) are in-page state. */
+const pageOf = (location: Location) => `${location.pathname}?view=${new URLSearchParams(location.search).get("view") ?? ""}`;
 
 function RouteScrollReset() {
   const location = useLocation();
-  /* In-page controls (such as tabs mirrored into the query string) keep the reader's place. */
-  const keepScroll = Boolean((location.state as { keepScroll?: boolean } | null)?.keepScroll);
+  const previous = useRef<Location>();
 
   useLayoutEffect(() => {
-    if (keepScroll) return;
+    const last = previous.current;
+    previous.current = location;
     if (location.hash) {
       document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: "auto", block: "start" });
-    } else {
-      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      return;
     }
-  }, [location.pathname, location.hash, location.key, keepScroll]);
+    /* In-page controls mirrored into the query string keep the reader's place. */
+    if (last && pageOf(last) === pageOf(location) && last.search !== location.search) return;
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [location]);
 
   return null;
 }
