@@ -1,8 +1,8 @@
-import { readdirSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { AutoModelForCausalLM, AutoTokenizer, env, type Tensor } from "@huggingface/transformers";
 import { expect, test } from "@playwright/test";
-import data from "../../src/content/generated/next-token.json";
+import type fixture from "../../src/content/generated/next-token.json";
 import type { LiveDevice, LiveDtype, LiveRequest, LiveResponse } from "../../src/features/views/os/games/next-token/nextToken.worker";
 
 declare global {
@@ -12,6 +12,7 @@ declare global {
   }
 }
 
+const data = JSON.parse(readFileSync(new URL("../../src/content/generated/next-token.json", import.meta.url), "utf8")) as typeof fixture;
 const { meta } = data;
 const dtype = process.env.NEXT_TOKEN_DTYPE ?? meta.dtype;
 const device = process.env.NEXT_TOKEN_DEVICE ?? "wasm";

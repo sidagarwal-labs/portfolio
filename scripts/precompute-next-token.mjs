@@ -7,14 +7,15 @@ import { fileURLToPath } from "node:url";
 import { AutoModelForCausalLM, AutoTokenizer, env } from "@huggingface/transformers";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const output = resolve(root, "src/content/generated/next-token.json");
+const output = resolve(root, process.env.NEXT_TOKEN_OUTPUT ?? "src/content/generated/next-token.json");
 const versionOf = (name) => JSON.parse(readFileSync(resolve(root, "node_modules", name, "package.json"), "utf8")).version;
 
 // The live mode in the browser reads model, revision, and dtype from this file's meta block, so both use the same weights.
 const MODEL = "onnx-community/SmolLM2-135M-ONNX";
 const BASE_MODEL = "HuggingFaceTB/SmolLM2-135M";
 const REVISION = "d0ae6834f1df45e0e95b5fdae95e536f9ca7cd3f";
-const DTYPE = "q4f16";
+const DTYPE = process.env.NEXT_TOKEN_DTYPE ?? "q4f16";
+if (!["q4", "q4f16"].includes(DTYPE)) throw new Error(`Unsupported model dtype: ${DTYPE}`);
 const TOP_K = 8;
 const CHOICES = 5;
 const TEMPERATURES = Array.from({ length: 19 }, (_, index) => Math.round((0.2 + index * 0.1) * 10) / 10);
@@ -34,6 +35,7 @@ const prompts = [
 // Model files are cached in node_modules/.cache, which git ignores.
 env.cacheDir = resolve(root, "node_modules/.cache/huggingface");
 env.allowLocalModels = false;
+env.remotePathTemplate = `{model}/resolve/${REVISION}/`;
 
 const round = (value, places = 4) => Number(value.toFixed(places));
 
@@ -101,7 +103,7 @@ async function main() {
     const inputs = tokenizer(text);
     const { logits } = await model(inputs);
     const [, length, vocab] = logits.dims;
-    const last = Float64Array.from(logits.data.subarray((length - 1) * vocab, length * vocab));
+    const last = Float64Array.from(logits.to("float32").data.subarray((length - 1) * vocab, length * vocab));
     const ranked = Array.from(last.keys()).sort((a, b) => last[b] - last[a]).slice(0, TOP_K);
     const top = ranked.map((id) => ({ id, text: tokenizer.decode([id]), logit: round(last[id]) }));
     // rest: exact log-sum-exp over every token outside the top K. lse: the full vocabulary, built from the stored
@@ -113,7 +115,7 @@ async function main() {
       return roundUp(max + Math.log(terms.reduce((sum, term) => sum + Math.exp(term - max), 0)));
     });
     const rest = restExact.map((value) => round(value, 6));
-    rows.push({ text, note, tokens: length, vocab, top, lse, rest });
+    rows.push({ text, note, tokens: length, inputIds: Array.from(inputs.input_ids.data, Number), vocab, top, lse, rest });
     const atOne = lse[TEMPERATURES.indexOf(1)];
     console.log(`\n${text}`);
     for (const token of top) console.log(`  ${JSON.stringify(token.text).padEnd(16)} z=${token.logit.toFixed(3).padStart(8)}  p(T=1)=${(Math.exp(token.logit - atOne) * 100).toFixed(2)}%`);
@@ -138,7 +140,7 @@ async function main() {
       script: "scripts/precompute-next-token.mjs",
       note: "p_i(T) = exp(logit_i / T - lse[T]). lse is the log-sum-exp of logits / T over the full vocabulary at the last prompt position, rounded up at 6 decimals; top-K logits are stored to 4 decimals. rest is the same sum over every token outside the top K, so exp(rest[T] - lse[T]) is the probability of all other tokens combined."
     },
-    prompts: rows.map(({ text, note, tokens, top, lse, rest }) => ({ text, note, tokens, top, lse, rest, choices: seededOrder(pickChoices(top), text) }))
+    prompts: rows.map(({ text, note, tokens, inputIds, top, lse, rest }) => ({ text, note, tokens, inputIds, top, lse, rest, choices: seededOrder(pickChoices(top), text) }))
   };
   mkdirSync(dirname(output), { recursive: true });
   writeFileSync(output, `${JSON.stringify(data)}\n`);

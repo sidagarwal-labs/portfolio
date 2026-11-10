@@ -39,6 +39,14 @@ jobs:
           path: node_modules/.cache/huggingface
           key: next-token-model-${{ matrix.dtype }}-${{ hashFiles('src/content/generated/next-token.json') }}
       - run: npx playwright install --with-deps chromium
+      - run: npm run data:next-token
+        env:
+          NEXT_TOKEN_OUTPUT: node_modules/.cache/next-token-${{ matrix.dtype }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: next-token-reference-${{ matrix.dtype }}
+          path: node_modules/.cache/next-token-${{ matrix.dtype }}.json
+          retention-days: 7
       - run: npm run test:models
       - uses: actions/upload-artifact@v4
         if: always()
