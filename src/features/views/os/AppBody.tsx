@@ -18,7 +18,8 @@ const games = {
 const nativeApps = {
   library: lazy(() => import("./library/Library")),
   github: lazy(() => import("./github/GitHubApp")),
-  reader: lazy(() => import("./reader/Reader"))
+  reader: lazy(() => import("./reader/Reader")),
+  arxiv: lazy(() => import("./arxiv/ArxivSearch"))
 };
 
 const host = "agarwal-labs.com";

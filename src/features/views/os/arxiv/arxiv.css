@@ -1,0 +1,131 @@
+/* arXiv Search: the project's overview and evaluation history. Palette follows the Library and GitHub apps. */
+
+.ax { --ax-stage1: #2a4fbf; --ax-stage2: #c23a33; container-type: inline-size; display: flex; flex-direction: column; height: 100%; min-height: 0; color: #1f2328; font-size: 14px; line-height: 1.5; }
+.ax *, .ax *::before, .ax *::after { box-sizing: border-box; }
+.ax p { margin: 0; }
+.ax h3, .ax h4 { margin: 0; color: #1f2328; }
+.ax a:not(.os-button):not(.os-tool) { color: #2a4fbf; }
+.ax a:not(.os-button):not(.os-tool):hover { color: #2445a8; }
+.ax code { font-size: 12.5px; }
+.ax button:focus-visible, .ax a:focus-visible, .ax [tabindex]:focus-visible { outline: 2px solid #2a4fbf; outline-offset: 2px; }
+.ax-muted { color: #6b7383; font-size: 12.5px; }
+
+/* Header */
+.ax-head { display: flex; flex: none; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 20px; border-bottom: 1px solid #e3e6eb; background: #fff; }
+.ax-head__tile { display: grid; flex: none; place-items: center; width: 34px; height: 34px; border-radius: 9px; background: var(--tint); color: #fff; }
+.ax-head__id { display: grid; flex: 1 1 220px; min-width: 0; }
+.ax-head__name { font-size: 15px; font-weight: 650; line-height: 1.3; }
+.ax-head__sub { color: #6b7383; font-size: 12.5px; overflow-wrap: anywhere; }
+
+.ax-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.ax-overview { display: grid; gap: 26px; max-width: 1000px; padding: 20px 24px 32px; }
+
+/* Hero and headline numbers */
+.ax-hero { display: grid; gap: 10px; }
+.ax-hero h3 { font-size: 21px; line-height: 1.25; }
+.ax-lede { max-width: 72ch; color: #3b4250; font-size: 14.5px; }
+.ax-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+
+.ax-stats { display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; }
+.ax-stat { min-width: 0; padding: 12px 14px; border: 1px solid #e3e6eb; border-radius: 10px; background: #fafbfc; }
+.ax-stat--wide { border-left: 4px solid var(--ax-stage2); }
+.ax-stat dt { color: #4f5664; font-size: 12px; font-weight: 600; }
+.ax-stat dd { margin: 0; }
+.ax-stat__value { color: #1f2328; font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1.3; white-space: nowrap; }
+.ax-stat__note { color: #6b7383; font-size: 12px; line-height: 1.4; }
+
+/* Sections */
+.ax-section { display: grid; align-content: start; gap: 12px; min-width: 0; }
+.ax-section > h3, .ax-section__head h3 { font-size: 15px; }
+.ax-section__head { display: grid; gap: 2px; }
+
+.ax-stages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px; margin: 0; padding: 0; list-style: none; }
+.ax-stagecard { position: relative; display: grid; align-content: start; gap: 4px; padding: 12px 14px; border: 1px solid #e3e6eb; border-left: 4px solid var(--ax-stage); border-radius: 10px; background: #fff; }
+.ax-stagecard--1 { --ax-stage: var(--ax-stage1); }
+.ax-stagecard--2 { --ax-stage: var(--ax-stage2); }
+.ax-stagecard--1::after { content: "→"; position: absolute; top: 50%; right: -22px; color: #8a919e; font-size: 18px; line-height: 1; transform: translateY(-50%); }
+.ax-stagecard__step { color: var(--ax-stage); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.ax-stagecard h4 { font-size: 15px; }
+.ax-stagecard p { color: #3b4250; font-size: 13.5px; }
+.ax-stagecard p.ax-muted { color: #6b7383; font-size: 12.5px; }
+
+/* Hill-climbing chart */
+.ax-chart { display: grid; gap: 8px; min-width: 0; }
+.ax-chart__plot { width: 100%; min-width: 0; }
+.ax-chart svg { display: block; overflow: visible; }
+.ax-stage--1 { fill: rgba(42, 79, 191, 0.06); }
+.ax-stage--2 { fill: rgba(194, 58, 51, 0.07); }
+.ax-stage__divider { stroke: #a9b0bc; stroke-dasharray: 3 3; }
+.ax-stage__label { fill: #4f5664; font-size: 11px; }
+.ax-stage__name { fill: #1f2328; font-weight: 650; }
+.ax-grid { stroke: #dfe3ea; stroke-width: 1; }
+.ax-axis text { fill: #6b7383; font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.ax-axis text.is-active { fill: #1f2328; font-weight: 650; }
+.ax-line { fill: none; stroke: #3b4250; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ax-line--remeasured { stroke-dasharray: 5 4; }
+.ax-point circle { stroke: #fff; stroke-width: 2; }
+.ax-point--1 circle { fill: var(--ax-stage1); }
+.ax-point--2 circle { fill: var(--ax-stage2); }
+.ax-point.is-active circle { stroke: #1f2328; }
+.ax-point text { fill: #1f2328; font-size: 11.5px; font-variant-numeric: tabular-nums; font-weight: 650; paint-order: stroke; stroke: #fff; stroke-width: 3px; pointer-events: none; }
+.ax-hit { fill: transparent; cursor: crosshair; }
+.ax-chart__readout { min-height: 3em; color: #3b4250; font-size: 13px; font-variant-numeric: tabular-nums; }
+.ax-legend { display: flex; flex-wrap: wrap; gap: 2px 16px; margin: 0; padding: 0; list-style: none; color: #4f5664; font-size: 12px; }
+.ax-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.ax-key { display: inline-block; flex: none; }
+.ax-key--1, .ax-key--2 { width: 10px; height: 10px; border-radius: 50%; }
+.ax-key--1 { background: var(--ax-stage1); }
+.ax-key--2 { background: var(--ax-stage2); }
+.ax-key--line, .ax-key--dash { width: 18px; height: 0; border-top: 2px solid #3b4250; }
+.ax-key--dash { border-top-style: dashed; }
+
+.ax-table-wrap { min-width: 0; overflow-x: auto; }
+.ax-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.ax-table caption { padding-bottom: 6px; color: #4f5664; font-size: 12.5px; font-weight: 600; text-align: left; }
+.ax-table th, .ax-table td { padding: 5px 8px; border-bottom: 1px solid #eef1f5; text-align: left; white-space: nowrap; }
+.ax-table thead th { color: #6b7383; font-size: 12px; font-weight: 600; }
+.ax-table tbody th { font-weight: 650; }
+.ax-table tbody tr[data-stage="1"] th { box-shadow: inset 3px 0 0 var(--ax-stage1); }
+.ax-table tbody tr[data-stage="2"] th { box-shadow: inset 3px 0 0 var(--ax-stage2); }
+.ax-table td.ax-table__name { min-width: 200px; white-space: normal; }
+
+.ax-caveats { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid #e3e6eb; border-radius: 10px; background: #fafbfc; }
+.ax-caveats h4 { color: #4f5664; font-size: 12px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; }
+.ax-caveats ul { display: grid; gap: 6px; margin: 0; padding-left: 18px; color: #3b4250; font-size: 13px; }
+.ax-source { color: #4f5664; font-size: 12.5px; overflow-wrap: anywhere; }
+
+/* Related links */
+.ax-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.ax-card { display: grid; grid-template-rows: auto 1fr auto; gap: 10px; min-width: 0; padding: 14px; border: 1px solid #e3e6eb; border-radius: 12px; background: #fff; }
+.ax-card__tile { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--tint); color: #fff; }
+.ax-card__text { display: grid; align-content: start; gap: 2px; min-width: 0; }
+.ax-card__eyebrow { color: #6b7383; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.ax-card h4 { font-size: 14.5px; overflow-wrap: anywhere; }
+.ax-card p { color: #4f5664; font-size: 13px; }
+.ax-card .os-button { justify-self: start; }
+
+/* Narrow windows and phones */
+@container (max-width: 760px) {
+  .ax-head { padding: 10px 14px; }
+  .ax-overview { gap: 22px; padding: 16px 14px 24px; }
+  .ax-hero h3 { font-size: 19px; }
+  .ax-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ax-stat--wide { grid-column: 1 / -1; }
+  .ax-stat__value { font-size: 21px; }
+  .ax-stages { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .ax-stagecard--1::after { content: none; }
+  .ax-cards { grid-template-columns: minmax(0, 1fr); }
+}
+
+@container (min-width: 761px) and (max-width: 980px) {
+  .ax-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ax-stat--wide { grid-column: 1 / -1; }
+}
+
+/* Retro (Windows 95) style */
+.os--retro .ax, .os--retro .ax button { font-family: var(--os-retro-font); }
+.os--retro .ax-head { border-bottom-color: #808080; background: #c0c0c0; }
+.os--retro .ax-head__tile, .os--retro .ax-stat, .os--retro .ax-stagecard, .os--retro .ax-caveats, .os--retro .ax-card, .os--retro .ax-card__tile { border-radius: 0; }
+.os--retro .ax-stat, .os--retro .ax-stagecard, .os--retro .ax-caveats, .os--retro .ax-card { border-color: #808080; background: #fff; }
+.os--retro .ax-stat--wide { border-left-color: var(--ax-stage2); }
+.os--retro .ax-stagecard { border-left-color: var(--ax-stage); }

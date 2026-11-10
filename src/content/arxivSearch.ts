@@ -22,9 +22,9 @@ export type ArxivMilestone = {
   judgments: number;
 };
 
-export const arxivStages: Record<ArxivStage, { label: string; blurb: string }> = {
-  1: { label: "Stage 1: retrieval", blurb: "BM25 keyword search and embedding search, fused into one shortlist." },
-  2: { label: "Stage 2: reranking", blurb: "An LLM reorders the shortlist's top results, with a safeguard for the source paper." }
+export const arxivStages: Record<ArxivStage, { label: string; short: string; blurb: string }> = {
+  1: { label: "Stage 1: retrieval", short: "retrieval", blurb: "BM25 keyword search and embedding (semantic) search run side by side, and rank fusion merges them into one shortlist." },
+  2: { label: "Stage 2: reranking", short: "LLM reranking", blurb: "An LLM rereads the top of the shortlist against the query and reorders it. The current system refines the top 20 in two passes." }
 };
 
 export const arxivMilestones: readonly ArxivMilestone[] = [
