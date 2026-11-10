@@ -117,6 +117,9 @@
 .ax-live__bar .os-address { margin-right: 4px; }
 .ax-live__stage { position: relative; flex: 1 1 auto; min-height: 0; background: #fff; }
 .ax-live__frame { position: absolute; inset: 0; }
+/* Clicks inside the cross-origin site never reach Lab OS, so an inactive window's site is covered until focused. */
+.ax-live__shield { position: absolute; inset: 0; }
+.os-win.is-active .ax-live__shield { display: none; }
 .ax-live__cover { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; background: #f7f8fa; overflow: auto; }
 .ax-live__cover[hidden] { display: none; }
 .ax-live__loading { display: inline-flex; align-items: center; gap: 8px; color: #4f5664; font-size: 13.5px; }

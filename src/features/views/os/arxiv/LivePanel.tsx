@@ -68,6 +68,7 @@ export function LivePanel({ path }: { path: string }) {
           tabIndex={ready ? undefined : -1}
           aria-hidden={ready ? undefined : true}
         />
+        {ready && <div className="ax-live__shield" aria-hidden="true" />}
         <div className="ax-live__cover" role="status" hidden={ready}>
           {phase === "loading" && (
             <p className="ax-live__loading">
