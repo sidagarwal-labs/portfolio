@@ -282,9 +282,10 @@ test("AI leaderboards read Arena live, keep tabs linkable, and fall back to the 
 
   const arenaTabs = page.getByRole("tablist", { name: "Arena boards" });
   await arenaTabs.scrollIntoViewIfNeeded();
+  const scroll = await page.evaluate(() => scrollY) + 150;
   await page.mouse.wheel(0, 150);
-  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0);
-  const scroll = await page.evaluate(() => scrollY);
+  // Wheel input returns before scrolling finishes; wait for the full movement.
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(scroll);
   await arenaTabs.getByRole("tab", { name: "WebDev" }).click();
   await expect(page).toHaveURL(/\/leaderboards\?arena=webdev$/);
   await expect(arenaTabs.getByRole("tab", { name: "WebDev" })).toHaveAttribute("aria-selected", "true");
