@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 import { arxivMilestones, arxivStages, formatCount, formatPercent, formatScore } from "../../../../content/arxivSearch";
 
 /* The hill-climbing chart: nDCG@10 at each milestone, drawn at the container's real width so labels stay legible. */
@@ -83,7 +83,8 @@ export function HillChart() {
               <g key={point.milestone.key} className={`ax-point ax-point--${point.milestone.stage}${point.index === active ? " is-active" : ""}`}>
                 <circle cx={point.x} cy={point.y} r={point.index === active ? 6 : 4.5} />
                 {labeled.has(point.index) && (
-                  <text x={point.x + (point.index === lastIndex ? -8 : 0)} y={point.y - 11} textAnchor={point.index === lastIndex ? "end" : "middle"}>
+                  /* The last points sit against the stage divider and the plot's edge, so their labels end at the point. */
+                  <text x={point.x + (point.index === lastIndex ? -8 : point.index === stage2Start - 1 ? 4 : 0)} y={point.y - 11} textAnchor={point.index === 0 ? "middle" : "end"}>
                     {formatScore(point.milestone.ndcg)}{mark(point.milestone.judgments)}
                   </text>
                 )}
@@ -111,35 +112,41 @@ export function HillChart() {
 }
 
 export function MilestoneTable() {
+  const captionId = useId();
   return (
-    <div className="ax-table-wrap" role="region" aria-label="Hill-climbing milestones" tabIndex={0}>
-      <table className="ax-table">
-        <caption>Hill-climbing milestones on 100 dev queries ({formatCount(baseJudgments)} judgments; * {formatCount(arxivMilestones[lastIndex].judgments)})</caption>
-        <thead>
-          <tr>
-            <th scope="col">Key</th>
-            <th scope="col">Stage</th>
-            <th scope="col">Milestone</th>
-            <th scope="col">nDCG@10</th>
-            <th scope="col">Step gain</th>
-            <th scope="col">Source MRR@10</th>
-            <th scope="col">Source R@10</th>
-          </tr>
-        </thead>
-        <tbody>
-          {arxivMilestones.map((milestone) => (
-            <tr key={milestone.key} data-key={milestone.key} data-stage={milestone.stage}>
-              <th scope="row">{milestone.key}</th>
-              <td>{milestone.stage === 1 ? "1: retrieval" : "2: reranking"}</td>
-              <td className="ax-table__name">{milestone.name}</td>
-              <td>{formatScore(milestone.ndcg)}{mark(milestone.judgments)}</td>
-              <td>{milestone.gain === null ? "–" : `+${formatScore(milestone.gain)}${mark(milestone.judgments)}`}</td>
-              <td>{formatScore(milestone.mrr)}</td>
-              <td>{formatPercent(milestone.recall)}</td>
+    <div className="ax-table-block">
+      {/* Outside the scroller, so the caption stays readable when the table scrolls sideways on a phone. */}
+      <p className="ax-table__caption" id={captionId}>
+        Hill-climbing milestones on 100 dev queries ({formatCount(baseJudgments)} judgments; * {formatCount(arxivMilestones[lastIndex].judgments)})
+      </p>
+      <div className="ax-table-wrap" role="region" aria-labelledby={captionId} tabIndex={0}>
+        <table className="ax-table" aria-labelledby={captionId}>
+          <thead>
+            <tr>
+              <th scope="col">Key</th>
+              <th scope="col">Stage</th>
+              <th scope="col">Milestone</th>
+              <th scope="col">nDCG@10</th>
+              <th scope="col">Step gain</th>
+              <th scope="col">Source MRR@10</th>
+              <th scope="col">Source R@10</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {arxivMilestones.map((milestone) => (
+              <tr key={milestone.key} data-key={milestone.key} data-stage={milestone.stage}>
+                <th scope="row">{milestone.key}</th>
+                <td>{milestone.stage === 1 ? "1: retrieval" : "2: reranking"}</td>
+                <td className="ax-table__name">{milestone.name}</td>
+                <td>{formatScore(milestone.ndcg)}{mark(milestone.judgments)}</td>
+                <td>{milestone.gain === null ? "–" : `+${formatScore(milestone.gain)}${mark(milestone.judgments)}`}</td>
+                <td>{formatScore(milestone.mrr)}</td>
+                <td>{formatPercent(milestone.recall)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

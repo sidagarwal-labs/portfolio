@@ -86,9 +86,10 @@
 .ax-key--line, .ax-key--dash { width: 18px; height: 0; border-top: 2px solid #3b4250; }
 .ax-key--dash { border-top-style: dashed; }
 
+.ax-table-block { min-width: 0; }
+.ax-table__caption { margin: 0 0 6px; color: #4f5664; font-size: 12.5px; font-weight: 600; }
 .ax-table-wrap { min-width: 0; overflow-x: auto; }
 .ax-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
-.ax-table caption { padding-bottom: 6px; color: #4f5664; font-size: 12.5px; font-weight: 600; text-align: left; }
 .ax-table th, .ax-table td { padding: 5px 8px; border-bottom: 1px solid #eef1f5; text-align: left; white-space: nowrap; }
 .ax-table thead th { color: #6b7383; font-size: 12px; font-weight: 600; }
 .ax-table tbody th { font-weight: 650; }
@@ -143,11 +144,12 @@
   .ax-overview { gap: 22px; padding: 16px 14px 24px; }
   .ax-hero h3 { font-size: 19px; }
   .ax-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .ax-stat--wide { grid-column: 1 / -1; }
+  .ax-stat--wide, .ax-stat:last-child { grid-column: 1 / -1; }
   .ax-stat__value { font-size: 21px; }
   .ax-stages { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .ax-stagecard--1::after { content: none; }
   .ax-cards { grid-template-columns: minmax(0, 1fr); }
+  .ax-table td.ax-table__name { min-width: 150px; }
 }
 
 @container (min-width: 761px) and (max-width: 980px) {

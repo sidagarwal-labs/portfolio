@@ -160,7 +160,7 @@ test("the arXiv Search overview shows the headline metrics, the hill-climbing ch
   await expect(rows.last().locator("td").nth(5)).toHaveText("93%");
   await expect(table.locator('tbody tr[data-stage="1"]')).toHaveCount(7);
   await expect(table.locator('tbody tr[data-stage="2"]')).toHaveCount(3);
-  await expect(table.locator("caption")).toContainText("3,579 judgments; * 3,678");
+  await expect(table).toHaveAccessibleName(/^Hill-climbing milestones on 100 dev queries \(3,579 judgments; \* 3,678\)$/);
 
   const caveats = win.locator(".ax-caveats");
   await expect(caveats).toContainText("100 development queries");
