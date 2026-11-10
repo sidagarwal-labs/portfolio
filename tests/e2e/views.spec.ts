@@ -583,6 +583,8 @@ test("desktop icons drag without opening, persist, move with the keyboard, and c
   expect((await icon.boundingBox())!.y).toBe(before.y + 92);
   await page.locator(".os-start").click();
   await page.getByRole("button", { name: "Arrange desktop icons", exact: true }).click();
+  /* Arranging resets positions in an effect after the click; the status appears in the same render. */
+  await expect(page.locator(".os-desktop-notice")).toHaveText("Icons arranged.");
   expect((await icon.boundingBox())!.x).toBe(before.x);
   expect((await icon.boundingBox())!.y).toBe(before.y);
   await icon.focus();
