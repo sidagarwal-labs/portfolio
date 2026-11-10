@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ArrowLeft, ExternalLink, Info, LoaderCircle, Search, TriangleAlert } from "lucide-react";
 import type { OsActions, OsTarget } from "../types";
 import { buildCalendar, computeStats } from "./analytics";
 import { GitHubLookupError, isValidLogin, loadInsights, loadOwnInsights, normalizeLogin, type GitHubLookupErrorKind } from "./client";
 import { OWN_GITHUB_LOGIN, type GitHubInsights } from "./contract";
+import { parseFileTarget, type GitHubFile } from "./fileTarget";
+import { FileView } from "./ui/FileView";
 import { fmtDate, fmtRange, fmtResetAt } from "./ui/format";
 import { Heatmap } from "./ui/Heatmap";
 import { Labs } from "./ui/Labs";
@@ -137,10 +139,17 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
   const [lookup, setLookup] = useState<Lookup>({ status: "idle" });
   const [query, setQuery] = useState("");
   const [focus, setFocus] = useState<RepoFocus | null>(null);
+  const [file, setFile] = useState<{ file: GitHubFile; seq: number } | null>(null);
   const controller = useRef<AbortController | null>(null);
   const otherLogin = useRef<string | null>(null);
   const focusSeq = useRef(0);
+  const fileSeq = useRef(0);
+  const paneRef = useRef<HTMLDivElement>(null);
+  const fileOpen = useRef(false);
+  /* Where the profile was scrolled when a file opened, restored by the back button. */
+  const profileScroll = useRef<number | null>(null);
   otherLogin.current = other?.login.toLowerCase() ?? null;
+  fileOpen.current = file !== null;
 
   const loadOwn = useCallback(() => {
     setOwnError(null);
@@ -152,12 +161,19 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
     return () => controller.current?.abort();
   }, [loadOwn]);
 
+  const scrollBody = useCallback(() => rootRef.current?.closest<HTMLElement>(".os-win__body") ?? null, []);
+
   const scrollTop = useCallback(() => {
-    const body = rootRef.current?.closest(".os-win__body");
+    const body = scrollBody();
     if (body) body.scrollTop = 0;
-  }, []);
+  }, [scrollBody]);
 
   const focusRepo = useCallback((login: string, repo?: string) => setFocus(repo ? { login, repo, seq: ++focusSeq.current } : null), []);
+
+  const closeFile = useCallback((restoreProfile = false) => {
+    if (!restoreProfile) profileScroll.current = null;
+    setFile(null);
+  }, []);
 
   const showOwn = useCallback(
     (repo?: string) => {
@@ -165,9 +181,10 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
       controller.current = null;
       setOther(null);
       setLookup({ status: "idle" });
+      closeFile();
       focusRepo(OWN, repo);
     },
-    [focusRepo]
+    [focusRepo, closeFile]
   );
 
   const runLookup = useCallback(
@@ -181,6 +198,7 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
       }
       controller.current?.abort();
       controller.current = null;
+      closeFile();
       if (!isValidLogin(login)) {
         setLookup({ status: "error", login: input.trim(), kind: "invalid-login", message: "" });
         return;
@@ -210,19 +228,50 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
         }
       );
     },
-    [focusRepo, scrollTop, showOwn]
+    [focusRepo, scrollTop, showOwn, closeFile]
   );
 
-  /* A link asked for "login" or "login/repo"; a new seq re-applies the same request. */
+  /* Opening a file keeps the profile (and its labs) mounted underneath, and cancels a lookup in flight. */
+  const openFile = useCallback(
+    (next: GitHubFile) => {
+      controller.current?.abort();
+      controller.current = null;
+      setLookup({ status: "idle" });
+      if (!fileOpen.current) profileScroll.current = scrollBody()?.scrollTop ?? 0;
+      setFile({ file: next, seq: ++fileSeq.current });
+    },
+    [scrollBody]
+  );
+
+  const backFromFile = () => closeFile(true);
+
+  /* Closing the file shows the profile again: restore its scroll when going back, and keep focus in the app. */
+  const hadFile = useRef(false);
+  useLayoutEffect(() => {
+    const closed = hadFile.current && !file;
+    hadFile.current = file !== null;
+    if (!closed) return;
+    const body = scrollBody();
+    if (body && profileScroll.current !== null) body.scrollTop = profileScroll.current;
+    profileScroll.current = null;
+    if (!document.activeElement || document.activeElement === document.body) paneRef.current?.focus({ preventScroll: true });
+  }, [file, scrollBody]);
+
+  /* A link asked for a Markdown file, "login" or "login/repo"; a new seq re-applies the same request. */
   const targetSeq = target?.seq;
   const targetValue = target?.value;
   useEffect(() => {
     if (targetSeq === undefined || targetValue === undefined) return;
+    const note = parseFileTarget(targetValue);
+    if (note) {
+      openFile(note);
+      return;
+    }
     const parsed = parseGitHubTarget(targetValue);
     if (!parsed) return;
     setQuery(parsed.login === OWN ? "" : parsed.login);
     runLookup(parsed.login, parsed.repo);
-  }, [targetSeq, targetValue, runLookup]);
+  }, [targetSeq, targetValue, runLookup, openFile]);
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -239,8 +288,13 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
 
   return (
     <div className="gh" ref={rootRef}>
-      <div className="gh-toolbar">
-        {other && (
+      <div className={file ? "gh-toolbar gh-toolbar--file" : "gh-toolbar"}>
+        {file ? (
+          <button type="button" className="os-button" onClick={backFromFile}>
+            <ArrowLeft size={14} strokeWidth={2} aria-hidden="true" />
+            Back to {insights?.name ?? insights?.login ?? OWN_GITHUB_LOGIN}
+          </button>
+        ) : other && (
           <button type="button" className="os-button" onClick={backToOwn}>
             <ArrowLeft size={14} strokeWidth={2} aria-hidden="true" />
             Back to {own?.name ?? OWN_GITHUB_LOGIN}
@@ -285,19 +339,31 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
           )}
         </div>
       )}
-      {insights ? (
-        <Profile insights={insights} focus={focus} own={!other} />
-      ) : ownError ? (
-        <div className="gh-alert" role="alert">
-          <TriangleAlert size={16} strokeWidth={2} aria-hidden="true" />
-          <p>{ownError}</p>
-          <button type="button" className="os-button" onClick={loadOwn}>
-            Try again
-          </button>
-        </div>
-      ) : (
-        <p className="os-loading">Loading GitHub activity…</p>
+      {file && (
+        <FileView
+          file={file.file}
+          seq={file.seq}
+          description={own?.repos.find((repo) => repo.name.toLowerCase() === file.file.repo.toLowerCase())?.description}
+          onOpenFile={openFile}
+          onOpenOwner={backToOwn}
+          onOpenRepo={(repo) => runLookup(OWN, repo)}
+        />
       )}
+      <div className="gh-pane" ref={paneRef} tabIndex={-1} hidden={!!file}>
+        {insights ? (
+          <Profile insights={insights} focus={focus} own={!other} />
+        ) : ownError ? (
+          <div className="gh-alert" role="alert">
+            <TriangleAlert size={16} strokeWidth={2} aria-hidden="true" />
+            <p>{ownError}</p>
+            <button type="button" className="os-button" onClick={loadOwn}>
+              Try again
+            </button>
+          </div>
+        ) : (
+          <p className="os-loading">Loading GitHub activity…</p>
+        )}
+      </div>
     </div>
   );
 }
