@@ -1,0 +1,11 @@
+{
+  "name": "agarwal-labs-github-proxy",
+  "private": true,
+  "type": "module",
+  "description": "Cloudflare Worker that serves GitHubInsights for the Lab OS GitHub app. Dependency-free; wrangler is installed by CI.",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "dev": "npx wrangler@4 dev",
+    "deploy": "npx wrangler@4 deploy"
+  }
+}

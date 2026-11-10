@@ -1,0 +1,17 @@
+# GitHub insights proxy for https://agarwal-labs.com (see README "GitHub app data").
+# The GraphQL token is a Worker secret, never stored here:
+#   npx wrangler secret put GITHUB_TOKEN   (or the GitHub proxy workflow's GH_PROXY_TOKEN secret)
+name = "agarwal-labs-github-proxy"
+main = "src/index.mjs"
+compatibility_date = "2026-10-01"
+workers_dev = false
+routes = [{ pattern = "api.agarwal-labs.com", custom_domain = true }]
+
+# Per-IP limit: 30 requests per 60 seconds in each Cloudflare location (requires Wrangler 4.36.0+).
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "2642"
+
+  [ratelimits.simple]
+  limit = 30
+  period = 60

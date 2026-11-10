@@ -1,0 +1,65 @@
+name: GitHub proxy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "workers/github-proxy/**"
+      - ".github/workflows/github-proxy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-proxy
+  cancel-in-progress: false
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GH_PROXY_TOKEN: ${{ secrets.GH_PROXY_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # The Worker has no dependencies, so no install is needed.
+      - name: Test GitHub proxy
+        run: npm run test:worker
+
+      - name: Skip deploy (Cloudflare not configured)
+        if: env.CLOUDFLARE_API_TOKEN == '' || env.CLOUDFLARE_ACCOUNT_ID == '' || env.GH_PROXY_TOKEN == ''
+        run: echo "::notice title=GitHub proxy not deployed::Add the CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, and GH_PROXY_TOKEN repository secrets to deploy (see README, GitHub app data)."
+
+      - name: Deploy Worker
+        if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' && env.GH_PROXY_TOKEN != ''
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ env.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: workers/github-proxy
+          # Rate limiting bindings need Wrangler 4.36.0 or later.
+          wranglerVersion: "4"
+          command: deploy
+          secrets: |
+            GITHUB_TOKEN
+        env:
+          GITHUB_TOKEN: ${{ env.GH_PROXY_TOKEN }}
+
+      - name: Check deployed proxy
+        if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' && env.GH_PROXY_TOKEN != ''
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            if curl --fail --silent --show-error https://api.agarwal-labs.com/health; then exit 0; fi
+            sleep 10
+          done
+          echo "::warning::https://api.agarwal-labs.com/health is not responding yet; a new custom domain can take a few minutes."

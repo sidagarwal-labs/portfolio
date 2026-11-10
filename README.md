@@ -122,6 +122,29 @@ The **Test portfolio** GitHub Actions workflow builds and runs the full Playwrig
 
 Responsive checks require zero horizontal page overflow, including when keyboard focus scrolls Terminal shortcuts into view on a 320px screen. The compact shortcut labels retain their full accessible names.
 
+## GitHub app data
+
+The Lab OS GitHub app reads normalized `GitHubInsights` (`src/features/views/os/github/contract.ts`) through `src/features/views/os/github/client.ts`:
+
+- **Own profile (sidagarwal-labs):** the build-time snapshot `src/content/generated/github-insights.json`, written by `npm run data:github` (`scripts/fetch-github-insights.mjs`) from GitHub's GraphQL API: the full-year contribution calendar, totals, and up to 30 public repositories with per-day commit activity. It needs `GITHUB_TOKEN` or `GH_TOKEN` (PowerShell: `$env:GITHUB_TOKEN = (gh auth token); npm run data:github`). The deploy workflow refreshes it before every build, including the daily run, using the workflow's own token. Without a token, or if the fetch or validation fails, the committed snapshot is kept and the script exits 0; it exits 1 only when no usable snapshot exists. `GITHUB_INSIGHTS_LOGIN` overrides the login.
+- **Other users:** when the build sets `VITE_GITHUB_PROXY_URL`, the app calls `GET <proxy>/github/v1/users/:login` on the Cloudflare Worker in `workers/github-proxy`. It runs the same GraphQL query and normalizer (`workers/github-proxy/src/insights.mjs`) with a server-side token, caches responses at the edge for 6 hours (unknown users for 1 hour), allows 30 requests per minute per IP in each Cloudflare location, and only sends CORS headers to agarwal-labs.com, www.agarwal-labs.com, and `http://localhost`/`http://127.0.0.1` on any port. If the proxy is unset, unreachable, or failing, the app falls back to GitHub's unauthenticated REST API: the last 90 days of public events, counting pushes rather than commits, within GitHub's 60 requests per hour per IP.
+- **Privacy:** private repositories are never named. Private work appears only as anonymous calendar counts and the `restricted` total, and the snapshot script rejects output containing any repository GitHub reports as private.
+
+`npm run test:worker` runs the normalizer and Worker tests with Node's test runner and mocked GitHub responses. `tests/e2e/github-client.spec.ts` covers the client, the REST fallback, and the committed snapshot.
+
+### One-time proxy setup
+
+The site works without these steps; other users then get the 90-day public-events view.
+
+1. **Cloudflare API token.** A Worker custom domain needs an active Cloudflare zone, and agarwal-labs.com already uses Cloudflare DNS. In the Cloudflare dashboard, create an API token from the **Edit Cloudflare Workers** template ([Cloudflare's GitHub Actions guide](https://developers.cloudflare.com/workers/ci-cd/external-cicd/github-actions/)), restricted to this account and the agarwal-labs.com zone. The essential permissions are Account › Workers Scripts › Edit (creating the Worker on the first deploy needs product-level Workers Admin in Cloudflare's newer role model) and Zone › Workers Routes › Edit for agarwal-labs.com, which adding a Custom Domain requires ([Workers roles and permissions](https://developers.cloudflare.com/workers/authorization/workers/)). Keep Workers Routes on the token: with `workers_dev = false`, later deploys also read the zone's routes ([workers-sdk#15863](https://github.com/cloudflare/workers-sdk/issues/15863)).
+2. **Cloudflare account ID:** shown on the dashboard's Workers & Pages overview ([Find account and zone IDs](https://developers.cloudflare.com/fundamentals/account/find-account-and-zone-ids/)).
+3. **GitHub token for the proxy:** a fine-grained personal access token with Repository access set to **Public repositories (read-only)** and no other permissions. Set an expiry and renew it before it lapses.
+4. Under Settings › Secrets and variables › Actions, add the repository secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `GH_PROXY_TOKEN`.
+5. Run the **GitHub proxy** workflow from the Actions tab. It runs the tests, deploys `agarwal-labs-github-proxy` to `api.agarwal-labs.com`, stores `GH_PROXY_TOKEN` as the Worker secret `GITHUB_TOKEN`, and checks `/health`. Without the three secrets, the deploy is skipped and the run still passes. Later pushes to `main` that change `workers/github-proxy/` redeploy it.
+6. Add the repository **variable** `GITHUB_PROXY_URL` = `https://api.agarwal-labs.com`, then rerun **Deploy Portfolio** so the build includes it.
+
+For local Worker development, put `GITHUB_TOKEN=...` in `workers/github-proxy/.dev.vars` (git-ignored) and run `npx wrangler@4 dev` in that folder; set `VITE_GITHUB_PROXY_URL=http://localhost:8787` in `.env.local` to use it from the dev site.
+
 ## Verification
 
 ```sh

@@ -9,11 +9,13 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "data:leaderboards": "node scripts/update-leaderboards.mjs",
+    "data:github": "node scripts/fetch-github-insights.mjs",
     "data:next-token": "node scripts/precompute-next-token.mjs",
     "pretest:e2e": "npm run build -- --mode test",
     "test:e2e": "playwright test",
     "test:e2e:headed": "npm run test:e2e -- --headed",
     "test:models": "npm run build -- --mode test && playwright test --config playwright.models.config.ts",
+    "test:worker": "node --test workers/github-proxy/test/*.test.mjs",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
