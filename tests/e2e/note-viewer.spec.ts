@@ -1,5 +1,7 @@
 import { expect, test, type Frame, type FrameLocator, type Locator, type Page } from "@playwright/test";
 import { researchNotes } from "../../src/content/journalContent";
+import { sources } from "../../src/content/marketInsights";
+import { slugBase } from "../../src/features/views/os/github/markdown";
 
 /* Issue #43: a research note opens in the GitHub app's file view (or on GitHub), never in an unrelated view. */
 
@@ -181,6 +183,39 @@ test("links to a section of a note scroll to that section, with or without GitHu
   await expectNote(win, "cloud-growth", "data--tables");
   await expectSectionInView(win, "Data & Tables");
   expect(await win.locator(".os-win__body").evaluate((body) => body.scrollTop)).toBeGreaterThan(200);
+});
+
+test("every Markets Insights source opens its note at the cited section", async ({ page }) => {
+  test.setTimeout(60_000);
+  // Each label reads "<file>.md › <heading>"; the mocked notes carry those headings far apart.
+  const cited = Object.values(sources).map(({ label, href }) => {
+    const [file, heading] = label.split(" › ");
+    return { href, slug: file.replace(/\.md$/, ""), heading, anchor: new URL(href).hash.slice(1) };
+  });
+  const files: Files = { ...allNotes };
+  for (const note of researchNotes) {
+    const headings = [...new Set(cited.filter((source) => source.slug === note.slug).map((source) => source.heading))];
+    if (headings.length) files[note.slug] = [`# ${note.title} (note)`, ...headings.flatMap((heading) => [filler(30), `## ${heading}`]), filler(30)].join("\n\n");
+  }
+  const opened = trackNewTabs(page);
+  await openLabOS(page, files);
+  await page.getByRole("button", { name: "Open Markets" }).click();
+  const markets = page.locator('.os-win[data-app="markets"]');
+  const frame = page.frameLocator('.os-win[data-app="markets"] iframe');
+  await frame.getByRole("tab", { name: "Insights" }).click();
+  const win = page.locator(githubWin);
+
+  for (const source of cited) {
+    expect(source.anchor).toBe(slugBase(source.heading));
+    if (!/\bis-active\b/.test((await markets.getAttribute("class")) ?? "")) await page.locator(".os-task", { hasText: "Markets" }).click();
+    await expect(markets).toHaveClass(/is-active/);
+    const link = frame.locator(`a[href="${source.href}"]`).first();
+    await link.click();
+    await expectNote(win, source.slug, source.anchor);
+    await expectSectionInView(win, source.heading);
+  }
+  await expect(win).toHaveCount(1);
+  expect(opened).toEqual([]);
 });
 
 test("on a phone, a note and its sections open full screen in the GitHub app", async ({ page }) => {
