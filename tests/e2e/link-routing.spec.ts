@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type FrameLocator, type Page } from "@playwright/test";
 
 const searchWin = '.os-win[data-app="search"]';
 
@@ -273,4 +273,47 @@ test("outside Lab OS, AI / LLM Stack Tracker links go to Markets", async ({ page
   await result.getByRole("link", { name: "AI / LLM Stack Tracker", exact: true }).click();
   await expect(page).toHaveURL(/\/markets$/);
   await expect(page.locator(".mk-status")).toHaveAttribute("data-source", "snapshot");
+});
+
+const designApps = { journal: "Journal", training: "Training run", terminal: "Terminal" } as const;
+
+/* Opens Journal, Training run, or Terminal from the Start menu's Other designs folder, or Forward pass from its apps. */
+async function openFromStart(page: Page, app: "forward" | keyof typeof designApps) {
+  await page.locator(".os-start").click();
+  const menu = page.getByRole("dialog", { name: "Start menu" });
+  if (app === "forward") await menu.getByRole("button", { name: "Forward pass", exact: true }).click();
+  else {
+    await menu.getByRole("button", { name: "Other designs", exact: true }).click();
+    await menu.getByRole("list", { name: "Other designs", exact: true }).getByRole("button", { name: designApps[app], exact: true }).click();
+  }
+  const win = page.locator(`.os-win[data-app="${app}"]`);
+  await expect(win).toHaveClass(/is-active/);
+  return { win, frame: page.frameLocator(`.os-win[data-app="${app}"] iframe`) };
+}
+
+const trackerLink = (frame: FrameLocator) => frame.locator("#writing").getByRole("link", { name: "AI / LLM Stack Tracker", exact: true });
+
+test("a Lab OS window still opens Markets when the OS does not answer the tracker link", async ({ page }) => {
+  await blockLiveData(page);
+  const opened = trackNewTabs(page);
+  /* A Lab OS tab left open across a deploy runs the OS from before labos:page existed, and that OS ignores the
+     message. Windows opened after the deploy load the new pages, so their tracker link asked an OS that never answered.
+     Message listeners on a window run in the order they were added, so this one has to come before the OS's. */
+  await page.addInitScript(() => {
+    if (window === window.top) window.addEventListener("message", (event) => {
+      if ((event.data as { type?: unknown } | null)?.type === "labos:page") event.stopImmediatePropagation();
+    });
+  });
+  await openSearch(page);
+
+  const { win, frame } = await openFromStart(page, "journal");
+  await trackerLink(frame).click();
+  await expect(win.locator(".os-address__text")).toHaveText("agarwal-labs.com/markets");
+  await expect(frame.locator(".mk-status")).toHaveAttribute("data-source", "snapshot");
+  await expect(frame.getByRole("heading", { name: "Chips", level: 2 })).toBeVisible();
+  await expect(page.locator('.os-win[data-app="markets"]')).toHaveCount(0);
+  await win.getByRole("button", { name: "Back" }).click();
+  await expect(win.locator(".os-address__text")).toHaveText("agarwal-labs.com/");
+  await expect(trackerLink(frame)).toBeVisible();
+  expect(opened).toEqual([]);
 });
