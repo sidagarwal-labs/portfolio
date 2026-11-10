@@ -2,6 +2,7 @@ const DAY_MS = 86_400_000;
 
 export function repo(name, overrides = {}) {
   return {
+    id: `R_${name}`,
     name,
     nameWithOwner: `Octo/${name}`,
     url: `https://github.com/Octo/${name}`,
@@ -33,6 +34,7 @@ export function graphqlData({ ownedCount = 3 } = {}) {
   const secret = repo("secret-plan", { isPrivate: true, description: "secret-plan internal", pushedAt: "2025-11-20T00:00:00Z" });
   return {
     user: {
+      id: "U_octo",
       login: "Octo",
       name: "Octo Cat",
       avatarUrl: "https://avatars.githubusercontent.com/u/1",
@@ -75,5 +77,24 @@ export function graphqlData({ ownedCount = 3 } = {}) {
         ]
       }
     }
+  };
+}
+
+/** All-time commit counts graphqlData's repositories would report (busy: 42, quiet: 1, an empty repository: no count). */
+export const ALL_TIME_COMMITS = { R_busy: 42, R_quiet: 1, "R_secret-plan": 99 };
+
+const historyNode = (id, totalCount) => ({ id, defaultBranchRef: { target: { history: { totalCount } } } });
+
+/** GraphQL `data` for COMMIT_TOTALS_QUERY: nodes follow `ids`; unknown ids resolve to an empty repository. */
+export function commitTotalsData(ids, counts = ALL_TIME_COMMITS) {
+  return { nodes: ids.map((id) => (id in counts ? historyNode(id, counts[id]) : { id, defaultBranchRef: null })) };
+}
+
+/** A fetch stand-in for GitHub's GraphQL endpoint that answers both queries from the fixtures. */
+export function graphqlUpstream({ data = graphqlData(), counts = ALL_TIME_COMMITS } = {}) {
+  return async (url, init) => {
+    const { variables } = JSON.parse(init.body);
+    const body = variables.ids ? { data: commitTotalsData(variables.ids, counts) } : { data };
+    return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
   };
 }

@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /*
- * Writes src/content/generated/github-insights.json: the site owner's full-year GitHub activity (GraphQL),
- * shown by the Lab OS GitHub app without any runtime API call. Requires GITHUB_TOKEN or GH_TOKEN.
+ * Writes src/content/generated/github-insights.json: the site owner's full-year GitHub activity and all-time commit counts
+ * per repository (GraphQL), shown by the Lab OS GitHub app without any runtime API call. Requires GITHUB_TOKEN or GH_TOKEN.
  * Without a token, or when the fetch or validation fails, the previous snapshot is kept and the script exits 0
  * so a deploy never breaks; it exits 1 only when no usable snapshot exists afterwards (the build needs one).
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { INSIGHTS_VERSION, normalizeGraphql, queryInsights } from "../workers/github-proxy/src/insights.mjs";
+import { INSIGHTS_VERSION, normalizeGraphql, queryAllTimeCommits, queryInsights } from "../workers/github-proxy/src/insights.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outFile = resolve(root, "src/content/generated/github-insights.json");
@@ -31,6 +31,9 @@ export function validateSnapshot(insights, { login, privateNames = [] } = {}) {
   for (const repo of insights.repos) {
     if (repo.activity.some((day, i, all) => day.date < range.from || day.date > range.to || (i && day.date <= all[i - 1].date))) {
       fail(`activity for ${repo.nameWithOwner}`);
+    }
+    if (repo.allTimeCommits !== undefined && !(Number.isInteger(repo.allTimeCommits) && repo.allTimeCommits >= 0)) {
+      fail(`allTimeCommits for ${repo.nameWithOwner}`);
     }
   }
   const serialized = JSON.stringify(insights);
@@ -68,11 +71,19 @@ async function main() {
   if (!token) return keepPrevious("GITHUB_TOKEN/GH_TOKEN not set");
   try {
     const data = await queryInsights(login, { token });
-    const insights = validateSnapshot(normalizeGraphql(data), { login, privateNames: privateRepoNames(data) });
+    // Optional field: a failure here still writes the fresh calendar, just without all-time counts.
+    const allTimeCommits = await queryAllTimeCommits(data, { token }).catch((error) => {
+      console.warn(`github: all-time commit counts left out (${error.message})`);
+      return new Map();
+    });
+    const insights = validateSnapshot(normalizeGraphql(data, { allTimeCommits }), { login, privateNames: privateRepoNames(data) });
     await mkdir(dirname(outFile), { recursive: true });
     await writeFile(outFile, `${JSON.stringify(insights, null, 2)}\n`);
     const { totals, days, repos } = insights;
-    console.log(`github: ${insights.login} ${totals.contributions} contributions, ${days.length} days, ${repos.length} repos -> ${outFile}`);
+    const counted = repos.filter((repo) => repo.allTimeCommits !== undefined).length;
+    console.log(
+      `github: ${insights.login} ${totals.contributions} contributions, ${days.length} days, ${repos.length} repos (${counted} with all-time commits) -> ${outFile}`
+    );
   } catch (error) {
     keepPrevious(error.message);
   }
