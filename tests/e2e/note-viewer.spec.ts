@@ -65,7 +65,7 @@ async function bringSearchForward(page: Page) {
   await expect(win).toHaveClass(/is-active/);
 }
 
-/* Earlier AI buildout editions sit in a collapsed list. */
+/* Notes beyond the three featured ones sit in a collapsed "All research notes" list. */
 const clickNoteIn = async (frame: FrameLocator, slug: string) => {
   const link = frame.locator(`${noteLinks}[href="${noteUrl(slug)}"]`).first();
   await link.evaluate((anchor) => {
