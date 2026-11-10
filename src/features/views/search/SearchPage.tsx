@@ -10,7 +10,10 @@ import { useScrollSpy } from "../useScrollSpy";
 import { contactLinks, earlierProjects, emailLink, marketTracker, noteDateFormatter, viewProjects } from "../viewData";
 import BootSequence, { labLogo } from "./BootSequence";
 import { hasBooted, rememberBoot } from "./bootState";
-import { describeSource, matchesTerm, phraseBoost, queryTerms, runSearch, searchDocs, type SearchDoc } from "./searchIndex";
+import LibrarySection from "./LibrarySection";
+import RoboticsSection from "./RoboticsSection";
+import { matchesTerm, phraseBoost, queryTerms, runSearch, searchDocs, type SearchDoc } from "./searchIndex";
+import Source from "./Source";
 import { embeddedView, postToOs } from "../os/embed";
 import "./search.css";
 
@@ -18,15 +21,16 @@ import "./search.css";
 const embedded = embeddedView === "search";
 
 const defaultQuery = "Sid Agarwal";
-const suggestions = ["RAG", "retrieval", "resume", "AI buildout", "robotics", "books"];
+const suggestions = ["RAG", "retrieval", "resume", "AI buildout", "robotics", "podcasts"];
 const tabs = [
   { id: "intro", label: "All" },
   { id: "lab", label: "Projects" },
   { id: "writing", label: "Writing" },
   { id: "impact", label: "About" },
-  { id: "library", label: "Books" }
+  { id: "robotics", label: "Robotics" },
+  { id: "library", label: "Library" }
 ];
-/* Contact sits below Books but has no tab, so the spy stops at Books. */
+/* Contact sits below Library but has no tab, so the spy stops at Library. */
 const spyIds = tabs.map((tab) => tab.id);
 
 function DocLink({ doc, className, children }: { doc: SearchDoc; className?: string; children: ReactNode }) {
@@ -37,22 +41,6 @@ function DocLink({ doc, className, children }: { doc: SearchDoc; className?: str
 
 function Highlight({ text, terms, prefix }: { text: string; terms: string[]; prefix?: string }) {
   return <>{text.split(/([A-Za-z0-9]+)/).map((part, index) => (index % 2 === 1 && matchesTerm(part, terms, prefix) ? <mark key={index}>{part}</mark> : part))}</>;
-}
-
-function Source({ href, route }: { href: string; route?: boolean }) {
-  const source = describeSource(href, route);
-  const own = source.site === "Agarwal Labs" || source.site === "arXiv Search";
-  return (
-    <div className="se-source">
-      {own
-        ? <img className="se-favicon" src={labLogo} alt="" width="28" height="28" />
-        : <span className="se-favicon" aria-hidden="true">{source.site.charAt(0).toUpperCase()}</span>}
-      <span className="se-source__text">
-        <span className="se-source__site">{source.site}</span>
-        <span className="se-source__url">{source.url}</span>
-      </span>
-    </div>
-  );
 }
 
 function SearchPage() {
@@ -258,8 +246,9 @@ function SearchPage() {
                 <ul className="se-sitelinks">
                   <li><a href="#lab">Projects</a><span>Retrieval, RAG, and finance builds</span></li>
                   <li><a href="#writing">Writing</a><span>AI buildout notes and essays</span></li>
-                  <li><a href="#impact">About</a><span>Microsoft, education, robotics</span></li>
-                  <li><a href="#library">Bookshelf</a><span>Books I recommend</span></li>
+                  <li><a href="#impact">About</a><span>Microsoft, Amazon, education</span></li>
+                  <li><a href="#robotics">Robotics</a><span>Pitt Pirates, FRC Team 2642</span></li>
+                  <li><a href="#library">Library</a><span>Books and podcasts I recommend</span></li>
                   <li><a href={profileContent.resumeHref}>Resume</a><span>PDF</span></li>
                   {emailLink && <li><a href={emailLink.href}>Email</a><span>{emailLink.href.replace("mailto:", "")}</span></li>}
                 </ul>
@@ -288,7 +277,7 @@ function SearchPage() {
                 <div><dt>Previously</dt><dd>Product manager intern at Amazon (2020)</dd></div>
                 <div><dt>Education</dt><dd>UNC Charlotte, business and operations, minor in economics</dd></div>
                 <div><dt>Studying</dt><dd>M.S. in Data Science and Business Analytics</dd></div>
-                <div><dt>Robotics</dt><dd>Captained and mentored <Link to="/robotics">the Pitt Pirates, FRC Team 2642</Link></dd></div>
+                <div><dt>Robotics</dt><dd>Captained and mentored <a href="#robotics">the Pitt Pirates, FRC Team 2642</a></dd></div>
               </dl>
             </aside>
 
@@ -374,7 +363,7 @@ function SearchPage() {
                   I studied business and operations at UNC Charlotte, with a minor in economics. In 2020, I
                   interned as a product manager at Amazon, designing weather and route-closure safety alerts
                   for Middle Mile drivers. I also captained and mentored{" "}
-                  <Link to="/robotics">the Pitt Pirates, FRC Team 2642</Link>. I'm now pursuing an M.S. in
+                  <a href="#robotics">the Pitt Pirates, FRC Team 2642</a>. I'm now pursuing an M.S. in
                   Data Science and Business Analytics.
                 </p>
                 <div className="se-paa">
@@ -405,30 +394,9 @@ function SearchPage() {
                 <a className="small-link" href={profileContent.resumeHref}>Resume (PDF)</a>
               </section>
 
-              <section className="se-section" id="library" aria-labelledby="se-library-heading">
-                <h2 id="se-library-heading">On my bookshelf</h2>
-                <ul className="se-books">
-                  {profileContent.books.map((book) => (
-                    <li key={book.slug}>
-                      <a href={book.href}>
-                        <span className="se-books__cover">
-                          <img
-                            src={book.cover}
-                            alt=""
-                            width="72"
-                            height="108"
-                            loading="lazy"
-                            decoding="async"
-                            onError={(event) => { event.currentTarget.style.visibility = "hidden"; }}
-                          />
-                        </span>
-                        <span className="se-books__title">{book.title}</span>
-                      </a>
-                      <span className="se-books__author">{book.author}</span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+              <RoboticsSection />
+
+              <LibrarySection />
 
               <section className="se-section se-contact" id="contact" aria-labelledby="se-contact-heading">
                 <h2 id="se-contact-heading">Say hello</h2>

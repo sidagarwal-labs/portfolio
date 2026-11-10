@@ -303,3 +303,92 @@
 .os--retro .gh-repo.is-highlighted { background: #000080; box-shadow: none; }
 .os--retro .gh-repo.is-highlighted a, .os--retro .gh-repo.is-highlighted .gh-repo__value, .os--retro .gh-repo.is-highlighted .gh-muted, .os--retro .gh-repo.is-highlighted .gh-repo__total { color: #fff; }
 .os--retro .gh-stat, .os--retro .gh-metric, .os--retro .gh-stage { background: #fff; border-color: #808080; }
+
+/* File view: a Markdown file from one of the owner's repositories, laid out like GitHub's file page */
+.gh .gh-pane:focus { outline: none; }
+.gh-file { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 16px 20px 28px; }
+.gh-file__head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; min-width: 0; }
+.gh-crumbs { display: flex; flex: 1 1 280px; align-items: center; gap: 8px; min-width: 0; font-size: 17px; line-height: 1.35; }
+.gh-crumbs__icon { flex: none; color: #4f5664; }
+.gh-crumbs ol { display: flex; flex-wrap: wrap; align-items: baseline; min-width: 0; margin: 0; padding: 0; list-style: none; }
+.gh-crumbs li { min-width: 0; overflow-wrap: anywhere; }
+.gh-crumbs a { text-decoration: none; }
+.gh-crumbs a:hover { text-decoration: underline; }
+.gh-crumbs__sep { margin: 0 6px; color: #6b7383; }
+.gh-crumbs__repo, .gh-crumbs__file { font-weight: 600; }
+.gh-crumbs__file { color: #1f2328; }
+.gh-file__open { flex: none; margin-left: auto; text-decoration: none; }
+.gh-file__open svg { flex: none; }
+.gh-file__desc { flex: 1 1 100%; color: #4f5664; overflow-wrap: anywhere; }
+.gh-file__box { min-width: 0; border: 1px solid #d0d5dd; border-radius: 8px; background: #fff; }
+.gh-file__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; padding: 9px 16px; border-bottom: 1px solid #d0d5dd; border-radius: 8px 8px 0 0; background: #f6f8fa; color: #4f5664; font-size: 13px; }
+.gh-file__bar svg { flex: none; }
+.gh-file__name { min-width: 0; color: #1f2328; font-weight: 600; overflow-wrap: anywhere; }
+.gh-file__meta { color: #6b7383; font-variant-numeric: tabular-nums; }
+.gh-file__raw { margin-left: auto; font-weight: 500; }
+.gh-file__loading { display: flex; align-items: center; gap: 8px; padding: 24px 32px; color: #4f5664; font-size: 13.5px; }
+.gh .gh-file__alert { margin: 16px; }
+
+/* Rendered Markdown, after GitHub's markdown-body */
+.gh-md { min-width: 0; padding: 28px 36px 32px; color: #1f2328; font-size: 15px; line-height: 1.6; overflow-wrap: break-word; }
+.gh .gh-md:focus { outline: none; }
+.gh-md > :first-child { margin-top: 0 !important; }
+.gh-md > :last-child { margin-bottom: 0 !important; }
+.gh-md p, .gh-md ul, .gh-md ol, .gh-md blockquote, .gh-md pre, .gh-md .gh-md__table { margin: 0 0 16px; }
+.gh-md .gh-md__h { margin: 24px 0 16px; color: #1f2328; font-weight: 600; line-height: 1.25; scroll-margin-top: 72px; }
+/* Headings take focus when a file or section opens, like the Reader's title, without a ring. */
+.gh .gh-md .gh-md__h:focus { outline: none; }
+.gh-md .gh-md__h1 { padding-bottom: 0.3em; border-bottom: 1px solid #e3e6eb; font-size: 1.95em; }
+.gh-md .gh-md__h2 { padding-bottom: 0.3em; border-bottom: 1px solid #e3e6eb; font-size: 1.45em; }
+.gh-md .gh-md__h3 { font-size: 1.2em; }
+.gh-md .gh-md__h4 { font-size: 1em; }
+.gh-md .gh-md__h5 { font-size: 0.9em; }
+.gh-md .gh-md__h6 { color: #4f5664; font-size: 0.85em; }
+.gh-md a { color: #2a4fbf; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
+.gh-md a:hover { color: #2445a8; text-decoration-thickness: 2px; }
+.gh-md strong { font-weight: 600; }
+.gh-md ul, .gh-md ol { padding-left: 2em; }
+.gh-md ul ul, .gh-md ul ol, .gh-md ol ol, .gh-md ol ul { margin: 4px 0 0; }
+.gh-md li + li { margin-top: 4px; }
+.gh-md li > p { margin: 12px 0 0; }
+.gh-md li > p:first-child { margin-top: 0; }
+.gh-md .gh-md__task { list-style: none; }
+.gh-md .gh-md__task input { margin: 0 0.35em 0.2em -1.4em; vertical-align: middle; }
+.gh-md blockquote { padding: 0 1em; border-left: 0.25em solid #d0d5dd; color: #4f5664; }
+.gh-md blockquote > :last-child { margin-bottom: 0; }
+.gh-md hr { height: 0.25em; margin: 24px 0; padding: 0; border: 0; background: #e3e6eb; }
+.gh-md img { display: inline; max-width: 100%; height: auto; vertical-align: middle; background: #fff; }
+.gh-md code { padding: 0.2em 0.4em; border-radius: 6px; background: rgba(129, 139, 152, 0.14); font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; font-size: 85%; white-space: break-spaces; overflow-wrap: anywhere; }
+.gh-md pre { padding: 16px; overflow: auto; overscroll-behavior-x: contain; border-radius: 6px; background: #f6f8fa; font-size: 85%; line-height: 1.45; }
+.gh-md pre code { padding: 0; border-radius: 0; background: transparent; font-size: 100%; white-space: pre; overflow-wrap: normal; }
+/* Wide tables scroll inside their own box, so the window never scrolls sideways. */
+.gh-md .gh-md__table { max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; }
+.gh-md table { border-collapse: collapse; border-spacing: 0; font-variant-numeric: tabular-nums; }
+.gh-md th, .gh-md td { padding: 6px 13px; border: 1px solid #d0d5dd; vertical-align: top; }
+.gh-md th { background: #f6f8fa; font-weight: 600; text-align: left; }
+.gh-md tbody tr:nth-child(2n) { background: #fafbfc; }
+.gh-md sup { line-height: 0; }
+.gh-md .gh-md__fnref a { text-decoration: none; }
+.gh-md .gh-md__footnotes { margin-top: 28px; padding-top: 12px; border-top: 1px solid #e3e6eb; color: #4f5664; font-size: 13px; }
+.gh .gh-md .gh-md__footnotes li:focus { outline: none; }
+.gh-md .gh-md__fnback { text-decoration: none; }
+
+@container (max-width: 760px) {
+  .gh-file { gap: 12px; padding: 14px 14px 24px; }
+  .gh-toolbar--file .gh-search { display: none; }
+  .gh-crumbs { flex-basis: 100%; font-size: 16px; }
+  .gh-file__open { margin-left: 0; }
+  .gh-file__bar { padding: 8px 12px; }
+  .gh-file__loading { padding: 20px 16px; }
+  .gh .gh-file__alert { margin: 12px; }
+  .gh-md { padding: 18px 16px 24px; }
+  .gh-md .gh-md__h1 { font-size: 1.7em; }
+  .gh-md .gh-md__h2 { font-size: 1.35em; }
+  .gh-md ul, .gh-md ol { padding-left: 1.5em; }
+}
+
+.os--retro .gh-file__box, .os--retro .gh-file__bar, .os--retro .gh-md pre, .os--retro .gh-md code { border-radius: 0; }
+.os--retro .gh-file__box { border-color: #808080; }
+.os--retro .gh-file__bar { border-color: #808080; background: #c0c0c0; color: #000; }
+.os--retro .gh-md pre, .os--retro .gh-md th { background: #e8e8e8; }
+.os--retro .gh-md th, .os--retro .gh-md td { border-color: #808080; }
