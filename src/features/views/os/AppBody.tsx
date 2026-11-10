@@ -109,7 +109,7 @@ function Readme({ actions }: { actions: OsActions }) {
       <p><strong>Hi, I'm Sid Agarwal.</strong> {roleLine}.</p>
       <p>This site is a browser-based desktop simulation, and its apps are my portfolio. It does not control your computer or files.</p>
       <p>Drag desktop icons to arrange them; Shift + arrow keys also move a focused icon. Positions are saved in this browser. Drag title bars to move windows, their edges or corners to resize, and double-click a title bar to maximize. The taskbar restores minimized apps.</p>
-      <p>Other designs holds Training run, Terminal, and Journal. Start search and the phone home screen still open individual apps directly. Resume and README.txt start at the bottom-left of the desktop.</p>
+      <p>Other designs holds Training run, Terminal, and Journal, and Games holds the games. The Start menu and the phone home screen use the same folders, and Start search finds the apps inside them. Resume and README.txt start at the bottom-left of the desktop.</p>
       <ul>
         {appList.map((id) => (
           <li key={id}>

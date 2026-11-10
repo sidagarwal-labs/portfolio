@@ -85,7 +85,8 @@ function repoInsight(value: unknown, i: number, range: { from: string; to: strin
     createdAt: text(repo.createdAt, field("createdAt")),
     pushedAt: nullableText(repo.pushedAt, field("pushedAt")),
     isFork: repo.isFork as boolean,
-    activity: dayCounts(repo.activity, field("activity"), range, false)
+    activity: dayCounts(repo.activity, field("activity"), range, false),
+    ...(repo.allTimeCommits === undefined ? {} : { allTimeCommits: count(repo.allTimeCommits, field("allTimeCommits")) })
   };
 }
 

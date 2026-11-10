@@ -167,7 +167,7 @@ test.describe("stats", () => {
   // 2025-01-05 is a Sunday, so each row below is one Sunday-start week.
   const counts = [0, 1, 1, 1, 0, 2, 0, /**/ 3, 3, 3, 3, 0, 0, 0, /**/ 0, 0, 1, 0, 0, 2, 4];
   const insights = makeInsights(makeDays(counts, "2025-01-05"), [
-    repo("alpha", { activity: makeDays([3, 3, 3], "2025-01-12"), languages: [{ name: "Python", size: 300 }, { name: "Shell", size: 100 }] }),
+    repo("alpha", { activity: makeDays([3, 3, 3], "2025-01-12"), languages: [{ name: "Python", size: 300 }, { name: "Shell", size: 100 }], allTimeCommits: 120 }),
     repo("beta", { activity: [{ date: "2025-01-25", count: 4 }, { date: "2024-12-01", count: 50 }], languages: [{ name: "Python", size: 100 }] }),
     repo("idle", { activity: [], languages: [{ name: "TypeScript", size: 500 }] })
   ]);
@@ -194,6 +194,9 @@ test.describe("stats", () => {
       ["beta", 4, 1]
     ]);
     expect(stats.topRepos.reduce((s, r) => s + r.share, 0)).toBeCloseTo(1, 10);
+    // The all-time count passes through untouched and stays absent when the data has none.
+    expect(stats.topRepos[0].allTimeCommits).toBe(120);
+    expect("allTimeCommits" in stats.topRepos[1]).toBe(false);
     expect(stats.languages.map((l) => [l.name, l.bytes])).toEqual([
       ["TypeScript", 500],
       ["Python", 400],

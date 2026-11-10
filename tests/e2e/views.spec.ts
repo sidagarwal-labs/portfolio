@@ -357,8 +357,9 @@ test("Lab OS windows open, focus, minimize, maximize, and close", async ({ page 
   await expect(page.locator(searchWin)).toBeVisible();
 
   await page.locator(".os-start").click();
-  await page.getByRole("dialog", { name: "Start menu" }).getByRole("list", { name: "Apps", exact: true })
-    .getByRole("button", { name: "Journal", exact: true }).click();
+  const menu = page.getByRole("dialog", { name: "Start menu" });
+  await menu.getByRole("button", { name: "Other designs", exact: true }).click();
+  await menu.getByRole("list", { name: "Other designs", exact: true }).getByRole("button", { name: "Journal", exact: true }).click();
   const journal = page.locator('.os-win[data-app="journal"]');
   await expect(journal).toHaveClass(/is-active/);
   await expect(page.frameLocator('.os-win[data-app="journal"] iframe').getByRole("heading", { name: "Sid Agarwal", exact: true })).toBeVisible();
@@ -583,6 +584,8 @@ test("desktop icons drag without opening, persist, move with the keyboard, and c
   expect((await icon.boundingBox())!.y).toBe(before.y + 92);
   await page.locator(".os-start").click();
   await page.getByRole("button", { name: "Arrange desktop icons", exact: true }).click();
+  /* Arranging resets positions in an effect after the click; the status appears in the same render. */
+  await expect(page.locator(".os-desktop-notice")).toHaveText("Icons arranged.");
   expect((await icon.boundingBox())!.x).toBe(before.x);
   expect((await icon.boundingBox())!.y).toBe(before.y);
   await icon.focus();
@@ -650,7 +653,7 @@ test("Start search and restart use the real desktop rather than a different thre
   await expect(page.getByRole("status")).toContainText("No apps match this search.");
   await search.fill("journal");
   const menu = page.getByRole("dialog", { name: "Start menu" });
-  await menu.getByRole("list", { name: "Apps", exact: true }).getByRole("button", { name: "Journal", exact: true }).click();
+  await menu.getByRole("list", { name: "Search results", exact: true }).getByRole("button", { name: "Journal", exact: true }).click();
   await expect(page.locator('.os-win[data-app="journal"]')).toBeVisible();
   await page.clock.install();
   await page.locator(".os-start").click();
@@ -730,8 +733,10 @@ for (const style of ["modern", "retro"]) {
     await expect(page.getByRole("list", { name: "Games apps", exact: true }).locator(".os-icon__label"))
       .toHaveText(["Snake", "Mines", "Blocks", "Rank It", "Next Token"]);
     await page.locator(".os-start").click();
-    const menuApps = page.getByRole("dialog", { name: "Start menu" }).getByRole("list", { name: "Apps", exact: true });
-    for (const { title } of designs) await expect(menuApps.getByRole("button", { name: title, exact: true })).toBeVisible();
+    const menu = page.getByRole("dialog", { name: "Start menu" });
+    await menu.getByRole("button", { name: "Other designs", exact: true }).click();
+    const menuDesigns = menu.getByRole("list", { name: "Other designs", exact: true });
+    await expect(menuDesigns.getByRole("button")).toHaveText(designs.map(({ title }) => title));
     expect(errors).toEqual([]);
   });
 }
@@ -763,14 +768,4 @@ test("the grouped layout replaces v1 once and preserves subsequent manual positi
   expect((await games.boundingBox())!.x).toBe(before.x + 92);
   expect((await games.boundingBox())!.y).toBe(before.y);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("lab-os-icons-v2") ?? "{}").games)).toEqual({ col: 1, row: 2 });
-});
-
-test("phone home keeps direct access to the alternate designs and games", async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.setViewportSize({ width: 390, height: 760 });
-  await page.goto("./?view=os");
-  for (const title of ["Training run", "Terminal", "Journal", "Next Token"]) {
-    await expect(page.locator(".os-home .os-icon", { hasText: title })).toBeVisible();
-  }
-  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
 });

@@ -211,6 +211,36 @@ test("the AI stack falls back to the saved snapshot when the sheet can't be read
   await expect(page.locator(".mk-layer tr[data-symbol]")).toHaveCount(stackSnapshot.rows.length);
 });
 
+test("Markets tickers keep the reader's place on the page and in a Lab OS window", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const scrollY = () => page.evaluate(() => window.scrollY);
+  await page.goto("./markets?symbol=MSFT");
+  await expect(page.getByRole("heading", { name: "Microsoft", exact: true })).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 400));
+  await expect.poll(() => scrollY()).toBe(400);
+  await page.getByRole("navigation", { name: "Watchlist" }).getByRole("link", { name: /NVDA/ }).click();
+  await expect(page).toHaveURL(/\/markets\?symbol=NVDA$/);
+  await expect(page.getByRole("heading", { name: "NVIDIA", exact: true })).toBeVisible();
+  expect(await scrollY()).toBe(400);
+  /* A different page still opens at its top. */
+  await page.getByRole("navigation", { name: "Live pages" }).getByRole("link", { name: "Launches" }).click();
+  await expect(page).toHaveURL(/\/launches$/);
+  expect(await scrollY()).toBe(0);
+
+  await page.goto("./?view=os");
+  await page.getByRole("button", { name: "Open Markets" }).click();
+  const frame = page.frameLocator('.os-win[data-app="markets"] iframe');
+  await expect(frame.getByRole("heading", { name: "NVIDIA", exact: true })).toBeVisible();
+  const body = frame.locator("body");
+  await body.evaluate(() => window.scrollTo(0, 300));
+  await expect.poll(() => body.evaluate(() => window.scrollY)).toBe(300);
+  /* A scripted click reaches the window's link handler without Playwright first scrolling the link into view. */
+  await frame.getByRole("navigation", { name: "Watchlist" }).getByRole("link", { name: /MSFT/ }).evaluate((link) => (link as HTMLElement).click());
+  await expect(frame.getByRole("heading", { name: "Microsoft", exact: true })).toBeVisible();
+  expect(await body.evaluate(() => window.scrollY)).toBe(300);
+});
+
 test("the launch tracker shows a live launch, plays streams in place, and lists replays", async ({ page }) => {
   const now = Date.now();
   await page.unroute(upcomingApi);

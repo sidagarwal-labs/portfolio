@@ -7,13 +7,15 @@ export const INSIGHTS_VERSION = 1;
 export const GITHUB_GRAPHQL_URL = "https://api.github.com/graphql";
 export const USER_AGENT = "agarwal-labs-github-insights";
 export const MAX_REPOS = 30;
+/** Matches commitContributionsByRepository(maxRepositories: 25), so every repository with commits can get an all-time count. */
+export const MAX_COMMIT_TOTALS = 25;
 
 const LOGIN_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
 const DAY_MS = 86_400_000;
 
 export const INSIGHTS_QUERY = `query GitHubInsights($login: String!) {
   user(login: $login) {
-    login name avatarUrl url bio
+    id login name avatarUrl url bio
     contributionsCollection {
       contributionCalendar { totalContributions weeks { contributionDays { date contributionCount } } }
       totalCommitContributions totalPullRequestContributions totalPullRequestReviewContributions
@@ -29,9 +31,22 @@ export const INSIGHTS_QUERY = `query GitHubInsights($login: String!) {
   }
 }
 fragment RepoFields on Repository {
-  name nameWithOwner url description isPrivate isFork createdAt pushedAt diskUsage stargazerCount forkCount
+  id name nameWithOwner url description isPrivate isFork createdAt pushedAt diskUsage stargazerCount forkCount
   primaryLanguage { name }
   languages(first: 8, orderBy: {field: SIZE, direction: DESC}) { edges { size node { name } } }
+}`;
+
+/**
+ * All-time commits on each repository's default branch authored by the user. Needs the node ids from INSIGHTS_QUERY,
+ * so it runs as a second request (rate-limit cost 1 for up to MAX_COMMIT_TOTALS repositories).
+ */
+export const COMMIT_TOTALS_QUERY = `query GitHubCommitTotals($ids: [ID!]!, $userId: ID!) {
+  nodes(ids: $ids) {
+    ... on Repository {
+      id
+      defaultBranchRef { target { ... on Commit { history(author: {id: $userId}) { totalCount } } } }
+    }
+  }
 }`;
 
 export class GitHubInsightsError extends Error {
@@ -69,8 +84,9 @@ export function fillDays(from, to, counts) {
 export const occurredAtToDate = (occurredAt) => toDay(Date.parse(occurredAt) + DAY_MS / 2);
 
 const int = (value) => (Number.isFinite(value) && value > 0 ? Math.floor(value) : 0);
+const isCount = (value) => Number.isInteger(value) && value >= 0;
 
-function repoInsight(repo, activity) {
+function repoInsight(repo, activity, allTimeCommits) {
   return {
     name: repo.name,
     nameWithOwner: repo.nameWithOwner,
@@ -87,14 +103,24 @@ function repoInsight(repo, activity) {
     createdAt: repo.createdAt,
     pushedAt: repo.pushedAt ?? null,
     isFork: Boolean(repo.isFork),
-    activity
+    activity,
+    ...(isCount(allTimeCommits) ? { allTimeCommits } : {})
   };
 }
 
 const activityTotal = (repo) => repo.activity.reduce((sum, day) => sum + day.count, 0);
 
-/** @param {{ user: any }} data GraphQL `data` for INSIGHTS_QUERY */
-export function normalizeGraphql(data, { now = new Date() } = {}) {
+/** Public repositories (isPrivate === false) that have commit contributions in the INSIGHTS_QUERY data. */
+const publicContributionRepos = (data) =>
+  (data?.user?.contributionsCollection?.commitContributionsByRepository ?? [])
+    .map((entry) => entry?.repository)
+    .filter((repo) => repo && repo.isPrivate === false);
+
+/**
+ * @param {{ user: any }} data GraphQL `data` for INSIGHTS_QUERY
+ * @param {{ now?: Date, allTimeCommits?: Map<string, number> }} [options] allTimeCommits: repository node id -> count (queryAllTimeCommits)
+ */
+export function normalizeGraphql(data, { now = new Date(), allTimeCommits = new Map() } = {}) {
   const user = data?.user;
   if (!user) throw new GitHubInsightsError("not-found", 404, "GitHub user not found");
   const collection = user.contributionsCollection;
@@ -120,10 +146,12 @@ export function normalizeGraphql(data, { now = new Date() } = {}) {
       .filter(([, count]) => count > 0)
       .sort(([a], [b]) => (a < b ? -1 : 1))
       .map(([date, count]) => ({ date, count }));
-    repos.set(repo.nameWithOwner, repoInsight(repo, activity));
+    repos.set(repo.nameWithOwner, repoInsight(repo, activity, allTimeCommits.get(repo.id)));
   }
   for (const repo of user.repositories?.nodes ?? []) {
-    if (repo?.isPrivate === false && !repo.isFork && !repos.has(repo.nameWithOwner)) repos.set(repo.nameWithOwner, repoInsight(repo, []));
+    if (repo?.isPrivate === false && !repo.isFork && !repos.has(repo.nameWithOwner)) {
+      repos.set(repo.nameWithOwner, repoInsight(repo, [], allTimeCommits.get(repo.id)));
+    }
   }
   const ranked = [...repos.values()]
     .sort((a, b) => activityTotal(b) - activityTotal(a) || (b.pushedAt ?? "").localeCompare(a.pushedAt ?? ""))
@@ -163,17 +191,15 @@ function retryAfterSeconds(headers, now) {
 
 const rateLimited = (retryAfter) => new GitHubInsightsError("rate-limited", 429, "GitHub rate limit reached", retryAfter);
 
-/** Runs INSIGHTS_QUERY and returns the raw GraphQL `data`, which can include private repos: always normalize it. */
-export async function queryInsights(login, { token, fetchImpl = fetch, now = new Date(), signal } = {}) {
-  if (!isValidLogin(login)) throw new GitHubInsightsError("invalid-login", 400, "Invalid GitHub login");
-  if (!token) throw new GitHubInsightsError("misconfigured", 500, "GitHub token is not configured");
+/** POSTs one GraphQL query; maps transport, HTTP, and rate-limit failures to GitHubInsightsError. Returns `data` and `errors`. */
+async function postGraphql(query, variables, { token, fetchImpl = fetch, now = new Date(), signal, timeoutMs = 20_000 }) {
   let response;
   try {
     response = await fetchImpl(GITHUB_GRAPHQL_URL, {
       method: "POST",
       headers: { Authorization: `bearer ${token}`, "User-Agent": USER_AGENT, "Content-Type": "application/json" },
-      body: JSON.stringify({ query: INSIGHTS_QUERY, variables: { login } }),
-      signal: signal ?? AbortSignal.timeout(20_000)
+      body: JSON.stringify({ query, variables }),
+      signal: signal ?? AbortSignal.timeout(timeoutMs)
     });
   } catch {
     throw new GitHubInsightsError("upstream", 502, "GitHub request failed");
@@ -190,15 +216,47 @@ export async function queryInsights(login, { token, fetchImpl = fetch, now = new
   }
   const errors = Array.isArray(payload?.errors) ? payload.errors : [];
   if (errors.some((error) => error?.type === "RATE_LIMITED")) throw rateLimited(retryAfterSeconds(response.headers, now));
-  if (payload?.data && payload.data.user === null) throw new GitHubInsightsError("not-found", 404, "GitHub user not found");
-  if (errors.length || !payload?.data?.user) throw new GitHubInsightsError("upstream", 502, "GitHub returned an incomplete response");
-  return payload.data;
+  return { data: payload?.data, errors };
 }
 
+/** Runs INSIGHTS_QUERY and returns the raw GraphQL `data`, which can include private repos: always normalize it. */
+export async function queryInsights(login, options = {}) {
+  if (!isValidLogin(login)) throw new GitHubInsightsError("invalid-login", 400, "Invalid GitHub login");
+  if (!options.token) throw new GitHubInsightsError("misconfigured", 500, "GitHub token is not configured");
+  const { data, errors } = await postGraphql(INSIGHTS_QUERY, { login }, options);
+  if (data && data.user === null) throw new GitHubInsightsError("not-found", 404, "GitHub user not found");
+  if (errors.length || !data?.user) throw new GitHubInsightsError("upstream", 502, "GitHub returned an incomplete response");
+  return data;
+}
+
+/**
+ * Runs COMMIT_TOTALS_QUERY for the public repositories with commit contributions in `data` (from queryInsights).
+ * Returns repository node id -> all-time default-branch commits by the user. Repositories GitHub could not count
+ * (empty, no default branch, or a per-node error) are left out; the request itself fails like queryInsights.
+ */
+export async function queryAllTimeCommits(data, options = {}) {
+  const userId = data?.user?.id;
+  const ids = [...new Set(publicContributionRepos(data).map((repo) => repo.id).filter((id) => typeof id === "string" && id))]
+    .slice(0, MAX_COMMIT_TOTALS);
+  const totals = new Map();
+  if (typeof userId !== "string" || !userId || !ids.length) return totals;
+  if (!options.token) throw new GitHubInsightsError("misconfigured", 500, "GitHub token is not configured");
+  const { data: result } = await postGraphql(COMMIT_TOTALS_QUERY, { ids, userId }, { timeoutMs: 10_000, ...options });
+  if (!Array.isArray(result?.nodes)) throw new GitHubInsightsError("upstream", 502, "GitHub returned an incomplete response");
+  const wanted = new Set(ids);
+  for (const node of result.nodes) {
+    const total = node?.defaultBranchRef?.target?.history?.totalCount;
+    if (wanted.has(node?.id) && isCount(total)) totals.set(node.id, total);
+  }
+  return totals;
+}
+
+/** Insights for one user. All-time commit counts are optional: if that second request fails, they are left out. */
 export async function fetchInsights(login, options = {}) {
   const data = await queryInsights(login, options);
+  const allTimeCommits = await queryAllTimeCommits(data, options).catch(() => new Map());
   try {
-    return normalizeGraphql(data, { now: options.now ?? new Date() });
+    return normalizeGraphql(data, { now: options.now ?? new Date(), allTimeCommits });
   } catch (error) {
     if (error instanceof GitHubInsightsError) throw error;
     throw new GitHubInsightsError("upstream", 502, "GitHub returned an unexpected response");

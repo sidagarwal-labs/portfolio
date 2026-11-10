@@ -181,7 +181,8 @@ test("Rank It fits a phone screen", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 390, height: 760 });
   await page.goto("./");
-  await page.locator(".os-home__grid .os-icon", { hasText: "Rank It" }).click();
+  await page.locator(".os-home__grid .os-icon", { hasText: "Games" }).click();
+  await page.locator(".os-folder .os-icon", { hasText: "Rank It" }).click();
   await expect(page.locator(".rankit__doc")).toHaveCount(5);
   await page.getByRole("button", { name: "Submit ranking" }).click();
   await expect(page.locator(".rankit__score")).toContainText(`nDCG@5 ${fmt(data.rounds[0].ndcg5.start)}`);

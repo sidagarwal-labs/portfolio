@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  # Daily rebuild so the AI leaderboards pick up new Epoch AI benchmark data.
+  # Daily rebuild so the AI leaderboards (Epoch AI benchmarks) and the GitHub app snapshot pick up new data.
   schedule:
     - cron: "17 9 * * *"
 
