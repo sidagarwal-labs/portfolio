@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Lock, Power, Search, X } from "lucide-react";
+import { arxivSearchRepoHref } from "../../../content/arxivSearch";
 import { courseworkProjects, currentResearchNotes, earlierBuildoutEditions } from "../../../content/journalContent";
 import { profileContent } from "../../../content/siteContent";
 import { usePrefersReducedMotion } from "../../../hooks/usePrefersReducedMotion";
@@ -10,6 +11,7 @@ import { useScrollSpy } from "../useScrollSpy";
 import { contactLinks, earlierProjects, emailLink, marketTracker, noteDateFormatter, viewProjects } from "../viewData";
 import BootSequence, { labLogo } from "./BootSequence";
 import { hasBooted, rememberBoot } from "./bootState";
+import FeaturedArxiv from "./FeaturedArxiv";
 import LibrarySection from "./LibrarySection";
 import RoboticsSection from "./RoboticsSection";
 import { matchesTerm, phraseBoost, queryTerms, runSearch, searchDocs, type SearchDoc } from "./searchIndex";
@@ -32,6 +34,10 @@ const tabs = [
 ];
 /* Contact sits below Library but has no tab, so the spy stops at Library. */
 const spyIds = tabs.map((tab) => tab.id);
+/* arXiv Search is featured above the results, so the Projects list skips it, and searches that find it pin it too. */
+const featuredProject = viewProjects.find((project) => project.href === arxivSearchRepoHref);
+const featuredDocId = `project-${featuredProject?.symbol}`;
+const otherProjects = viewProjects.filter((project) => project !== featuredProject);
 
 function DocLink({ doc, className, children }: { doc: SearchDoc; className?: string; children: ReactNode }) {
   return doc.route
@@ -207,6 +213,7 @@ function SearchPage() {
                       ))}
                     </div>
                   )}
+                  {results.hits.some((hit) => hit.doc.id === featuredDocId) && <FeaturedArxiv id="se-featured-match" level={3} />}
                   <ol className="se-results">
                     {results.hits.map((hit) => (
                       <li className="se-result" key={hit.doc.id}>
@@ -231,28 +238,31 @@ function SearchPage() {
                 </section>
               )}
 
-              <article className="se-hero" id="intro" aria-labelledby="se-intro-heading">
-                <Source href="#intro" />
-                <h1 id="se-intro-heading">{profileContent.shortName} <span>· Senior PM, AI search &amp; retrieval</span></h1>
-                <div className="se-hero__snippet"><IntroCopy /></div>
-                {!searching && (
-                  <p className="se-hero__try">
-                    <span>Try searching:</span>
-                    {suggestions.map((suggestion) => (
-                      <button key={suggestion} type="button" onClick={() => { setQuery(suggestion); focusInput(); }}>{suggestion}</button>
-                    ))}
-                  </p>
-                )}
-                <ul className="se-sitelinks">
-                  <li><a href="#lab">Projects</a><span>Retrieval, RAG, and finance builds</span></li>
-                  <li><a href="#writing">Writing</a><span>AI buildout notes and essays</span></li>
-                  <li><a href="#impact">About</a><span>Microsoft, Amazon, education</span></li>
-                  <li><a href="#robotics">Robotics</a><span>Pitt Pirates, FRC Team 2642</span></li>
-                  <li><a href="#library">Library</a><span>Books and podcasts I recommend</span></li>
-                  <li><a href={profileContent.resumeHref}>Resume</a><span>PDF</span></li>
-                  {emailLink && <li><a href={emailLink.href}>Email</a><span>{emailLink.href.replace("mailto:", "")}</span></li>}
-                </ul>
-              </article>
+              <div className="se-intro" id="intro">
+                {!searching && <FeaturedArxiv id="se-featured-heading" level={2} />}
+                <article className="se-hero" aria-labelledby="se-intro-heading">
+                  <Source href="#intro" />
+                  <h1 id="se-intro-heading">{profileContent.shortName} <span>· Senior PM, AI search &amp; retrieval</span></h1>
+                  <div className="se-hero__snippet"><IntroCopy /></div>
+                  {!searching && (
+                    <p className="se-hero__try">
+                      <span>Try searching:</span>
+                      {suggestions.map((suggestion) => (
+                        <button key={suggestion} type="button" onClick={() => { setQuery(suggestion); focusInput(); }}>{suggestion}</button>
+                      ))}
+                    </p>
+                  )}
+                  <ul className="se-sitelinks">
+                    <li><a href="#lab">Projects</a><span>Retrieval, RAG, and finance builds</span></li>
+                    <li><a href="#writing">Writing</a><span>AI buildout notes and essays</span></li>
+                    <li><a href="#impact">About</a><span>Microsoft, Amazon, education</span></li>
+                    <li><a href="#robotics">Robotics</a><span>Pitt Pirates, FRC Team 2642</span></li>
+                    <li><a href="#library">Library</a><span>Books and podcasts I recommend</span></li>
+                    <li><a href={profileContent.resumeHref}>Resume</a><span>PDF</span></li>
+                    {emailLink && <li><a href={emailLink.href}>Email</a><span>{emailLink.href.replace("mailto:", "")}</span></li>}
+                  </ul>
+                </article>
+              </div>
             </div>
 
             <aside className="se-panel" aria-labelledby="se-panel-heading">
@@ -284,8 +294,9 @@ function SearchPage() {
             <div className="se-rest">
               <section className="se-section" id="lab" aria-labelledby="se-lab-heading">
                 <h2 id="se-lab-heading">Projects</h2>
+                <FeaturedArxiv id="se-featured-lab" level={3} />
                 <ol className="se-results">
-                  {viewProjects.map((project) => (
+                  {otherProjects.map((project) => (
                     <li className="se-result" key={project.href}>
                       <Source href={project.websiteHref ?? project.href} />
                       <div className="se-result__head">
