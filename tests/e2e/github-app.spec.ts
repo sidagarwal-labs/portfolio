@@ -107,7 +107,7 @@ test("opens from the desktop on the owner's snapshot with an accessible heatmap 
   const summary = `${fmtInt(stats.total)} contributions on ${stats.activeDays} of ${stats.days} days`;
   await expect(win.getByRole("img", { name: new RegExp(`^Contribution calendar.*${summary}`) })).toHaveCount(1);
   const months = new Set(snapshot.days.map((day) => day.date.slice(0, 7))).size;
-  await expect(win.locator("table.sr-only tbody tr")).toHaveCount(months);
+  await expect(win.getByRole("table", { name: "contributions by month" }).locator("tbody tr")).toHaveCount(months);
   const busiest = stats.maxDay!;
   await expect(win.locator(`rect.gh-cell[data-date="${busiest.date}"] title`)).toHaveText(`${fmtDate(busiest.date)}: ${busiest.count} contributions`);
 
@@ -342,6 +342,14 @@ test("fits a phone without horizontal overflow", async ({ page }) => {
   expect(await overflow()).toEqual({ page: 0, body: 0 });
   const box = (await win.locator(".gh-stats").boundingBox())!;
   expect(box.width).toBeLessThanOrEqual(390);
+
+  // Linux CI falls back to wider fonts than Windows; a wide font catches overflow either way.
+  await page.addStyleTag({ content: "*, *::before, *::after { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }" });
+  for (const name of ["Training run", "Market", "Launch", "Data science lab"]) {
+    await win.getByRole("tab", { name, exact: true }).click();
+    await expect(win.getByRole("tabpanel", { name, exact: true }).locator(".gh-lab__section").first()).toBeVisible();
+    expect(await overflow()).toEqual({ page: 0, body: 0 });
+  }
 });
 
 test("renders in the retro style", async ({ page }) => {

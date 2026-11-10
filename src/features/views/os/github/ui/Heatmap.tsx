@@ -111,27 +111,30 @@ export function Heatmap({ insights, calendar, stats, unit }: { insights: GitHubI
           Shades split active days at their quartiles: {ranges.filter(Boolean).join(" · ")} per day.
         </span>
       </figcaption>
-      <table className="sr-only">
-        <caption>{unit} by month</caption>
-        <thead>
-          <tr>
-            <th scope="col">Month</th>
-            <th scope="col">Total</th>
-            <th scope="col">Active days</th>
-            <th scope="col">Busiest day</th>
-          </tr>
-        </thead>
-        <tbody>
-          {months.map((row) => (
-            <tr key={row.month}>
-              <th scope="row">{fmtMonth(row.month)}</th>
-              <td>{row.total}</td>
-              <td>{row.active}</td>
-              <td>{row.best ? `${fmtDate(row.best.date)} (${row.best.count})` : "none"}</td>
+      {/* Tables ignore the 1px sr-only width, so a clipping wrapper keeps this one from widening the page. */}
+      <div className="sr-only">
+        <table>
+          <caption>{unit} by month</caption>
+          <thead>
+            <tr>
+              <th scope="col">Month</th>
+              <th scope="col">Total</th>
+              <th scope="col">Active days</th>
+              <th scope="col">Busiest day</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {months.map((row) => (
+              <tr key={row.month}>
+                <th scope="row">{fmtMonth(row.month)}</th>
+                <td>{row.total}</td>
+                <td>{row.active}</td>
+                <td>{row.best ? `${fmtDate(row.best.date)} (${row.best.count})` : "none"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   );
 }
