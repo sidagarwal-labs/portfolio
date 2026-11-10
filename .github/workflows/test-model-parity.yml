@@ -1,0 +1,62 @@
+name: Validate Next Token inference
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/test-model-parity.yml"
+      - "package*.json"
+      - "playwright.models.config.ts"
+      - "tests/models/**"
+      - "src/features/views/os/games/next-token/**"
+      - "src/content/generated/next-token.json"
+      - "scripts/precompute-next-token.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        dtype: [q4f16, q4]
+    env:
+      ONNXRUNTIME_NODE_INSTALL: skip
+      NEXT_TOKEN_DTYPE: ${{ matrix.dtype }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/huggingface
+          key: next-token-model-${{ matrix.dtype }}-${{ hashFiles('src/content/generated/next-token.json') }}
+      - run: npx playwright install --with-deps chromium
+      - run: npm run data:next-token
+        env:
+          NEXT_TOKEN_OUTPUT: node_modules/.cache/next-token-${{ matrix.dtype }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: next-token-reference-${{ matrix.dtype }}
+          path: node_modules/.cache/next-token-${{ matrix.dtype }}.json
+          retention-days: 7
+      - run: npm run test:models
+      - uses: actions/upload-artifact@v4
+        if: matrix.dtype == 'q4f16' && success()
+        with:
+          name: next-token-browser-check
+          path: dist/
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: next-token-parity-${{ matrix.dtype }}
+          path: test-results/
+          retention-days: 7

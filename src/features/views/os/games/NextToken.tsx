@@ -30,7 +30,7 @@ function NextToken({ active }: { active: boolean }) {
   const done = revealed && last;
   const matches = results.filter((result) => result.top).length;
   const meanProbability = results.length ? results.reduce((sum, result) => sum + result.probability, 0) / results.length : 0;
-  const tabs = [{ id: "game", label: "Real predictions" }, { id: "live", label: "Try it live" }] as const;
+  const tabs = [{ id: "game", label: "Guess the next token" }, { id: "live", label: "Try your own prompt" }] as const;
 
   useEffect(() => {
     const root = rootRef.current;
@@ -85,6 +85,7 @@ function NextToken({ active }: { active: boolean }) {
       </div>
 
       <div id={`${baseId}-panel-game`} role="tabpanel" aria-labelledby={`${baseId}-tab-game`} className="nexttoken__panel" hidden={tab !== "game"}>
+        <p className="game__hint">No model download needed. Play with {prompts.length} saved predictions from the same small model used in Try your own prompt.</p>
         <div className="game__hud">
           <span>Prompt <b>{index + 1}</b> of {prompts.length}</span>
           {results.length > 0 && <span>Top-1 <b>{matches}/{results.length}</b></span>}

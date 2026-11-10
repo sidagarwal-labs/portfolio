@@ -1,22 +1,24 @@
-// Runs SmolLM2-135M with transformers.js off the main thread. transformers.js is bundled into this worker only,
-// New model downloads require consent; returning visits restore already-cached weights.
+// Model downloads require consent; returning visits restore already-cached weights.
 import { AutoModelForCausalLM, AutoTokenizer, env, type PreTrainedModel, type PreTrainedTokenizer, type Tensor } from "@huggingface/transformers";
+import { InferenceValidationError, logSumExp, verifyPrediction } from "./inference";
 import { MODEL_CACHE_NAME } from "./modelCache";
+import { nextTokenData } from "./nextTokenData";
 
 export type LiveDevice = "webgpu" | "wasm";
+export type LiveDtype = "q4f16" | "q4";
 export type LiveToken = { id: number; text: string; logit: number };
-export type LiveErrorKind = "cache-miss" | "network" | "memory" | "unsupported" | "other";
+export type LiveErrorKind = "cache-miss" | "inference" | "network" | "memory" | "unsupported" | "other";
 
 export type LiveRequest =
-  | { type: "load"; model: string; revision: string; dtype: "q4f16"; temperatures: number[]; cacheOnly: boolean }
+  | { type: "load"; model: string; revision: string; dtype: LiveDtype; temperatures: number[]; cacheOnly: boolean }
   | { type: "predict"; id: number; text: string; k: number }
   | { type: "sample"; id: number; text: string; temperature: number };
 
 export type LiveResponse =
   | { type: "progress"; loaded: number; total: number }
   | { type: "status"; message: string }
-  | { type: "ready"; device: LiveDevice }
-  | { type: "prediction"; id: number; text: string; tokens: number; top: LiveToken[]; lse: number[]; rest: number[]; ms: number }
+  | { type: "ready"; device: LiveDevice; validated: boolean; fallback?: string }
+  | { type: "prediction"; id: number; text: string; tokens: number; inputIds: number[]; top: LiveToken[]; lse: number[]; rest: number[]; ms: number }
   | { type: "sampled"; id: number; text: string; token: LiveToken; probability: number }
   | { type: "error"; id?: number; kind: LiveErrorKind; message: string };
 
@@ -31,12 +33,13 @@ const fetchRemote = env.fetch;
 let tokenizer: PreTrainedTokenizer | null = null;
 let model: PreTrainedModel | null = null;
 let temperatures: number[] = [];
-let cached: { text: string; tokens: number; logits: Float32Array } | null = null;
+let cached: { text: string; tokens: number; inputIds: number[]; logits: Float32Array } | null = null;
 let latestPredict = 0;
 let queue: Promise<unknown> = Promise.resolve();
 
 function classify(error: unknown): { kind: LiveErrorKind; message: string } {
   const message = error instanceof Error ? error.message : String(error);
+  if (error instanceof InferenceValidationError) return { kind: "inference", message };
   if (message.includes("Cached model file unavailable")) return { kind: "cache-miss", message };
   if (/fetch|network|load failed|could not locate|offline|ERR_|\b(403|404|429|5\d\d)\b/i.test(message)) return { kind: "network", message };
   if (/memory|allocation|bad_alloc|Aborted\(/i.test(message) || error instanceof RangeError) return { kind: "memory", message };
@@ -44,13 +47,14 @@ function classify(error: unknown): { kind: LiveErrorKind; message: string } {
   return { kind: "other", message };
 }
 
-async function pickDevice(): Promise<LiveDevice> {
+async function pickDevice(dtype: LiveDtype): Promise<LiveDevice> {
   try {
     const gpu = (navigator as Navigator & { gpu?: GPULike }).gpu;
     const adapter = await gpu?.requestAdapter();
-    // q4f16 needs half-precision shaders on WebGPU; everything else runs on WebAssembly.
-    return adapter?.features.has("shader-f16") ? "webgpu" : "wasm";
-  } catch {
+    // q4f16 requires half-precision shaders; q4 uses float32 computation.
+    return adapter && (dtype === "q4" || adapter.features.has("shader-f16")) ? "webgpu" : "wasm";
+  } catch (error) {
+    console.warn("Next Token could not inspect the GPU; using WebAssembly:", error);
     return "wasm";
   }
 }
@@ -82,43 +86,64 @@ async function load({ model: id, revision, dtype, temperatures: grid, cacheOnly 
   };
   send({ type: "status", message: cacheOnly ? "Restoring the saved tokenizer" : "Downloading the tokenizer" });
   tokenizer = await AutoTokenizer.from_pretrained(id, { revision, progress_callback });
-  let device = await pickDevice();
+  let device = await pickDevice(dtype);
+  let fallback: string | undefined;
+  const validated = id === nextTokenData.meta.model && revision === nextTokenData.meta.revision && dtype === nextTokenData.meta.dtype;
+  const initialize = async () => {
+    cached = null;
+    model = await AutoModelForCausalLM.from_pretrained(id, { revision, dtype, device, progress_callback });
+    send({ type: "status", message: validated ? "Checking the model's calculations" : "Warming up a diagnostic model" });
+    if (validated) {
+      // Multiple sequence lengths catch failures that the old one-token warm-up missed.
+      const references = [nextTokenData.prompts[0], nextTokenData.prompts[nextTokenData.prompts.length - 1]];
+      const atOne = nextTokenData.meta.temperatures.indexOf(1);
+      for (const reference of references) {
+        const result = await logitsFor(reference.text);
+        verifyPrediction(result.logits, result.tokens, { ...reference, vocabSize: nextTokenData.meta.vocabSize, lse: reference.lse[atOne] });
+      }
+    } else {
+      await logitsFor("Hello");
+    }
+  };
   send({ type: "status", message: cacheOnly ? "Restoring the saved model weights" : "Downloading the model weights" });
   try {
-    model = await AutoModelForCausalLM.from_pretrained(id, { revision, dtype, device, progress_callback });
+    await initialize();
   } catch (error) {
     if (device !== "webgpu" || ["network", "cache-miss"].includes(classify(error).kind)) throw error;
-    // Some GPUs advertise WebGPU but fail to build the session. The files are cached by now, so fall back.
+    fallback = error instanceof InferenceValidationError
+      ? "WebGPU did not pass the calculation check. Using verified WebAssembly instead."
+      : "WebGPU could not run this model. Using verified WebAssembly instead.";
+    console.warn("Next Token is falling back from WebGPU:", error);
+    await model?.dispose();
+    model = null;
     device = "wasm";
-    send({ type: "status", message: "WebGPU failed, retrying on WebAssembly" });
-    model = await AutoModelForCausalLM.from_pretrained(id, { revision, dtype, device, progress_callback });
+    send({ type: "status", message: "Restoring and checking the model on WebAssembly" });
+    await initialize();
   }
-  send({ type: "status", message: "Warming up" });
-  await logitsFor("Hello");
-  send({ type: "ready", device });
-}
-
-function logSumExp(logits: Float32Array, temperature: number, skip?: Set<number>) {
-  let max = -Infinity;
-  for (let id = 0; id < logits.length; id += 1) if (!skip?.has(id)) max = Math.max(max, logits[id] / temperature);
-  let total = 0;
-  for (let id = 0; id < logits.length; id += 1) if (!skip?.has(id)) total += Math.exp(logits[id] / temperature - max);
-  return max + Math.log(total);
+  send({ type: "ready", device, validated, fallback });
 }
 
 async function logitsFor(text: string) {
   if (cached?.text === text) return cached;
   if (!tokenizer || !model) throw new Error("The model is not loaded yet.");
   const inputs = tokenizer(text);
-  const outputs = (await model(inputs)) as Record<string, Tensor>;
-  const { logits } = outputs;
-  const [, length, vocab] = logits.dims;
-  const data = (logits.type === "float32" ? logits : logits.to("float32")).data as Float32Array;
-  const last = data.slice((length - 1) * vocab, length * vocab);
-  // Free the key/value tensors this single forward pass produced (on WebGPU they live in GPU memory).
-  Object.entries(outputs).forEach(([name, tensor]) => { if (name !== "logits") tensor.dispose?.(); });
-  cached = { text, tokens: length, logits: last };
-  return cached;
+  let outputs: Record<string, Tensor> | undefined;
+  let converted: Tensor | undefined;
+  try {
+    outputs = (await model(inputs)) as Record<string, Tensor>;
+    const { logits } = outputs;
+    const [, length, vocab] = logits.dims;
+    converted = logits.type === "float32" ? logits : logits.to("float32");
+    const last = (converted.data as Float32Array).slice((length - 1) * vocab, length * vocab);
+    const inputIds = Array.from(inputs.input_ids.data as BigInt64Array, Number);
+    if (last.some((score) => !Number.isFinite(score))) throw new InferenceValidationError("The model returned a non-finite score.");
+    cached = { text, tokens: length, inputIds, logits: last };
+    return cached;
+  } finally {
+    if (converted && converted !== outputs?.logits) converted.dispose();
+    Object.values(outputs ?? {}).forEach((tensor) => tensor.dispose?.());
+    Object.values(inputs).forEach((tensor) => tensor.dispose?.());
+  }
 }
 
 const decode = (id: number) => tokenizer!.decode([id]);
@@ -126,7 +151,7 @@ const decode = (id: number) => tokenizer!.decode([id]);
 async function predict({ id, text, k }: Extract<LiveRequest, { type: "predict" }>) {
   if (id !== latestPredict) return;
   const started = performance.now();
-  const { tokens, logits } = await logitsFor(text);
+  const { tokens, inputIds, logits } = await logitsFor(text);
   const ranked: number[] = [];
   for (let token = 0; token < logits.length; token += 1) {
     if (ranked.length < k || logits[token] > logits[ranked[ranked.length - 1]]) {
@@ -137,7 +162,7 @@ async function predict({ id, text, k }: Extract<LiveRequest, { type: "predict" }
   }
   const skip = new Set(ranked);
   send({
-    type: "prediction", id, text, tokens,
+    type: "prediction", id, text, tokens, inputIds,
     top: ranked.map((token) => ({ id: token, text: decode(token), logit: logits[token] })),
     lse: temperatures.map((temperature) => logSumExp(logits, temperature)),
     rest: temperatures.map((temperature) => logSumExp(logits, temperature, skip)),
