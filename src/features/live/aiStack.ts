@@ -64,6 +64,7 @@ const listings: Record<string, { name: string; exchange: string; symbol?: string
   AMAT: { name: "Applied Materials", exchange: "NASDAQ" },
   TTMI: { name: "TTM Technologies", exchange: "NASDAQ" },
   AMKR: { name: "Amkor Technology", exchange: "NASDAQ" },
+  ASX: { name: "ASE Technology", exchange: "NYSE" },
   BESIY: { name: "BE Semiconductor (Besi)", exchange: "OTC" },
   AEHR: { name: "Aehr Test Systems", exchange: "NASDAQ" },
   MU: { name: "Micron Technology", exchange: "NASDAQ" },
