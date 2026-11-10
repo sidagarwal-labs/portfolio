@@ -117,7 +117,7 @@ export const capexAllocation: { observed: string; buckets: CapexBucket[] } = {
       id: "chips", label: "Semiconductor chips", dollars: 50, levels: [0, 1, 2, 3, 4, 5, 6, 11], jump: 1,
       parts: [
         { id: "accelerators", label: "Accelerators", dollars: 25, levels: [1, 2, 6], jump: 1 },
-        { id: "memory", label: "Memory ICs", dollars: 15, levels: [5], jump: 5, note: "Not an HBM-only estimate" },
+        { id: "memory", label: "Memory ICs", dollars: 15, levels: [5], jump: 5, note: "not an HBM-only estimate" },
         { id: "cpus", label: "CPUs, other chips, and server production", dollars: 10, levels: [11], jump: 11 }
       ]
     },

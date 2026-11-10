@@ -229,7 +229,7 @@ function CapexBar({ rows, onJump, LevelLink }: { rows: AiStackRow[]; onJump: (le
                 </tr>
                 {bucket.parts?.map((part) => (
                   <tr key={part.id} className="mk-data__sub">
-                    <th scope="row">{part.label}</th><td>{money(part.dollars)}</td><td>{levelList(part.levels)}{part.note ? ` (${part.note.toLowerCase()})` : ""}</td>
+                    <th scope="row">{part.label}</th><td>{money(part.dollars)}</td><td>{levelList(part.levels)}{part.note ? ` (${part.note})` : ""}</td>
                   </tr>
                 ))}
               </Fragment>
@@ -271,7 +271,7 @@ function CapexBar({ rows, onJump, LevelLink }: { rows: AiStackRow[]; onJump: (le
           {segments.map((segment) => (
             <li key={segment.id} data-bucket={segment.bucket}>
               <span className="mk-capex__swatch" aria-hidden="true" />
-              <span><strong>{money(segment.dollars)}</strong> {segment.label}{segment.note ? ` (${segment.note.toLowerCase()})` : ""}</span>
+              <span><strong>{money(segment.dollars)}</strong> {segment.label}{segment.note ? ` (${segment.note})` : ""}</span>
               <span className="mk-capex__levels">{segment.levels.map((level) => <LevelLink key={level} level={level} />)}</span>
             </li>
           ))}
