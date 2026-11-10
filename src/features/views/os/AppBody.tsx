@@ -16,7 +16,9 @@ const games = {
 };
 
 const nativeApps = {
-  library: lazy(() => import("./library/Library"))
+  library: lazy(() => import("./library/Library")),
+  github: lazy(() => import("./github/GitHubApp")),
+  reader: lazy(() => import("./reader/Reader"))
 };
 
 const host = "agarwal-labs.com";
@@ -101,7 +103,7 @@ function ResumeViewer() {
 }
 
 function Readme({ actions }: { actions: OsActions }) {
-  const appList: AppId[] = ["search", "library", "forward", "designs"];
+  const appList: AppId[] = ["search", "library", "github", "forward", "designs"];
   return (
     <div className="os-note">
       <p><strong>Hi, I'm Sid Agarwal.</strong> {roleLine}.</p>

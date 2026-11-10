@@ -1,8 +1,8 @@
-import { Activity, Blocks, Bomb, BookOpen, BrainCircuit, ChartCandlestick, FileText, Folder, LibraryBig, ListOrdered, MessageSquareText, NotebookText, Rocket, Search, SquareTerminal, Trophy, Worm, type LucideIcon } from "lucide-react";
+import { Activity, Blocks, Bomb, BookOpen, BrainCircuit, ChartCandlestick, FileText, Folder, GitGraph, LibraryBig, ListOrdered, MessageSquareText, Newspaper, NotebookText, Rocket, Search, SquareTerminal, Trophy, Worm, type LucideIcon } from "lucide-react";
 import type { SiteView } from "../siteViews";
 
 export type AppId =
-  | "search" | "library" | "journal" | "forward" | "training" | "terminal"
+  | "search" | "library" | "github" | "reader" | "journal" | "forward" | "training" | "terminal"
   | "resume" | "readme" | "designs" | "games" | "markets" | "launches" | "leaderboards"
   | "snake" | "mines" | "rankit" | "nexttoken" | "blocks";
 
@@ -35,6 +35,8 @@ export const gameApps: AppId[] = ["snake", "mines", "blocks", "rankit", "nexttok
 export const apps: Record<AppId, AppDef> = {
   search: app({ id: "search", title: "Sid Search", label: "Sid Search", blurb: "Projects, writing, and background as a search engine.", icon: Search, tint: "linear-gradient(145deg, #4c7df0, #2a4fbf)", kind: "site", view: "search", size: "fill" }),
   library: app({ id: "library", title: "Library", label: "Library", blurb: "Books and podcasts I keep coming back to, grouped by topic.", icon: LibraryBig, tint: "linear-gradient(145deg, #d9825b, #9c4a2c)", kind: "app", size: { w: 1060, h: 780 } }),
+  github: app({ id: "github", title: "GitHub", label: "GitHub", blurb: "My GitHub year as data: contribution heatmap, stats, and four models of the activity. Look up any user.", icon: GitGraph, tint: "linear-gradient(145deg, #5b6bd6, #2b347f)", kind: "app", size: { w: 1180, h: 820 } }),
+  reader: app({ id: "reader", title: "Reader", label: "Reader", blurb: "Short summaries of the Microsoft 365 Copilot, Power BI, Viva Engage, and connector work I've shipped, with links to the originals.", icon: Newspaper, tint: "linear-gradient(145deg, #5f8fb4, #2d5674)", kind: "app", size: { w: 900, h: 760 } }),
   journal: app({ id: "journal", title: "Journal", label: "Journal", blurb: "The original site: quiet and text-first.", icon: BookOpen, tint: "linear-gradient(145deg, #3f8f74, #245b4b)", kind: "site", view: "journal", size: { w: 980, h: 780 } }),
   forward: app({ id: "forward", title: "Forward pass", label: "Forward pass", blurb: "The site as a transformer: tokens, attention, next token.", icon: BrainCircuit, tint: "linear-gradient(145deg, #a66bf0, #6b3fc4)", kind: "site", view: "forward", size: { w: 1100, h: 800 } }),
   training: app({ id: "training", title: "Training run", label: "Training run", blurb: "A portfolio notebook with a real, locally trained tiny model.", icon: Activity, tint: "linear-gradient(145deg, #f0a24c, #c46a1f)", kind: "site", view: "training", size: { w: 1060, h: 800 } }),
@@ -54,12 +56,13 @@ export const apps: Record<AppId, AppDef> = {
 };
 
 export const desktopRows: AppId[][] = [
-  ["search", "library"],
+  ["search", "library", "github"],
   ["forward", "designs"],
   ["games", "markets", "launches", "leaderboards"]
 ];
 export const desktopDocuments: AppId[] = ["resume", "readme"];
 export const desktopApps: AppId[] = [...desktopRows.flat(), ...desktopDocuments];
-export const startApps: AppId[] = [...desktopApps, ...designApps, ...gameApps];
+/* Reader is opened by Microsoft links rather than from the desktop. */
+export const startApps: AppId[] = [...desktopApps, "reader", ...designApps, ...gameApps];
 
-export const phoneApps: AppId[] = ["search", "library", "journal", "forward", "training", "terminal", "resume", "markets", "launches", "leaderboards", "readme", ...gameApps];
+export const phoneApps: AppId[] = ["search", "library", "github", "reader", "journal", "forward", "training", "terminal", "resume", "markets", "launches", "leaderboards", "readme", ...gameApps];
