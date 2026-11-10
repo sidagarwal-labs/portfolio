@@ -492,6 +492,11 @@ html[data-os-style="retro"] {
   .os--retro .os-home .os-icon__label { padding: 0; }
 }
 
+/* Four columns leave about 68px per label, too narrow for "leaderboards" in wider Linux fonts. */
+@media (max-width: 340px) {
+  .os-home__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
 .os-home__footer { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: auto; }
 
 .os--retro .os-widget { border: 0; border-radius: 0; background: #c0c0c0; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: var(--bevel-out); color: #000; }
