@@ -316,7 +316,14 @@ function DesktopShell() {
       else if (message.type === "labos:link") {
         if (isLinkApp(message.app) && typeof message.target === "string") open(message.app, message.target.slice(0, 200));
       } else if (message.type === "labos:page") {
-        if (typeof message.path === "string" && pageApp(message.path) === message.app) open(message.app, message.path.slice(0, 200));
+        if (typeof message.path === "string" && pageApp(message.path) === message.app) {
+          open(message.app, message.path.slice(0, 200));
+          /* Without this answer the window shows the page itself (see useFrameBridge). */
+          if (typeof message.id === "number") {
+            const reply: OsMessage = { type: "labos:handled", id: message.id };
+            frames.current.get(windowId)?.contentWindow?.postMessage(reply, window.location.origin);
+          }
+        }
       } else if (message.type === "labos:boot") setBooting(true);
       else if (message.type === "labos:focus") {
         focus(windowId);
