@@ -1,6 +1,6 @@
 import { profileContent } from "../../../content/siteContent";
 import { isSiteView, type SiteView } from "../siteViews";
-import type { LinkApp } from "./linkRoutes";
+import type { LinkApp, PageApp } from "./linkRoutes";
 
 const framePrefix = "labos:";
 
@@ -21,6 +21,8 @@ export type OsMessage =
   | { type: "labos:open"; app: "resume" }
   /* An outside link that a native app shows instead of a new tab (see linkRoutes.ts). */
   | { type: "labos:link"; app: LinkApp; target: string }
+  /* A same-origin link to a page that is its own app, such as /markets?view=stack. */
+  | { type: "labos:page"; app: PageApp; path: string }
   | { type: "labos:boot" }
   | { type: "labos:focus" }
   | { type: "labos:location"; path: string }

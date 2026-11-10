@@ -1,4 +1,5 @@
 import resumeHref from "../../Siddhant_Agarwal_Resume.pdf?url";
+import { AI_STACK_SHEET } from "./aiStackSheet.mjs";
 import type {
   BookEntry,
   ExperienceEntry,
@@ -397,8 +398,9 @@ const projects: ProjectEntry[] = [
     ],
     whatThisProves:
       "I track the AI buildout the way I think about products: as a system with layers, bottlenecks, and feedback loops, not a single trade.",
-    href: "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiLfygL3LFE2X_ynXjE5IzIKrvVPT_AFSwuZCZn59pMUd0dsR4Tdpx-OUxaDmDiMYrioLurLWE3_CO/pubhtml",
-    hrefLabel: "Open live tracker",
+    href: "/markets?view=stack",
+    hrefLabel: "Open in Markets",
+    sourceHref: AI_STACK_SHEET,
     accent: "#5df0be",
     visualMode: "signal"
   },

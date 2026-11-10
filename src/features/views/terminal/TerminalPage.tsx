@@ -380,11 +380,11 @@ function TerminalPage() {
           <section className="tm-panel tm-section" id="writing" aria-labelledby="tm-writing-heading">
             <PanelBar id="tm-writing-heading" code="NEWS" title="News wire · Writing & notes" meta={`${wireCount} ${wireCount === 1 ? "item" : "items"}`} />
             <div className="tm-panel__body">
-              {marketTracker && (
+              {marketTracker?.href && (
                 <p className="tm-prose tm-lede">
                   I follow the AI buildout: where the capital goes, what becomes a bottleneck,
                   and which businesses turn that investment into earnings. My{" "}
-                  <a href={marketTracker.href}>AI / LLM Stack Tracker</a> maps public
+                  <Link to={marketTracker.href}>AI / LLM Stack Tracker</Link> maps public
                   companies across chips, power, data centers, and applications.
                 </p>
               )}

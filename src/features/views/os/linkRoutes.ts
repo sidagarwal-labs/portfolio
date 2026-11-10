@@ -10,6 +10,15 @@ const linkApps = new Set<string>(["library", "reader", "github"] satisfies LinkA
 
 export const isLinkApp = (app: unknown): app is LinkApp => typeof app === "string" && linkApps.has(app);
 
+/* Site pages that run as their own Lab OS app (apps.ts paths). A same-origin link to one opens that app's window. */
+export type PageApp = "markets" | "launches" | "leaderboards";
+
+const pageApps = new Map<string, PageApp>([["/markets", "markets"], ["/launches", "launches"], ["/leaderboards", "leaderboards"]]);
+
+export function pageApp(path: string): PageApp | undefined {
+  return pageApps.get(path.split(/[?#]/)[0].replace(/(.)\/+$/, "$1"));
+}
+
 /* Only the profile and repository home pages open the GitHub app. Deeper pages (a file, note, or commit)
    are what the reader asked to see, so they still open on GitHub. */
 export function githubTarget(url: URL): string | undefined {
