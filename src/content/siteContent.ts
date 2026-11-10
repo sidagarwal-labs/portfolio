@@ -701,7 +701,7 @@ const projects: ProjectEntry[] = [
     ],
     whatThisProves:
       "I have real breadth across classical ML, time series, survival analysis, and text-oriented notebooks, not just one narrow modeling slice.",
-    href: "https://github.com/sidagarwal-labs/Intro-to-Modeling",
+    href: "https://github.com/sidagarwal-labs/Intro-to-Modeling-",
     accent: "#ffb36b",
     visualMode: "spectrum"
   },
