@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const topLevel = ["Sid Search", "arXiv Search", "Library", "GitHub", "Forward pass", "Markets", "Launches", "AI leaderboards"];
+const topLevel = ["Sid Search", "Library", "GitHub", "arXiv Search", "Forward pass", "Markets", "Launches", "AI leaderboards"];
 const folders = ["Projects", "Other designs", "Games"];
 const designs = ["Training run", "Terminal", "Journal"];
 const games = ["Snake", "Mines", "Blocks", "Rank It", "Next Token"];
