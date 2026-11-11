@@ -93,6 +93,7 @@
 .mk-stats div { padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
 .mk-stats dt { color: var(--muted); font-size: 12px; }
 .mk-stats dd { margin: 2px 0 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+.mk-stats__note { display: block; color: var(--muted); font-size: 11px; font-weight: 400; }
 .mk-placements { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
 .mk-placements li { display: inline-flex; align-items: center; gap: 7px; padding: 2px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: #fff; font-size: 13px; }
 .mk-placements li::before { content: ""; width: 8px; height: 8px; flex: none; border-radius: 2px; background: var(--layer); }

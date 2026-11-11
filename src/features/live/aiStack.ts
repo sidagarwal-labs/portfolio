@@ -1,20 +1,24 @@
 import { useEffect, useState } from "react";
 import snapshot from "../../content/generated/ai-stack.json";
-import { AI_STACK_CSV, AI_STACK_SHEET, parseAiStack, type AiStackRow } from "../../content/aiStackSheet.mjs";
+import {
+  AI_STACK_CSV, AI_STACK_SHEET, CURRENCY_NAMES, FALLBACK_FX, parseAiStack, type AiStackRow, type FxRates
+} from "../../content/aiStackSheet.mjs";
 
-export { AI_STACK_SHEET, type AiStackRow };
+export { AI_STACK_SHEET, type AiStackRow, type FxRates };
 
-type Snapshot = { generatedAt: string; sheet: string; source: string; rows: AiStackRow[] };
+type Snapshot = { generatedAt: string; sheet: string; source: string; fx?: FxRates; rows: AiStackRow[] };
 const saved = snapshot as Snapshot;
+/* A live read converts foreign listings' market caps at the rates fetched for the build-time snapshot. */
+const fx = saved.fx ?? FALLBACK_FX;
 
-export type AiStackState = { rows: AiStackRow[]; source: "live" | "snapshot"; asOf: string; loading: boolean };
+export type AiStackState = { rows: AiStackRow[]; source: "live" | "snapshot"; asOf: string; loading: boolean; fx: FxRates };
 
-const snapshotState: AiStackState = { rows: saved.rows, source: "snapshot", asOf: saved.generatedAt, loading: false };
+const snapshotState: AiStackState = { rows: saved.rows, source: "snapshot", asOf: saved.generatedAt, loading: false, fx };
 const liveTtl = 5 * 60_000;
 /* The last good live read, so leaving Markets and coming back within a visit doesn't refetch or flash the snapshot. */
 let live: { rows: AiStackRow[]; fetchedAt: number } | undefined;
 const liveState = (read: NonNullable<typeof live>): AiStackState =>
-  ({ rows: read.rows, source: "live", asOf: new Date(read.fetchedAt).toISOString(), loading: false });
+  ({ rows: read.rows, source: "live", asOf: new Date(read.fetchedAt).toISOString(), loading: false, fx });
 
 /* The published sheet's CSV allows cross-origin reads, so Markets reads it live and falls back to the
    build-time snapshot when the request fails, times out, or returns something that isn't the tracker. */
@@ -32,7 +36,7 @@ export function useAiStack(): AiStackState {
         return response.text();
       })
       .then((text) => {
-        live = { rows: parseAiStack(text), fetchedAt: Date.now() };
+        live = { rows: parseAiStack(text, fx), fetchedAt: Date.now() };
         if (active) setState(liveState(live));
       })
       .catch(() => {
@@ -201,6 +205,29 @@ export function formatMarketCap(billions: number | null) {
   if (billions === null) return dash;
   if (Math.abs(billions) >= 1000) return `$${(billions / 1000).toFixed(2)}T`;
   return `$${billions >= 100 ? Math.round(billions) : Number(billions.toFixed(1))}B`;
+}
+
+/* "Nov 10, 2026" for a rates day (YYYY-MM-DD), the same calendar day in every time zone. */
+const ratesDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+export const formatRatesDay = (fx: FxRates) => ratesDay.format(new Date(`${fx.asOf}T12:00:00Z`));
+
+/* "converted from Taiwan dollars" for a market cap the sheet gave in a foreign currency. */
+export const conversionNote = (row: AiStackRow) =>
+  row.marketCapCurrency && row.marketCap !== null ? `converted from ${CURRENCY_NAMES[row.marketCapCurrency]}` : undefined;
+
+/* "Market caps converted to US dollars at Nov 10, 2026 exchange rates: TSM and ASX from Taiwan dollars, SKHY from South Korean won." */
+export function conversionsNote(rows: AiStackRow[], fx: FxRates) {
+  const byCurrency = new Map<NonNullable<AiStackRow["marketCapCurrency"]>, string[]>();
+  for (const row of rows) {
+    if (!row.marketCapCurrency || row.marketCap === null) continue;
+    const symbols = byCurrency.get(row.marketCapCurrency) ?? [];
+    if (!symbols.includes(row.symbol)) symbols.push(row.symbol);
+    byCurrency.set(row.marketCapCurrency, symbols);
+  }
+  if (!byCurrency.size) return undefined;
+  const and = (items: string[]) => (items.length > 1 ? `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}` : items[0]);
+  const parts = [...byCurrency].map(([currency, symbols]) => `${and(symbols)} from ${CURRENCY_NAMES[currency]}`);
+  return `Market caps converted to US dollars at ${formatRatesDay(fx)} exchange rates: ${parts.join(", ")}.`;
 }
 
 export const direction = (value: number | null) =>
