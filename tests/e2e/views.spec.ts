@@ -263,6 +263,19 @@ test("Sid Search keeps Pitt Pirates links on its Robotics section and plays matc
   await expect(robotics).toBeInViewport();
 });
 
+test("Sid Search shows arXiv Search's own favicon and the Agarwal Labs logo for site pages", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("./?view=search");
+  await page.getByLabel("Search Sid's work").fill("RAG");
+  const sourceFor = (site: string) => page.locator(".se-matches .se-source").filter({ has: page.locator(".se-source__site", { hasText: new RegExp(`^${site}$`) }) }).first();
+  const arxivIcon = sourceFor("arXiv Search").locator("img.se-favicon");
+  await expect(arxivIcon).toHaveAttribute("src", /arxiv-search-icon|^data:image\/svg\+xml/);
+  await expect.poll(() => arxivIcon.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+
+  await page.getByLabel("Search Sid's work").fill("robotics");
+  await expect(sourceFor("Agarwal Labs").locator("img.se-favicon")).toHaveAttribute("src", /icon-192\.png$/);
+});
+
 test("Sid Search's Robotics section fits a phone", async ({ page }) => {
   await page.route("https://www.youtube-nocookie.com/embed/**", (route) => route.fulfill({ contentType: "text/html", body: "<p>Player</p>" }));
   await page.route(/^https:\/\/(i\.ytimg\.com|www\.pittpiratesrobotics\.com)\//, (route) => route.abort());
