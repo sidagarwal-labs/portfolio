@@ -39,6 +39,8 @@ export type OsActions = {
   reload: (id: string) => void;
   registerFrame: (id: string, frame: HTMLIFrameElement | null) => void;
   setView: (view: SiteView) => void;
+  /* Opens the feedback dialog; focus returns to the opener (or the Start button) when it closes. */
+  feedback: (opener?: HTMLElement | null) => void;
 };
 
 export type DeskSize = { w: number; h: number };

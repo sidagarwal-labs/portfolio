@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode, type RefObject } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Briefcase, CodeXml, FileText, Mail, Monitor, Palette, Power, RotateCcw, Search, Settings as Gear, Wifi, WifiOff } from "lucide-react";
+import { Briefcase, CodeXml, FileText, Mail, MessageSquare, Monitor, Palette, Power, RotateCcw, Search, Settings as Gear, Wifi, WifiOff } from "lucide-react";
 import { profileContent } from "../../../content/siteContent";
 import { ReducedMotionOverride, usePrefersReducedMotion } from "../../../hooks/usePrefersReducedMotion";
 import BootSequence, { labLogo } from "../search/BootSequence";
@@ -18,6 +18,8 @@ import { SignalStatus, SignalsProvider } from "./Signals";
 import DesktopIcons, { iconAreaWidth } from "./DesktopIcons";
 import StartMenuApps from "./StartMenuApps";
 import PhoneHomeApps from "./PhoneHomeApps";
+import FeedbackDialog from "./feedback/FeedbackDialog";
+import type { FeedbackContext } from "./feedback/feedbackClient";
 import "../search/search.css";
 import "./os.css";
 
@@ -154,8 +156,10 @@ function DesktopShell() {
   const launched = useRef(false);
   /* Deep links like /#writing open Sid Search at that section. */
   const initialHash = useRef(location.hash);
-  const live = useRef({ windows, desk, phone });
-  live.current = { windows, desk, phone };
+  const live = useRef({ windows, desk, phone, style });
+  live.current = { windows, desk, phone, style };
+  const [feedback, setFeedback] = useState<FeedbackContext>();
+  const feedbackOpener = useRef<HTMLElement | null>(null);
   const now = useClock();
   const retro = style === "retro";
   const calendarStart = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
@@ -287,9 +291,27 @@ function DesktopShell() {
     else frames.current.delete(id);
   }, []);
 
+  /* Feedback records the frontmost window's app (and page, for site apps) and the current style. */
+  const openFeedback = useCallback((opener?: HTMLElement | null) => {
+    const { windows: list, style: current } = live.current;
+    let top: OsWin | undefined;
+    for (const win of list) if (!win.minimized && (!top || win.z > top.z)) top = win;
+    feedbackOpener.current = opener ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    setMenuOpen(false);
+    setCalendarOpen(false);
+    setFeedback({ app: top?.app, path: top && apps[top.app].kind === "site" ? top.history[top.index] : undefined, view: "os", style: current });
+  }, []);
+
+  const closeFeedback = useCallback(() => {
+    setFeedback(undefined);
+    const opener = feedbackOpener.current;
+    feedbackOpener.current = null;
+    (opener?.isConnected ? opener : startRef.current)?.focus();
+  }, []);
+
   const actions = useMemo<OsActions>(
-    () => ({ open, focus, close, minimize, toggleMax, place, home, traverse, reload, registerFrame, setView }),
-    [open, focus, close, minimize, toggleMax, place, home, traverse, reload, registerFrame, setView]
+    () => ({ open, focus, close, minimize, toggleMax, place, home, traverse, reload, registerFrame, setView, feedback: openFeedback }),
+    [open, focus, close, minimize, toggleMax, place, home, traverse, reload, registerFrame, setView, openFeedback]
   );
 
   /* Desktop: Sid Search opens right away. Phone: the home screen comes first unless a deep link asked for a section. */
@@ -564,6 +586,9 @@ function DesktopShell() {
             <span className="os-tray">
               <span role="img" aria-label={online ? "Browser online" : "Browser offline"} title={online ? "Browser reports a network connection" : "Browser reports no network connection"}>{online ? <Wifi size={14} /> : <WifiOff size={14} />}</span>
               {styleToggle}
+              <button type="button" className="os-tray-button" onClick={(event) => openFeedback(event.currentTarget)} title="Send feedback" aria-label="Send feedback">
+                <MessageSquare size={15} strokeWidth={2} aria-hidden="true" />
+              </button>
               <button type="button" className="os-tray-button" onClick={() => open("settings")} title="Open Settings" aria-label="Open Settings">
                 <Gear size={15} strokeWidth={2} aria-hidden="true" />
               </button>
@@ -641,6 +666,10 @@ function DesktopShell() {
                 </div>
               </div>
               <div className="os-menu__foot">
+                <button type="button" className="os-menu__item os-menu__feedback" onClick={() => openFeedback(startRef.current)}>
+                  <MessageSquare size={15} strokeWidth={2} aria-hidden="true" />
+                  Send feedback
+                </button>
                   <button type="button" className="os-menu__item" onClick={powerOn} title="Close apps and restart Lab OS">
                     <RotateCcw size={15} strokeWidth={2} aria-hidden="true" />
                     Restart
@@ -653,6 +682,7 @@ function DesktopShell() {
             </div>
           </div>
         )}
+        {feedback && <FeedbackDialog context={feedback} onClose={closeFeedback} />}
       </div>
 
       {booting && <BootSequence onDone={finishBoot} desktop={false} />}

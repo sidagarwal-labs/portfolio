@@ -24,7 +24,7 @@ function ClockPreview({ clock, seconds }: { clock: ClockHours; seconds: boolean 
   return <time className="os-set__preview" dateTime={now.toISOString()}>{clockFormat(clock, seconds).format(now)}</time>;
 }
 
-export default function Settings(_props: { target?: OsTarget; actions: OsActions }) {
+export default function Settings({ actions }: { target?: OsTarget; actions: OsActions }) {
   const { settings, update, style, setStyle, deviceReducedMotion, phone, saved, arrangeIcons, resetAll } = useOsSettings();
   const id = useId();
   const [confirming, setConfirming] = useState(false);
@@ -174,6 +174,14 @@ export default function Settings(_props: { target?: OsTarget; actions: OsActions
           </div>
           <p className="os-set__status" role="status">{message}</p>
           {!saved && <p className="os-set__hint">This browser isn't saving settings, so changes last until the page closes.</p>}
+        </section>
+
+        <section className="os-set__section">
+          <h2>Feedback</h2>
+          <div className="os-set__action">
+            <p>Give the site a thumbs up or down, with an optional comment. It's posted publicly as a GitHub issue.</p>
+            <button type="button" className="os-button" onClick={(event) => actions.feedback(event.currentTarget)}>Send feedback</button>
+          </div>
         </section>
 
         <section className="os-set__section">
