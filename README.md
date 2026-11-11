@@ -144,7 +144,9 @@ The site works without these steps; other users then get the 90-day public-event
 3. **GitHub token for the proxy:** a fine-grained personal access token with Repository access set to **Public repositories (read-only)** and no other permissions. Set an expiry and renew it before it lapses.
 4. Under Settings › Secrets and variables › Actions, add the repository secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `GH_PROXY_TOKEN`.
 5. Run the **GitHub proxy** workflow from the Actions tab. It runs the tests, deploys `agarwal-labs-github-proxy` to `api.agarwal-labs.com`, stores `GH_PROXY_TOKEN` as the Worker secret `GITHUB_TOKEN`, and checks `/health`. Without the three secrets, the deploy is skipped and the run still passes. Later pushes to `main` that change `workers/github-proxy/` redeploy it.
-6. Add the repository **variable** `GITHUB_PROXY_URL` = `https://api.agarwal-labs.com`, then rerun **Deploy Portfolio** so the build includes it.
+6. Add the repository **variable** `GH_PROXY_URL` = `https://api.agarwal-labs.com` (GitHub rejects variable names starting with `GITHUB_`), then rerun **Deploy Portfolio** so the build includes it.
+
+**Current deployment:** the Worker is live at `https://api.agarwal-labs.com` (first deployed November 10, 2026). `GH_PROXY_TOKEN` is a 30-day fine-grained token that expires around **December 10, 2026**. Before then, create a new token with the same settings, run `gh secret set GH_PROXY_TOKEN --repo sidagarwal-labs/portfolio`, rerun the **GitHub proxy** workflow, and update this date. An expired token makes lookups of other users fall back to the 90-day public-events view.
 
 For local Worker development, put `GITHUB_TOKEN=...` in `workers/github-proxy/.dev.vars` (git-ignored) and run `npx wrangler@4 dev` in that folder; set `VITE_GITHUB_PROXY_URL=http://localhost:8787` in `.env.local` to use it from the dev site.
 
