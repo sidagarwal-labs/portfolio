@@ -97,6 +97,12 @@ export const bottlenecks: Bottleneck[] = [
 
 export const bottlenecksForLevel = (level: number) => bottlenecks.filter((item) => item.levels.includes(level));
 
+/* The tightest ranked constraint at any of these levels: the highest tightness, then the higher rank. */
+export const tightestAt = (levels: number[]): Bottleneck | undefined =>
+  bottlenecks
+    .filter((item) => item.levels.some((level) => levels.includes(level)))
+    .sort((a, b) => tightnessScore(b.tightness) - tightnessScore(a.tightness) || a.rank - b.rank)[0];
+
 /* ---------- 2. Where each $100 of AI capex goes (ai-capex.md › Illustrative Allocation Of Each $100) ---------- */
 
 export type CapexBucket = {

@@ -128,17 +128,27 @@ export function listing(symbol: string): Listing {
 const layerOrder = ["chips", "data center", "data", "application"];
 
 export type StackLevel = { level: number; areas: string[]; rows: AiStackRow[] };
-export type StackLayer = {
-  id: string;
-  label: string;
-  levels: StackLevel[];
-  /* Unique companies in the layer (a ticker can sit at more than one level). */
+
+/* Figures for a set of rows that count each company once, however many levels it sits at. */
+export type StackSummary = {
+  /* Unique companies (a ticker can sit at more than one level). */
   names: number;
+  /* Combined market cap in billions of US dollars, each company's full cap once; null when none has one. */
+  marketCap: number | null;
+  /* Companies with no usable market cap. */
+  noCap: string[];
   medianChange: number | null;
   medianFromHigh: number | null;
   up: number;
+  flat: number;
   down: number;
+  /* Each company's first row here: the day's biggest gain and loss, and the largest market cap. */
+  gainer?: AiStackRow;
+  loser?: AiStackRow;
+  largest?: AiStackRow;
 };
+
+export type StackLayer = StackSummary & { id: string; label: string; levels: StackLevel[] };
 
 /* Distance from the 52-week high or low, in percent. Computed from the sheet's own price, high, and low so both
    columns mean the same thing (the sheet's "% from low" column is a ratio, not a distance). */
@@ -160,6 +170,31 @@ export const layerLabel = (layer: string) => {
 
 export const layerId = (layer: string) => layer.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "layer";
 
+const best = (rows: AiStackRow[], better: (a: AiStackRow, b: AiStackRow) => boolean) =>
+  rows.reduce<AiStackRow | undefined>((top, row) => (!top || better(row, top) ? row : top), undefined);
+
+export function summarizeStack(rows: AiStackRow[]): StackSummary {
+  const unique = new Map<string, AiStackRow>();
+  for (const row of rows) if (!unique.has(row.symbol.toUpperCase())) unique.set(row.symbol.toUpperCase(), row);
+  const companies = [...unique.values()];
+  const capped = companies.filter((row) => row.marketCap !== null && row.marketCap > 0);
+  const gaining = companies.filter((row) => row.change !== null && row.change > 0);
+  const losing = companies.filter((row) => row.change !== null && row.change < 0);
+  return {
+    names: companies.length,
+    marketCap: capped.length ? capped.reduce((sum, row) => sum + row.marketCap!, 0) : null,
+    noCap: companies.filter((row) => !capped.includes(row)).map((row) => row.symbol),
+    medianChange: median(companies.map((row) => row.change)),
+    medianFromHigh: median(companies.map((row) => distance(row.price, row.high))),
+    up: gaining.length,
+    flat: companies.filter((row) => row.change === 0).length,
+    down: losing.length,
+    gainer: best(gaining, (a, b) => a.change! > b.change!),
+    loser: best(losing, (a, b) => a.change! < b.change!),
+    largest: best(capped, (a, b) => a.marketCap! > b.marketCap!)
+  };
+}
+
 /* Groups rows by layer (Chips, Data center, Data, Application, then anything new) and by level within a layer,
    keeping the sheet's row order inside each level. */
 export function groupStack(rows: AiStackRow[]): StackLayer[] {
@@ -177,18 +212,15 @@ export function groupStack(rows: AiStackRow[]): StackLayer[] {
     .map(([key, layerRows]) => {
       const levels = new Map<number, AiStackRow[]>();
       for (const row of layerRows) levels.set(row.level, [...(levels.get(row.level) ?? []), row]);
-      const unique = [...new Map(layerRows.map((row) => [row.symbol.toUpperCase(), row])).values()];
+      const sorted = [...levels.entries()]
+        .sort(([a], [b]) => a - b)
+        .map(([level, levelRows]) => ({ level, areas: [...new Set(levelRows.map((row) => row.area).filter(Boolean))], rows: levelRows }));
       return {
         id: layerId(key),
         label: layerLabel(layerRows[0].layer),
-        levels: [...levels.entries()]
-          .sort(([a], [b]) => a - b)
-          .map(([level, levelRows]) => ({ level, areas: [...new Set(levelRows.map((row) => row.area).filter(Boolean))], rows: levelRows })),
-        names: unique.length,
-        medianChange: median(unique.map((row) => row.change)),
-        medianFromHigh: median(unique.map((row) => distance(row.price, row.high))),
-        up: unique.filter((row) => row.change !== null && row.change > 0).length,
-        down: unique.filter((row) => row.change !== null && row.change < 0).length
+        levels: sorted,
+        /* In level order, so the gainer, loser, and largest are each company's first row in the layer. */
+        ...summarizeStack(sorted.flatMap((level) => level.rows))
       };
     });
 }
