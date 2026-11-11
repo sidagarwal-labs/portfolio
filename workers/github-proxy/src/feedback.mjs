@@ -16,6 +16,16 @@ const CONTEXT_RULES = {
   path: /^\/[A-Za-z0-9/._~-]{0,119}$/
 };
 const CONTEXT_LABELS = { app: "App", path: "Path", view: "View", style: "Style" };
+/* Fixed display names for titles (Lab OS app ids from src/features/views/os/apps.ts, plus site view ids); never visitor text. */
+const PLACE_NAMES = {
+  search: "Sid Search", library: "Library", github: "GitHub", reader: "Reader", journal: "Journal", forward: "Forward pass",
+  training: "Training run", terminal: "Terminal", resume: "Resume.pdf", readme: "README.txt", designs: "Other designs",
+  games: "Games", projects: "Projects", arxiv: "arXiv Search", blocks: "Blocks", markets: "Markets", launches: "SpaceX launches",
+  leaderboards: "AI leaderboards", snake: "Snake", mines: "Mines", rankit: "Rank It", settings: "Settings", nexttoken: "Next Token",
+  nvdocs: "NVDocs RAG", hireme: "HireMe.AI", finmodels: "Financial models", os: "Lab OS"
+};
+export const placeName = (context) =>
+  [context.app, context.view].map((id) => (id && Object.hasOwn(PLACE_NAMES, id) ? PLACE_NAMES[id] : undefined)).find(Boolean) ?? "Lab OS";
 // C0/C1 controls (except tab and newline), and bidi overrides that could visually reorder the comment.
 const UNSAFE_CHARS = /[\u0000-\u0008\u000B-\u001F\u007F-\u009F\u200E\u200F\u202A-\u202E\u2066-\u2069]/g;
 const ISSUE_URL = new RegExp(`^https://github\\.com/${FEEDBACK_REPO}/issues/\\d+$`);
@@ -49,7 +59,7 @@ const isPlainObject = (value) => typeof value === "object" && value !== null && 
 export function validateFeedback(input) {
   if (!isPlainObject(input)) return { error: "invalid-feedback" };
   const { rating, comment = "", context = {}, website = "" } = input;
-  if (typeof website !== "string" || website !== "") return { error: "invalid-feedback" };
+  if (website !== "") return { honeypot: true };
   if (!Object.hasOwn(RATINGS, rating)) return { error: "invalid-feedback" };
   if (typeof comment !== "string") return { error: "invalid-feedback" };
   if (comment.length > MAX_COMMENT) return { error: "comment-too-long" };
@@ -66,7 +76,7 @@ export function validateFeedback(input) {
 
 export function buildIssue({ rating, comment, context }, now = new Date()) {
   const { emoji, label, tag } = RATINGS[rating];
-  const where = context.app ?? context.view ?? "the site";
+  const where = placeName(context);
   const rows = Object.keys(CONTEXT_LABELS)
     .filter((key) => context[key])
     .map((key) => `| ${CONTEXT_LABELS[key]} | \`${context[key]}\` |`);
@@ -136,7 +146,9 @@ export async function handleFeedback(request, env, isAllowedOrigin) {
   if (type !== "application/json") return fail("unsupported-media-type", 415);
   const body = await readBody(request);
   if (body.error) return fail(body.error, body.error === "payload-too-large" ? 413 : 400);
-  const { feedback, error } = validateFeedback(body.value);
+  const { feedback, error, honeypot } = validateFeedback(body.value);
+  // Bots that fill the hidden field get a success that creates nothing, so they can't tell they were caught.
+  if (honeypot) return json({ ok: true }, 201);
   if (error) return fail(error, 400);
 
   const token = env?.FEEDBACK_TOKEN;

@@ -3,7 +3,7 @@ import { ExternalLink, Globe, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { fallbackIssueUrl, MAX_COMMENT, sendFeedback, type FailureReason, type FeedbackContext, type Rating } from "./feedbackClient";
 import "./feedback.css";
 
-type Status = { kind: "form" } | { kind: "sending" } | { kind: "sent"; number: number; url: string } | { kind: "failed"; reason: FailureReason };
+type Status = { kind: "form" } | { kind: "sending" } | { kind: "sent"; number?: number; url?: string } | { kind: "failed"; reason: FailureReason };
 
 const failureText: Record<FailureReason, string> = {
   unconfigured: "Sending from this site isn't set up yet.",
@@ -83,8 +83,12 @@ export default function FeedbackDialog({ context, onClose }: { context: Feedback
       {status.kind === "sent" ? (
         <div className="os-fb__body os-fb__done" role="status">
           <p className="os-fb__thanks">
-            Thanks! It's posted as{" "}
-            <a href={status.url} target="_blank" rel="noreferrer">issue #{status.number}<ExternalLink size={13} aria-hidden="true" /></a>
+            {status.number !== undefined && status.url ? (
+              <>
+                Thanks! It's posted as{" "}
+                <a href={status.url} target="_blank" rel="noreferrer">issue #{status.number}<ExternalLink size={13} aria-hidden="true" /></a>
+              </>
+            ) : "Thanks! Your feedback was sent."}
           </p>
           <div className="os-fb__buttons">
             <button ref={doneRef} type="button" className="os-button os-button--primary" onClick={close}>Done</button>

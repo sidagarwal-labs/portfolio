@@ -1,8 +1,12 @@
+import { apps, type AppId } from "../apps";
+import { siteViews } from "../../siteViews";
+
 export type Rating = "up" | "down";
 export type FeedbackContext = { app?: string; path?: string; view?: string; style?: string };
 export type FeedbackPayload = { rating: Rating; comment: string; context: FeedbackContext; website: string };
 export type FailureReason = "unconfigured" | "unavailable" | "rate-limited" | "failed";
-export type SendResult = { ok: true; number: number; url: string } | { ok: false; reason: FailureReason };
+/* number and url are missing when the Worker accepts feedback without filing an issue. */
+export type SendResult = { ok: true; number?: number; url?: string } | { ok: false; reason: FailureReason };
 
 export const MAX_COMMENT = 1000;
 export const FEEDBACK_REPO = "sidagarwal-labs/portfolio";
@@ -13,7 +17,7 @@ const PATH = /^\/[A-Za-z0-9/._~-]{0,119}$/;
 const ISSUE_URL = new RegExp(`^https://github\\.com/${FEEDBACK_REPO}/issues/\\d+$`);
 const EMOJI: Record<Rating, string> = { up: "👍", down: "👎" };
 
-/* VITE_FEEDBACK_API_URL only exists for tests and local development; the site uses the GitHub proxy's base URL. */
+/* VITE_FEEDBACK_API_URL is a test-only override (set by vite.config.ts in --mode test); the site uses the GitHub proxy's base URL. */
 export const feedbackBase = () =>
   (import.meta.env?.VITE_FEEDBACK_API_URL || import.meta.env?.VITE_GITHUB_PROXY_URL)?.trim().replace(/\/+$/, "") || undefined;
 
@@ -39,7 +43,8 @@ export async function sendFeedback(payload: FeedbackPayload, { base = feedbackBa
     if (response.status === 503) return { ok: false, reason: "unavailable" };
     if (response.status === 429) return { ok: false, reason: "rate-limited" };
     if (response.status !== 201) return { ok: false, reason: "failed" };
-    const body = (await response.json()) as { number?: unknown; url?: unknown };
+    const body = (await response.json()) as { ok?: unknown; number?: unknown; url?: unknown };
+    if (body.ok === true && body.number === undefined && body.url === undefined) return { ok: true };
     if (typeof body.number !== "number" || typeof body.url !== "string" || !ISSUE_URL.test(body.url)) return { ok: false, reason: "failed" };
     return { ok: true, number: body.number, url: body.url };
   } catch (error) {
@@ -51,7 +56,8 @@ export async function sendFeedback(payload: FeedbackPayload, { base = feedbackBa
 /* A prefilled "new issue" link the visitor submits themselves when the form can't post. */
 export function fallbackIssueUrl({ rating, comment, context }: { rating?: Rating; comment: string; context: FeedbackContext }) {
   const clean = cleanContext(context);
-  const where = clean.app ?? clean.view ?? "the site";
+  const app = clean.app && Object.prototype.hasOwnProperty.call(apps, clean.app) ? apps[clean.app as AppId].title : undefined;
+  const where = app ?? siteViews.find((view) => view.id === clean.view)?.label ?? "Lab OS";
   const title = rating ? `Feedback: ${EMOJI[rating]} on ${where}` : `Feedback on ${where}`;
   const details = (["app", "path", "view", "style"] as const).filter((key) => clean[key]).map((key) => `- ${key}: ${clean[key]}`);
   const body = [

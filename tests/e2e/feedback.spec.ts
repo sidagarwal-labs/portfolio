@@ -136,7 +136,7 @@ test("a failed send offers a prefilled GitHub issue link", async ({ page }) => {
   const href = await alert.getByRole("link", { name: "Open a prefilled issue on GitHub" }).getAttribute("href");
   const url = new URL(href ?? "");
   expect(`${url.origin}${url.pathname}`).toBe("https://github.com/sidagarwal-labs/portfolio/issues/new");
-  expect(url.searchParams.get("title")).toBe("Feedback: 👎 on search");
+  expect(url.searchParams.get("title")).toBe("Feedback: 👎 on Sid Search");
   expect(url.searchParams.get("labels")).toBe("feedback");
   const body = url.searchParams.get("body") ?? "";
   expect(body).toContain("Rating: 👎 Thumbs down");
@@ -155,7 +155,7 @@ test("a network failure also falls back to GitHub", async ({ page }) => {
   await form.getByRole("button", { name: "Thumbs up" }).click();
   await form.getByRole("button", { name: "Send", exact: true }).click();
   await expect(form.getByRole("alert")).toContainText("Your feedback couldn't be sent.");
-  await expect(form.getByRole("link", { name: "Open a prefilled issue on GitHub" })).toHaveAttribute("href", /title=Feedback%3A%20%F0%9F%91%8D%20on%20search&body=.*&labels=feedback$/);
+  await expect(form.getByRole("link", { name: "Open a prefilled issue on GitHub" })).toHaveAttribute("href", /title=Feedback%3A%20%F0%9F%91%8D%20on%20Sid%20Search&body=.*&labels=feedback$/);
 });
 
 test("feedback is reachable from Settings on a phone", async ({ page }) => {
@@ -174,4 +174,15 @@ test("feedback is reachable from Settings on a phone", async ({ page }) => {
   await form.getByRole("button", { name: "Send", exact: true }).click();
   await expect(form.getByRole("link", { name: "issue #123" })).toBeVisible();
   expect(sent[0].context).toEqual({ app: "settings", view: "os", style: "modern" });
+});
+
+test("an accepted send without an issue number still thanks the visitor", async ({ page }) => {
+  await stubApi(page, 201, { ok: true });
+  await openDesktop(page);
+  await page.locator(".os-tray").getByRole("button", { name: "Send feedback" }).click();
+  const form = dialog(page);
+  await form.getByRole("button", { name: "Thumbs up" }).click();
+  await form.getByRole("button", { name: "Send", exact: true }).click();
+  await expect(form.getByText("Thanks! Your feedback was sent.")).toBeVisible();
+  await expect(form.getByRole("link")).toHaveCount(0);
 });

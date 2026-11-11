@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import worker from "../src/index.mjs";
-import { buildIssue, fenced, sanitizeComment } from "../src/feedback.mjs";
+import { buildIssue, fenced, placeName, sanitizeComment } from "../src/feedback.mjs";
 
 const TOKEN = "github_pat_feedback_should_never_leak";
 const base = "https://api.agarwal-labs.com";
@@ -51,7 +51,7 @@ describe("POST /feedback/v1", () => {
     assert.equal(calls[0].init.headers.Authorization, `Bearer ${TOKEN}`);
     const issue = sentIssue();
     assert.deepEqual(issue.labels, ["feedback", "thumbs-up"]);
-    assert.equal(issue.title, "Feedback: 👍 on markets");
+    assert.equal(issue.title, "Feedback: 👍 on Markets");
     assert.match(issue.body, /\*\*Rating:\*\* 👍 Thumbs up/);
     assert.match(issue.body, /```text\nLove the Markets app\n```/);
     assert.match(issue.body, /\| App \| `markets` \|/);
@@ -69,7 +69,7 @@ describe("POST /feedback/v1", () => {
     assert.equal(response.status, 201);
     const issue = sentIssue();
     assert.deepEqual(issue.labels, ["feedback", "thumbs-down"]);
-    assert.equal(issue.title, "Feedback: 👎 on os");
+    assert.equal(issue.title, "Feedback: 👎 on Lab OS");
     assert.ok(!issue.title.includes("octocat") && !issue.title.includes("<"));
     assert.ok(issue.body.includes(`\`\`\`text\n${comment}\n\`\`\``));
   });
@@ -87,7 +87,7 @@ describe("POST /feedback/v1", () => {
     assert.equal(sanitizeComment("  a\u0000b\r\nc\u202Ed\u0007\te\u009B  "), "ab\ncd\te");
     await post({ rating: "up", context: {} });
     const issue = sentIssue();
-    assert.equal(issue.title, "Feedback: 👍 on the site");
+    assert.equal(issue.title, "Feedback: 👍 on Lab OS");
     assert.match(issue.body, /_No comment\._/);
     assert.ok(!issue.body.includes("| App |"));
   });
@@ -97,12 +97,25 @@ describe("POST /feedback/v1", () => {
     assert.match(issue.body, /\| Submitted \(UTC\) \| `2026-11-11T17:00:00.000Z` \|/);
   });
 
-  it("rejects a filled honeypot", async () => {
+  it("titles issues with fixed display names, falling back to Lab OS", () => {
+    const title = (context) => buildIssue({ rating: "up", comment: "", context }).title;
+    assert.equal(title({ app: "leaderboards", view: "os" }), "Feedback: 👍 on AI leaderboards");
+    assert.equal(title({ app: "search" }), "Feedback: 👍 on Sid Search");
+    assert.equal(title({ view: "forward" }), "Feedback: 👍 on Forward pass");
+    assert.equal(title({ app: "made-up-app", view: "terminal" }), "Feedback: 👍 on Terminal");
+    assert.equal(title({ app: "made-up-app" }), "Feedback: 👍 on Lab OS");
+    assert.equal(placeName({ app: "constructor" }), "Lab OS");
+    assert.equal(placeName({}), "Lab OS");
+  });
+
+  it("answers a filled honeypot with a fake success and creates nothing", async () => {
     for (const website of ["https://spam.example", " ", 1]) {
       const response = await post({ ...good, website });
-      assert.equal(response.status, 400);
-      assert.equal((await response.json()).code, "invalid-feedback");
+      assert.equal(response.status, 201);
+      assert.deepEqual(await response.json(), { ok: true });
     }
+    const tokenless = await post({ ...good, website: "x" }, { env: {} });
+    assert.equal(tokenless.status, 201);
     assert.equal(calls.length, 0);
   });
 
