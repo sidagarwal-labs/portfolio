@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Lock, Power, Search, X } from "lucide-react";
-import { arxivSearchRepoHref } from "../../../content/arxivSearch";
 import { archivedResearchNotes, courseworkProjects, featuredResearchNotes, marketsInsightsPath } from "../../../content/journalContent";
 import { profileContent } from "../../../content/siteContent";
 import { usePrefersReducedMotion } from "../../../hooks/usePrefersReducedMotion";
@@ -11,7 +10,6 @@ import { useScrollSpy } from "../useScrollSpy";
 import { contactLinks, earlierProjects, emailLink, marketTracker, noteDateFormatter, viewProjects } from "../viewData";
 import BootSequence, { labLogo } from "./BootSequence";
 import { hasBooted, rememberBoot } from "./bootState";
-import FeaturedArxiv from "./FeaturedArxiv";
 import LibrarySection from "./LibrarySection";
 import RoboticsSection from "./RoboticsSection";
 import { matchesTerm, phraseBoost, queryTerms, runSearch, searchDocs, type SearchDoc } from "./searchIndex";
@@ -34,11 +32,6 @@ const tabs = [
 ];
 /* Contact sits below Library but has no tab, so the spy stops at Library. */
 const spyIds = tabs.map((tab) => tab.id);
-/* arXiv Search is featured above the results, so the Projects list skips it, and searches that find it pin it too. */
-const featuredProject = viewProjects.find((project) => project.href === arxivSearchRepoHref);
-const featuredDocId = `project-${featuredProject?.symbol}`;
-const otherProjects = viewProjects.filter((project) => project !== featuredProject);
-
 function DocLink({ doc, className, children }: { doc: SearchDoc; className?: string; children: ReactNode }) {
   if (doc.route) return <Link className={className} to={doc.href}>{children}</Link>;
   /* Research notes live on GitHub and open in a new tab, as in the notes list. */
@@ -215,7 +208,6 @@ function SearchPage() {
                       ))}
                     </div>
                   )}
-                  {results.hits.some((hit) => hit.doc.id === featuredDocId) && <FeaturedArxiv id="se-featured-match" level={3} />}
                   <ol className="se-results">
                     {results.hits.map((hit) => (
                       <li className="se-result" key={hit.doc.id}>
@@ -241,7 +233,6 @@ function SearchPage() {
               )}
 
               <div className="se-intro" id="intro">
-                {!searching && <FeaturedArxiv id="se-featured-heading" level={2} />}
                 <article className="se-hero" aria-labelledby="se-intro-heading">
                   <Source href="#intro" />
                   <h1 id="se-intro-heading">{profileContent.shortName} <span>· Senior PM, AI search &amp; retrieval</span></h1>
@@ -296,9 +287,8 @@ function SearchPage() {
             <div className="se-rest">
               <section className="se-section" id="lab" aria-labelledby="se-lab-heading">
                 <h2 id="se-lab-heading">Projects</h2>
-                <FeaturedArxiv id="se-featured-lab" level={3} />
                 <ol className="se-results">
-                  {otherProjects.map((project) => (
+                  {viewProjects.map((project) => (
                     <li className="se-result" key={project.href}>
                       <Source href={project.websiteHref ?? project.href} />
                       <div className="se-result__head">
