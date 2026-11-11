@@ -1,13 +1,13 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { FALLBACK_FX, MAX_PLAUSIBLE_MARKET_CAP_B, parseAiStack, type FxRates } from "../../src/content/aiStackSheet.mjs";
+import { FALLBACK_FX, MAX_PLAUSIBLE_MARKET_CAP_B, fillPending, parseAiStack, type AiStackRow, type FxRates } from "../../src/content/aiStackSheet.mjs";
 
 const upcomingApi = "https://ll.thespacedevs.com/2.3.0/launches/upcoming/**";
 const previousApi = "https://ll.thespacedevs.com/2.3.0/launches/previous/**";
 const stackCsv = "https://docs.google.com/spreadsheets/**";
 const hour = 60 * 60 * 1000;
 
-const stackSnapshot = JSON.parse(readFileSync(new URL("../../src/content/generated/ai-stack.json", import.meta.url), "utf8")) as { rows: unknown[]; fx: FxRates };
+const stackSnapshot = JSON.parse(readFileSync(new URL("../../src/content/generated/ai-stack.json", import.meta.url), "utf8")) as { rows: AiStackRow[]; fx: FxRates };
 
 /* A slice of the AI / LLM Stack Tracker in its published CSV form: quoted thousands and commas, #N/A cells, a ticker
    at two levels, and the sheet's trailing blank columns and rows. */
@@ -30,6 +30,13 @@ const tsmInTwd = 'TSM,Foundry,Chips,6,$396.48,"$60,552",2.02%,$14.99,26.44,1.42,
 const asxInTwd = 'ASX,Packaging,Chips,4,$35.48,"$2,702",3.26%,$1.04,34.04,1.73,$47.93,$13.35,-$12.45,-26%,$22.13,266%,,';
 /* The same won figure under a symbol the parser doesn't know, so it can't be converted. */
 const unknownInWon = skhyInWon.replace(/^SKHY,/, "HYNIX,");
+/* Samsung on the Korea Exchange as the sheet lists it unconverted: price, market cap, EPS, and 52-week range in won. */
+const samsungInWon = 'SAMSUNG,Memory - HBM,Chips,5,"$200,697","$1,300,914",0.93%,"$22,475.73",8.92,#N/A,"$230,000","$95,000",,,,,,';
+const withSamsung = (line: string) => stackSheet.replace(/^SAMSUNG,.*$/m, line);
+/* Rows as the published CSV gives them when it catches the sheet mid-calculation. */
+const skhyCalculating = `SKHY,Memory - HBM,Chips,5${",Loading...".repeat(12)},,`;
+const tsmCapCalculating = tsmInTwd.replace('"$60,552"', "Loading...");
+const newcoCapCalculating = "NEWCO,Designing,Chips,1,$10.00,Loading...,1.00%,$1.00,10.00,1.00,$12.00,$8.00,-$2.00,-16.67%,$2.00,125.00%,,";
 
 const csvResponse = (body: string, contentType = "text/csv") => ({ body, contentType, headers: { "access-control-allow-origin": "*" } });
 
@@ -423,6 +430,72 @@ test("the AI stack parser converts known foreign listings' market caps to US dol
   expect(parseAiStack(stackSheet, fx).filter((row) => row.marketCapCurrency || row.marketCapRejected)).toEqual([]);
 });
 
+test("the AI stack parser converts Samsung's won figures to US dollars, but never twice", () => {
+  const fx: FxRates = { asOf: "2026-11-10", source: "test", perUsd: { TWD: 32, KRW: 1250 } };
+  const [header] = stackSheet.split("\r\n");
+  const parse = (line: string) => parseAiStack([header, line].join("\r\n"), fx)[0];
+
+  /* The price, 52-week range, EPS, and market cap are converted; the day's change, P/E, and beta are the same in any currency. */
+  expect(parse(samsungInWon)).toEqual({
+    symbol: "SAMSUNG", area: "Memory - HBM", layer: "Chips", level: 5, price: 160.56, marketCap: 1040.73, change: 0.93,
+    eps: 17.98, pe: 8.92, beta: null, high: 184, low: 76, perShareCurrency: "KRW", marketCapCurrency: "KRW"
+  });
+
+  /* Each figure is checked on its own: here only the EPS is still in won. */
+  const epsInWon = parse('SAMSUNG,Memory - HBM,Chips,5,$150.11,$973,0.93%,"$22,475.73",8.92,#N/A,#N/A,#N/A,,,,,,');
+  expect(epsInWon).toMatchObject({ price: 150.11, marketCap: 973, eps: 17.98, perShareCurrency: "KRW" });
+  expect(epsInWon).not.toHaveProperty("marketCapCurrency");
+
+  /* Figures already in dollars are left alone. */
+  const inDollars = parse("SAMSUNG,Memory - HBM,Chips,5,$150.11,$973,0.93%,$16.83,8.92,#N/A,$172.00,$71.00,,,,,,");
+  expect(inDollars).toMatchObject({ price: 150.11, marketCap: 973, eps: 16.83, high: 172, low: 71 });
+  expect(inDollars).not.toHaveProperty("perShareCurrency");
+  expect(inDollars).not.toHaveProperty("marketCapCurrency");
+
+  /* With the price still calculating, the rest is still told apart and converted. */
+  expect(parse(samsungInWon.replace('"$200,697"', "Loading...").replace("0.93%", "Loading..."))).toMatchObject({
+    price: null, change: null, pending: ["price", "change"], marketCap: 1040.73, eps: 17.98, high: 184, low: 76,
+    perShareCurrency: "KRW", marketCapCurrency: "KRW"
+  });
+});
+
+test("the AI stack parser marks cells the sheet is still calculating, and fillPending fills them from an earlier read", () => {
+  const fx: FxRates = { asOf: "2026-11-10", source: "test", perUsd: { TWD: 32, KRW: 1400 } };
+  const [header, nvda] = stackSheet.split("\r\n");
+  const rows = parseAiStack([header, nvda, skhyCalculating, tsmCapCalculating, newcoCapCalculating].join("\r\n"), fx);
+  const row = (symbol: string, from = rows) => from.find((item) => item.symbol === symbol);
+
+  /* "Loading..." is missing, like #N/A, but listed as still calculating. */
+  expect(row("SKHY")).toEqual({
+    symbol: "SKHY", area: "Memory - HBM", layer: "Chips", level: 5, price: null, marketCap: null, change: null, eps: null,
+    pe: null, beta: null, high: null, low: null, pending: ["price", "marketCap", "change", "eps", "pe", "beta", "high", "low"]
+  });
+  expect(row("TSM")).toMatchObject({ price: 396.48, marketCap: null, pending: ["marketCap"] });
+  expect(row("TSM")).not.toHaveProperty("marketCapRejected");
+  expect(row("NVDA")).not.toHaveProperty("pending");
+
+  /* The earlier read has SK hynix at its level (with no beta) and TSMC at two levels; the same level wins. */
+  const tsmElsewhere = 'TSM,Foundry,Data Center,11,$390.00,"$1,800",1.00%,$14.99,26.00,1.42,$487.47,$266.82,,,,,,';
+  const earlier = parseAiStack([header, tsmElsewhere, skhyInWon, tsmInTwd].join("\r\n"), fx);
+  const before = structuredClone({ rows, earlier });
+  const filled = fillPending(rows, earlier);
+
+  expect(row("SKHY", filled)).toEqual({
+    symbol: "SKHY", area: "Memory - HBM", layer: "Chips", level: 5, price: 129.66, marketCap: 624.57, marketCapCurrency: "KRW",
+    change: -3.51, eps: 17, pe: 7.63, beta: null, high: 199.87, low: 122.5, pending: ["beta"],
+    carried: ["price", "marketCap", "change", "eps", "pe", "high", "low"]
+  });
+  expect(row("TSM", filled)).toMatchObject({ price: 396.48, marketCap: 1892.25, marketCapCurrency: "TWD", carried: ["marketCap"] });
+  expect(row("TSM", filled)).not.toHaveProperty("pending");
+  /* A company the earlier read doesn't have stays missing; a row with nothing pending is passed through. */
+  expect(row("NEWCO", filled)).toMatchObject({ marketCap: null, pending: ["marketCap"] });
+  expect(row("NEWCO", filled)).not.toHaveProperty("carried");
+  expect(row("NVDA", filled)).toBe(row("NVDA"));
+  /* With no earlier row at its own level, another level's is used. */
+  expect(row("TSM", fillPending([{ ...row("TSM")!, level: 9 }], earlier))).toMatchObject({ marketCap: 1800 });
+  expect({ rows, earlier }).toEqual(before);
+});
+
 test("the Markets Insights tab shows the research notes' seven views, each with its data and sources", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -763,6 +836,54 @@ test("Markets converts a known foreign listing's market cap to US dollars and sa
   await expect(detailCap.locator(".mk-stats__note")).toHaveText("converted from Taiwan dollars");
   await page.goto("./markets?symbol=NVDA&full=1");
   await expect(page.locator(".mk-detail .mk-stats div", { hasText: "Market cap" }).locator("dd")).toHaveText("$3.65T");
+  await expect(page.locator(".mk-detail .mk-stats__note")).toHaveCount(0);
+});
+
+test("Markets converts Samsung's won figures and fills in what the sheet is still calculating from the snapshot", async ({ page }) => {
+  await page.unroute(stackCsv);
+  await page.route(stackCsv, (route) =>
+    route.fulfill(csvResponse([withSamsung(samsungInWon), skhyCalculating, tsmCapCalculating, newcoCapCalculating].join("\r\n")))
+  );
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const { fx } = stackSnapshot;
+  const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+  const won = (value: number) => usd.format(Math.round((value / fx.perUsd.KRW) * 100) / 100);
+  const savedSkhy = stackSnapshot.rows.find((row) => row.symbol === "SKHY" && row.level === 5);
+  expect(savedSkhy?.price).toEqual(expect.any(Number));
+
+  /* SK hynix's whole row was "Loading...": the snapshot's figures stand in, and the status line says so. */
+  await page.goto("./markets?symbol=SKHY");
+  const status = page.locator(".mk-status");
+  await expect(status).toHaveAttribute("data-source", "live");
+  await expect(status).toContainText(
+    "The sheet was still calculating some figures for SKHY, TSM and NEWCO; the saved snapshot's values stand in where it has them."
+  );
+  const preview = page.getByRole("complementary", { name: "Preview" }).locator(".mk-preview");
+  await expect(preview.locator(".mk-preview__price strong")).toHaveText(usd.format(savedSkhy!.price!));
+  await expect(preview.locator(".mk-stats div", { hasText: "Market cap" }).locator("dd")).toContainText(/^\$[\d.]+[BT]/);
+
+  /* TSMC's market cap comes from the snapshot; NEWCO's, which the snapshot doesn't have, is named as still calculating. */
+  await page.getByRole("tab", { name: "Insights" }).click();
+  const treemap = page.locator("#mk-insight-treemap");
+  for (const symbol of ["SAMSUNG", "SKHY", "TSM"]) await expect(treemap.locator(`.mk-treemap__tile[data-symbol="${symbol}"]`)).toHaveCount(1);
+  await expect(treemap.locator('.mk-treemap__tile[data-symbol="NEWCO"]')).toHaveCount(0);
+  const caveat = treemap.locator(".mk-caveat");
+  await expect(caveat).toContainText("The sheet was still calculating the market cap for NEWCO.");
+  await expect(caveat).toContainText(/SAMSUNG( and SKHY)? from South Korean won/);
+  await expect(caveat).not.toContainText("No market cap in the sheet");
+
+  /* Samsung's full view gives its won figures in dollars and says so; a company the sheet gives in dollars has no mark. */
+  await page.goto("./markets?symbol=SAMSUNG&full=1");
+  const quote = page.locator(".mk-detail .mk-quote__price");
+  await expect(quote.locator("strong")).toHaveText(won(200_697));
+  await expect(quote.locator(".mk-stats__note")).toHaveText("Per-share figures converted from South Korean won");
+  const stat = (name: string) => page.locator(".mk-detail .mk-stats > div", { hasText: name }).locator("dd");
+  await expect(stat("EPS")).toHaveText(won(22_475.73));
+  await expect(stat("52-week range")).toHaveText(`${won(95_000)} to ${won(230_000)}`);
+  await expect(stat("Market cap").locator(".mk-stats__note")).toHaveText("converted from South Korean won");
+  await page.goto("./markets?symbol=NVDA&full=1");
+  await expect(page.locator(".mk-detail .mk-quote__price strong")).toHaveText("$150.00");
   await expect(page.locator(".mk-detail .mk-stats__note")).toHaveCount(0);
 });
 
