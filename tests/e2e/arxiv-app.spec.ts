@@ -203,7 +203,7 @@ test("a desktop arrangement saved before arXiv Search had an icon puts it beside
   await page.setViewportSize({ width: 390, height: 844 });
   const home = page.locator(".os-home").getByRole("list", { name: "Apps", exact: true });
   await expect(home.locator(".os-icon__label").nth(1)).toHaveText("arXiv Search");
-  await expect(home.locator(".os-icon")).toHaveCount(13);
+  await expect(home.locator(".os-icon")).toHaveCount(14);
 });
 
 test("when the shift does not fit a full row, arXiv Search takes the nearest free slot in that row", async ({ page }) => {
