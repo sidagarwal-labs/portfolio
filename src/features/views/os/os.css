@@ -80,6 +80,11 @@ html[data-os-style="retro"] {
 
 .os-icons .os-icon:hover { background: rgba(255, 255, 255, 0.1); }
 
+.os-icons .os-icon.is-selected { background: rgba(157, 187, 255, 0.24); box-shadow: inset 0 0 0 1px rgba(157, 187, 255, 0.6); }
+
+/* Selection box drawn while dragging across the empty desktop; it sits under the icons so they stay sharp. */
+.os-marquee { position: absolute; border: 1px solid rgba(157, 187, 255, 0.85); border-radius: 3px; background: rgba(157, 187, 255, 0.18); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); pointer-events: none; }
+
 .os-folder { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 6px; margin: 0; padding: 14px; list-style: none; color: #1f2328; }
 
 .os-folder .os-icon { height: auto; padding: 10px 6px; }
@@ -297,6 +302,14 @@ html[data-os-style="retro"] {
 .os--retro .os-icons .os-icon:focus-visible { outline: none; }
 
 .os--retro .os-icons .os-icon:focus .os-icon__label { background: #000080; outline: 1px dotted #fff; }
+
+.os--retro .os-icons .os-icon.is-selected { background: transparent; box-shadow: none; }
+
+.os--retro .os-icons .os-icon.is-selected .os-icon__label { background: #000080; color: #fff; }
+
+.os--retro .os-icons .os-icon.is-selected .os-icon__tile { box-shadow: inset 0 0 0 40px rgba(0, 0, 128, 0.45); }
+
+.os--retro .os-marquee { border: 1px dotted #fff; border-radius: 0; background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
 
 .os--retro .os-folder .os-icon:hover { background: #e4e4e4; }
 
@@ -569,6 +582,10 @@ html[data-os-style="retro"] {
 
 .os--wall-light .os-icons .os-icon:hover { background: rgba(0, 0, 0, 0.08); }
 
+.os--modern.os--wall-light .os-icons .os-icon.is-selected { background: rgba(42, 79, 191, 0.16); box-shadow: inset 0 0 0 1px rgba(42, 79, 191, 0.5); }
+
+.os--modern.os--wall-light .os-marquee { border-color: rgba(42, 79, 191, 0.8); background: rgba(42, 79, 191, 0.14); }
+
 .os--modern.os--wall-light .os-widget { border-color: rgba(16, 20, 29, 0.12); background: rgba(255, 255, 255, 0.55); }
 
 .os--modern.os--wall-light .os-widget__who span { color: #3b4250; }
@@ -584,3 +601,7 @@ html[data-os-style="retro"] {
 .os--retro.os--wall-light .os-icons .os-icon:hover { background: transparent; }
 
 .os--retro.os--wall-light .os-icons .os-icon:focus .os-icon__label { color: #fff; }
+
+.os--retro.os--wall-light .os-icons .os-icon.is-selected .os-icon__label { color: #fff; }
+
+.os--retro.os--wall-light .os-marquee { border-color: #000; }
