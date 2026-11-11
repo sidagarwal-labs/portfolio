@@ -344,18 +344,18 @@ html.se-booting { overflow: hidden; }
 
 .se-video__player { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 12px; background: #e8eaed; }
 
-.se-video__player iframe, .se-video__play { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.se-video__player iframe, .se-video__player__play { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 
-.se-video__play { display: grid; place-items: center; padding: 0; background: transparent; cursor: pointer; }
+.se-video__player__play { display: grid; place-items: center; padding: 0; background: transparent; cursor: pointer; }
 
 /* The player clips its corners, so the focus ring is drawn inside it. */
-.se-video__play:focus-visible { outline: 3px solid var(--link); outline-offset: -3px; }
+.se-video__player__play:focus-visible { outline: 3px solid var(--link); outline-offset: -3px; }
 
-.se-video__play img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.se-video__player__play img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
-.se-video__icon { z-index: 1; display: grid; place-items: center; width: 54px; height: 38px; border-radius: 10px; background: rgba(32, 33, 36, 0.8); color: #fff; transition: background 0.2s ease; }
+.se-video__player__icon { z-index: 1; display: grid; place-items: center; width: 54px; height: 38px; border-radius: 10px; background: rgba(32, 33, 36, 0.8); color: #fff; transition: background 0.2s ease; }
 
-.se-video__play:hover .se-video__icon, .se-video__play:focus-visible .se-video__icon { background: var(--link); }
+.se-video__player__play:hover .se-video__player__icon, .se-video__player__play:focus-visible .se-video__player__icon { background: var(--link); }
 
 .se-video h4 { margin: 0; font-size: 18px; font-weight: 400; line-height: 1.35; }
 
@@ -481,7 +481,18 @@ html.se-booting { overflow: hidden; }
   .se-season__year { font-size: 13px; }
   .se-images { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .se-images li:first-child { grid-column: 1 / -1; }
-  .se-video { grid-template-columns: minmax(0, 1fr); }
+  /* The thumbnail sits beside the title and channel; the empty 1fr row absorbs any extra thumbnail height. */
+  .se-video { grid-template: "player title" auto "player meta" auto "player ." 1fr "text text" auto "record record" auto / 140px minmax(0, 1fr); gap: 0 12px; }
+  .se-video.is-playing { grid-template: "player" "title" "meta" "text" "record" / minmax(0, 1fr); }
+  .se-video__body { display: contents; }
+  .se-video__player { grid-area: player; border-radius: 10px; }
+  .se-video.is-playing .se-video__player { margin-bottom: 10px; }
+  .se-video h4 { grid-area: title; font-size: 16px; }
+  .se-video__meta { grid-area: meta; font-size: 13px; }
+  .se-video .se-result__snippet { grid-area: text; margin-top: 8px; }
+  .se-video__record { grid-area: record; }
+  .se-video__player__icon { width: 40px; height: 28px; border-radius: 8px; }
+  .se-video__player__icon svg { width: 20px; height: 20px; }
   .se-links { grid-template-columns: minmax(0, 1fr); gap: 14px; }
 }
 

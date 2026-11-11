@@ -229,6 +229,13 @@ test("Sid Search keeps Pitt Pirates links on its Robotics section and plays matc
   await expect(images.first().getByRole("link", { name: /^Original photo: Gemini/ })).toHaveAttribute("href", /pittpiratesrobotics\.com\/wp-content\/uploads\//);
 
   await expect(robotics.locator(".se-video iframe")).toHaveCount(0);
+  /* The channel is part of each video's meta line; the shared The Blue Alliance line is the section's only source block. */
+  await expect(robotics.locator(".se-source")).toHaveCount(1);
+  await expect(robotics.locator(".se-video__meta")).toHaveText([
+    "2017 Houston Championship, Roebling Qualification 14 · YouTube · Felix Giffard",
+    "2017 Raleigh District, Final 3 · YouTube · Team2059Archive"
+  ]);
+  await expect(robotics.getByRole("link", { name: "Gemini at the World Championship" })).toHaveAttribute("href", "https://www.youtube.com/watch?v=23Ge6Ods51A");
   await robotics.getByRole("button", { name: "Play 2017 Houston Championship, Roebling Qualification 14" }).click();
   const player = robotics.locator(".se-video").first().locator("iframe");
   await expect(player).toHaveAttribute("src", "https://www.youtube-nocookie.com/embed/23Ge6Ods51A?autoplay=1&rel=0");
@@ -250,6 +257,7 @@ test("Sid Search keeps Pitt Pirates links on its Robotics section and plays matc
 });
 
 test("Sid Search's Robotics section fits a phone", async ({ page }) => {
+  await page.route("https://www.youtube-nocookie.com/embed/**", (route) => route.fulfill({ contentType: "text/html", body: "<p>Player</p>" }));
   await page.route(/^https:\/\/(i\.ytimg\.com|www\.pittpiratesrobotics\.com)\//, (route) => route.abort());
   await page.emulateMedia({ reducedMotion: "reduce" });
   for (const width of [390, 320]) {
@@ -263,11 +271,26 @@ test("Sid Search's Robotics section fits a phone", async ({ page }) => {
         expect(rect!.x + rect!.width, `${box} at ${width}px`).toBeLessThanOrEqual(section!.x + section!.width + 0.5);
       }
     }
-    /* Videos stack above their details, and the lead photo spans the image grid. */
+    /* Phones put each video's thumbnail beside its title instead of stacking it full width. */
     const video = await page.locator("#robotics .se-video__player").first().boundingBox();
-    expect(video!.width).toBeGreaterThan(section!.width - 1);
+    const title = await page.locator("#robotics .se-video h4").first().boundingBox();
+    expect(video!.width).toBeLessThan(160);
+    expect(title!.x).toBeGreaterThan(video!.x + video!.width);
+    expect(Math.abs(title!.y - video!.y)).toBeLessThan(4);
     const lead = await page.locator("#robotics .se-image__thumb").first().boundingBox();
     expect(lead!.width).toBeGreaterThan(section!.width - 1);
+    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
+  }
+
+  /* A playing match still widens to the full column. */
+  const second = page.locator("#robotics .se-video").nth(1);
+  await second.getByRole("button", { name: "Play 2017 Raleigh District, Final 3" }).click();
+  await expect(second.locator("iframe")).toHaveAttribute("src", "https://www.youtube-nocookie.com/embed/VzhwTXsN2io?autoplay=1&rel=0");
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    const section = await page.locator("#robotics").boundingBox();
+    const player = await second.locator(".se-video__player").boundingBox();
+    expect(player!.width, `playing video at ${width}px`).toBeGreaterThan(section!.width - 1);
     expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
   }
 });

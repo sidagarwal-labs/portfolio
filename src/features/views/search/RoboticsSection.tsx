@@ -61,9 +61,8 @@ function VideoResult({ match }: { match: FeaturedMatch }) {
     <li className={`se-video${playing ? " is-playing" : ""}`}>
       <MatchPlayer match={match} className="se-video__player" onPlay={() => setPlaying(true)} />
       <div className="se-video__body">
-        <Source href={youtubeWatchUrl(match.id)} />
         <h4><a className="se-result__title" href={youtubeWatchUrl(match.id)}>{match.title}</a></h4>
-        <p className="se-video__meta">{match.event} · Video: {match.publisher}</p>
+        <p className="se-video__meta">{match.event} · YouTube · {match.publisher}</p>
         <p className="se-result__snippet"><span className="se-kind">{match.result}</span> {match.description}</p>
         <a className="se-video__record" href={match.record}>Match record on The Blue Alliance</a>
       </div>
