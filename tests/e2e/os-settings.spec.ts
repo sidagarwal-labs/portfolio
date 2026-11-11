@@ -90,7 +90,7 @@ test("the solid color option paints the desktop and keeps labels readable", asyn
   await expect(page.locator(".os")).toHaveCSS("background-color", "rgb(32, 48, 64)");
 });
 
-test("the Settings style choice stays in sync with the taskbar and Start menu toggles", async ({ page }) => {
+test("the Settings style choice stays in sync with the taskbar toggle", async ({ page }) => {
   await openDesktop(page);
   const win = await openSettings(page);
   const html = page.locator("html");
@@ -107,15 +107,90 @@ test("the Settings style choice stays in sync with the taskbar and Start menu to
   await expect(html).toHaveAttribute("data-os-style", "modern");
   await expect(win.getByRole("radio", { name: "Modern", exact: true })).toBeChecked();
 
-  await page.locator(".os-start").click();
-  await page.getByRole("dialog", { name: "Start menu" }).getByRole("button", { name: "Retro", exact: true }).click();
+  await win.getByRole("radio", { name: "Retro", exact: true }).check();
   await expect(html).toHaveAttribute("data-os-style", "retro");
-  await page.keyboard.press("Escape");
-  await expect(win.getByRole("radio", { name: "Retro", exact: true })).toBeChecked();
   await expect(win.getByRole("definition").filter({ hasText: /^Retro$/ })).toBeVisible();
 
   await page.reload();
   await expect(html).toHaveAttribute("data-os-style", "retro");
+});
+
+test("the Start menu leaves style, icon arrangement, and full-page views to Settings", async ({ page }) => {
+  await openDesktop(page);
+  await page.locator(".os-start").click();
+  const menu = page.getByRole("dialog", { name: "Start menu" });
+  await expect(menu.getByRole("list", { name: "Contact", exact: true })).toBeVisible();
+  await expect(menu.getByRole("button", { name: "Restart", exact: true })).toBeVisible();
+  await expect(menu.getByRole("button", { name: "Shut down", exact: true })).toBeVisible();
+  for (const heading of ["Style", "Full-page views"]) await expect(menu.getByRole("heading", { name: heading, exact: true })).toHaveCount(0);
+  await expect(menu.getByRole("group", { name: "Style" })).toHaveCount(0);
+  await expect(menu.getByRole("list", { name: "Full-page views" })).toHaveCount(0);
+  await expect(menu.getByRole("button", { name: /^(Modern|Retro|Arrange desktop icons)$/ })).toHaveCount(0);
+  await expect(menu.getByRole("list", { name: "System", exact: true }).getByRole("button", { name: "Settings", exact: true })).toBeVisible();
+  /* Settings sits under Contact, so it stays in view without scrolling the apps column. */
+  const rightColumn = menu.getByRole("list", { name: "Contact", exact: true }).locator("..");
+  await expect(rightColumn.getByRole("list", { name: "System", exact: true })).toBeInViewport();
+  await menu.getByRole("searchbox", { name: "Search apps" }).fill("settings");
+  await expect(menu.getByRole("list", { name: "System", exact: true })).toHaveCount(0);
+  await expect(menu.getByRole("list", { name: "Search results", exact: true }).getByRole("button")).toHaveText(["Settings"]);
+});
+
+test("Settings arranges desktop icons", async ({ page }) => {
+  await openDesktop(page);
+  await page.getByRole("button", { name: "Show desktop", exact: true }).click();
+  const icon = page.locator(".os-icons .os-icon", { hasText: "Forward pass" });
+  const before = (await icon.boundingBox())!;
+  await icon.focus();
+  await page.keyboard.press("Shift+ArrowRight");
+  expect((await icon.boundingBox())!.x).toBe(before.x + 92);
+
+  await page.getByRole("button", { name: "Open Settings" }).click();
+  const win = page.locator(settingsWin);
+  await win.getByRole("button", { name: "Arrange icons", exact: true }).click();
+  await expect(win.getByRole("status")).toHaveText("Desktop icons arranged.");
+  expect((await icon.boundingBox())!.x).toBe(before.x);
+  expect((await icon.boundingBox())!.y).toBe(before.y);
+});
+
+const fullPageViews = [
+  { name: "Journal", view: "journal" },
+  { name: "Search", view: "search" },
+  { name: "Forward pass", view: "forward" },
+  { name: "Training run", view: "training" },
+  { name: "Terminal", view: "terminal" }
+];
+
+for (const style of ["modern", "retro"]) {
+  test(`Settings opens every full-page view in ${style} style`, async ({ page }) => {
+    for (const { name, view } of fullPageViews) {
+      await openDesktop(page, style);
+      const win = await openSettings(page);
+      const views = win.getByRole("list", { name: "Full-page views", exact: true });
+      await expect(win.getByText("A full-page view swaps Lab OS for another design of the whole site", { exact: false })).toBeVisible();
+      await expect(views.getByRole("button")).toHaveText(fullPageViews.map((item) => new RegExp(`^${item.name}`)));
+      const button = views.getByRole("button", { name, exact: true });
+      await expect(button).toHaveAccessibleDescription(/.+/);
+      await button.click();
+      await expect(page).toHaveURL(new RegExp(`[?&]view=${view}(&|$)`));
+      await expect(page.locator(".os")).toHaveCount(0);
+      await expect(page.locator("html")).not.toHaveAttribute("data-os-style", /.+/);
+      if (view !== "journal") await expect(page.locator("html")).toHaveAttribute("data-view", view);
+      await expect(page.getByRole("button", { name: new RegExp(`^View: ${name}$`) })).toBeVisible();
+    }
+  });
+}
+
+test("Settings on a phone offers the full-page views", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("./?view=os&style=modern");
+  await page.locator(".os-home").getByRole("list", { name: "Apps", exact: true }).locator(".os-icon", { hasText: "Settings" }).click();
+  const views = page.locator(settingsWin).getByRole("list", { name: "Full-page views", exact: true });
+  await views.scrollIntoViewIfNeeded();
+  await expect(views.getByRole("button")).toHaveCount(fullPageViews.length);
+  await views.getByRole("button", { name: "Training run", exact: true }).click();
+  await expect(page).toHaveURL(/[?&]view=training(&|$)/);
+  await expect(page.locator("html")).toHaveAttribute("data-view", "training");
 });
 
 test("the clock follows the 12/24-hour and seconds settings", async ({ page }) => {

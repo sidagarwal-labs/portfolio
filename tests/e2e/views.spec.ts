@@ -686,26 +686,27 @@ test("Lab OS windows open, focus, minimize, maximize, and close", async ({ page 
   await expect(page.locator(".os-task", { hasText: "Journal" })).toHaveCount(0);
 });
 
-test("Lab OS start menu switches styles and full-page views", async ({ page }) => {
+test("Lab OS Settings switches styles and full-page views", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("./");
 
-  await page.locator(".os-start").click();
-  const menu = page.getByRole("dialog", { name: "Start menu" });
-  await menu.getByRole("button", { name: "Retro", exact: true }).click();
+  await page.getByRole("button", { name: "Open Settings" }).click();
+  const settings = page.locator('.os-win[data-app="settings"]');
+  await settings.getByRole("radio", { name: "Retro", exact: true }).check();
   await expect(page.locator("html")).toHaveAttribute("data-os-style", "retro");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-os-style", "retro");
   await expect(page.locator(".os-start")).toContainText("Start");
 
   await page.locator(".os-start").click();
+  const menu = page.getByRole("dialog", { name: "Start menu" });
   await page.keyboard.press("Escape");
   await expect(menu).toHaveCount(0);
   await expect(page.locator(".os-start")).toBeFocused();
 
-  await page.locator(".os-start").click();
-  await menu.getByRole("list", { name: "Full-page views" }).getByRole("button", { name: "Journal", exact: true }).click();
+  await page.getByRole("button", { name: "Open Settings" }).click();
+  await settings.getByRole("list", { name: "Full-page views" }).getByRole("button", { name: "Journal", exact: true }).click();
   await expect(page).toHaveURL(/\?view=journal$/);
   await expect(page.locator("html")).not.toHaveAttribute("data-view", /.+/);
   await expect(page.locator("html")).not.toHaveAttribute("data-os-style", /.+/);
@@ -886,10 +887,11 @@ test("desktop icons drag without opening, persist, move with the keyboard, and c
   await page.getByRole("button", { name: "Show desktop", exact: true }).click();
   expect((await icon.boundingBox())!.x).toBe(before.x + 184);
   expect((await icon.boundingBox())!.y).toBe(before.y + 92);
-  await page.locator(".os-start").click();
-  await page.getByRole("button", { name: "Arrange desktop icons", exact: true }).click();
+  await page.getByRole("button", { name: "Open Settings" }).click();
+  await page.locator('.os-win[data-app="settings"]').getByRole("button", { name: "Arrange icons", exact: true }).click();
   /* Arranging resets positions in an effect after the click; the status appears in the same render. */
   await expect(page.locator(".os-desktop-notice")).toHaveText("Icons arranged.");
+  await page.getByRole("button", { name: "Close Settings" }).click();
   expect((await icon.boundingBox())!.x).toBe(before.x);
   expect((await icon.boundingBox())!.y).toBe(before.y);
   await icon.focus();
