@@ -343,6 +343,13 @@ test("Sid Search's Library mixes books and podcasts and filters them by topic in
   await expect(acquired.getByRole("link")).toHaveAttribute("href", "https://open.spotify.com/show/7Fj0XEuUQLUqoMZQdsLXqp");
   await expect(acquired.locator(".se-badge")).toHaveText("Podcast");
   await expect(acquired).toContainText("Ben Gilbert & David Rosenthal");
+  /* The kind badge sits on the cover's corner, so the title follows the cover directly. */
+  const [art, badge, title] = await Promise.all([".se-art", ".se-badge", ".se-shelf__title"].map((selector) => acquired.locator(selector).boundingBox()));
+  expect(badge!.x).toBeGreaterThanOrEqual(art!.x);
+  expect(badge!.y).toBeGreaterThanOrEqual(art!.y);
+  expect(badge!.x + badge!.width).toBeLessThanOrEqual(art!.x + art!.width);
+  expect(badge!.y + badge!.height).toBeLessThanOrEqual(art!.y + art!.height / 3);
+  expect(title!.y - (art!.y + art!.height)).toBeLessThan(12);
 
   const ai = library.getByRole("button", { name: /^AI, search & chips/ });
   await ai.click();

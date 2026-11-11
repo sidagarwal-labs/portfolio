@@ -400,7 +400,7 @@ html.se-booting { overflow: hidden; }
 
 .se-shelf li { display: grid; align-content: start; gap: 2px; min-width: 0; }
 
-.se-shelf__link { display: grid; gap: 6px; color: var(--ink); text-decoration: none; }
+.se-shelf__link { position: relative; display: grid; gap: 6px; color: var(--ink); text-decoration: none; }
 
 .se-shelf__link:hover { color: var(--ink); }
 
@@ -414,7 +414,10 @@ html.se-booting { overflow: hidden; }
 
 .se-shelf__link:hover .se-art { box-shadow: 0 4px 14px rgba(32, 33, 36, 0.12); transform: translateY(-2px); }
 
-.se-badge { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; line-height: 1.4; text-transform: uppercase; }
+/* The kind badge sits on the cover's corner instead of adding a line under every cover. */
+.se-badge { position: absolute; top: 5px; left: 5px; display: inline-flex; align-items: center; gap: 3px; padding: 0 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.9); box-shadow: 0 1px 2px rgba(32, 33, 36, 0.2); color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: 0.04em; line-height: 1.5; text-transform: uppercase; transition: transform 0.2s ease; }
+
+.se-shelf__link:hover .se-badge { transform: translateY(-2px); }
 
 .se-shelf__title { color: var(--link); font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
 
@@ -506,7 +509,7 @@ html.se-booting { overflow: hidden; }
   .se-filters button:focus-visible { outline-offset: -2px; }
   .se-shelf { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 10px; }
   .se-art { border-radius: 10px; }
-  .se-badge { font-size: 10px; }
+  .se-badge { top: 4px; left: 4px; padding: 0 5px; font-size: 9.5px; }
   .se-shelf__title { font-size: 13px; }
   .se-shelf__by { font-size: 11.5px; }
 }
