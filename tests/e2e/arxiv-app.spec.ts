@@ -122,7 +122,7 @@ test("arXiv Search is a top-level app in the Start menu and on the phone home sc
   await page.goto("./?view=os");
   const home = page.locator(".os-home").getByRole("list", { name: "Apps", exact: true });
   await expect(home.locator(".os-icon__label").nth(1)).toHaveText("arXiv Search");
-  await expect(home.locator(".os-icon")).toHaveCount(13);
+  await expect(home.locator(".os-icon")).toHaveCount(14);
   await expect(home.locator(".os-icon", { hasText: "Reader" })).toHaveCount(0);
   await home.locator(".os-icon", { hasText: "Projects" }).click();
   const phoneFolder = page.getByRole("list", { name: "Projects apps", exact: true });
