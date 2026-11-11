@@ -248,6 +248,7 @@ test("Reset all asks first, then clears saved settings and the icon layout", asy
   await openDesktop(page);
   await page.evaluate(() => {
     localStorage.setItem("lab-os-icons-v2", JSON.stringify({ search: { x: 3, y: 2 } }));
+    localStorage.setItem("lab-os-icons-v3", JSON.stringify({ search: { col: 3, row: 2 } }));
     localStorage.setItem("lab-os-snake-best-v1", "12");
   });
   const win = await openSettings(page);

@@ -72,7 +72,8 @@ export const apps: Record<AppId, AppDef> = {
 };
 
 export const desktopRows: AppId[][] = [
-  ["search", "projects", "arxiv", "library", "github"],
+  ["search", "library", "github"],
+  ["projects", "arxiv"],
   ["forward", "designs"],
   ["games", "markets", "launches", "leaderboards"]
 ];

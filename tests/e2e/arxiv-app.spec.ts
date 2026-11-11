@@ -77,7 +77,7 @@ type Layout = Partial<Record<IconId, { col: number; row: number }>>;
 
 /* Opens the desktop with an icon arrangement already saved in browser storage. */
 async function openSavedDesktop(page: Page, saved: Layout, viewport = { width: 1440, height: 900 }) {
-  await page.addInitScript((layout) => localStorage.setItem("lab-os-icons-v2", JSON.stringify(layout)), saved);
+  await page.addInitScript((layout) => localStorage.setItem("lab-os-icons-v3", JSON.stringify(layout)), saved);
   await blockOutside(page);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize(viewport);
@@ -119,7 +119,7 @@ async function expectRepoInGitHub(page: Page, repo: string) {
 test("the desktop shows arXiv Search right after the Projects folder, which lists the other four projects", async ({ page }) => {
   await openDesktop(page);
   const desktopLabels = await page.locator(".os-icons .os-icon__label").allTextContents();
-  expect(desktopLabels.slice(0, 5)).toEqual(["Sid Search", "Projects", "arXiv Search", "Library", "GitHub"]);
+  expect(desktopLabels.slice(0, 5)).toEqual(["Sid Search", "Library", "GitHub", "Projects", "arXiv Search"]);
   for (const title of projects) expect(desktopLabels).not.toContain(title);
 
   const icons = page.locator(".os-icons");
@@ -147,7 +147,7 @@ test("arXiv Search is a top-level app in the Start menu and on the phone home sc
   const menu = page.getByRole("dialog", { name: "Start menu" });
   const appList = menu.getByRole("list", { name: "Apps", exact: true });
   await expect(appList.locator(":scope > li > button", { hasText: "Reader" })).toHaveCount(0);
-  await expect(appList.locator(":scope > li > button").nth(1)).toHaveText("arXiv Search");
+  await expect(appList.locator(":scope > li > button").nth(3)).toHaveText("arXiv Search");
   await appList.getByRole("button", { name: "Projects", exact: true }).click();
   await expect(menu.getByRole("list", { name: "Projects", exact: true }).getByRole("button")).toHaveText(projects);
   const search = menu.getByRole("searchbox", { name: "Search apps" });
@@ -163,7 +163,7 @@ test("arXiv Search is a top-level app in the Start menu and on the phone home sc
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("./?view=os");
   const home = page.locator(".os-home").getByRole("list", { name: "Apps", exact: true });
-  await expect(home.locator(".os-icon__label").nth(1)).toHaveText("arXiv Search");
+  await expect(home.locator(".os-icon__label").nth(3)).toHaveText("arXiv Search");
   await expect(home.locator(".os-icon")).toHaveCount(14);
   await expect(home.locator(".os-icon", { hasText: "Reader" })).toHaveCount(0);
   await home.locator(".os-icon", { hasText: "Projects" }).click();
@@ -196,13 +196,13 @@ test("a desktop arrangement saved before arXiv Search had an icon puts it beside
   /* Moving any icon saves the whole arrangement, arXiv Search included, so later visits match. */
   await page.locator(".os-icons").getByRole("button", { name: "GitHub", exact: true }).focus();
   await page.keyboard.press("Shift+ArrowRight");
-  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("lab-os-icons-v2") ?? "{}"));
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("lab-os-icons-v3") ?? "{}"));
   expect(stored).toMatchObject({ projects: { col: 1, row: 0 }, arxiv: { col: 2, row: 0 }, library: { col: 3, row: 0 }, github: { col: 5, row: 0 } });
 
   /* The phone home screen lists apps in menu order, whatever the desktop arrangement. */
   await page.setViewportSize({ width: 390, height: 844 });
   const home = page.locator(".os-home").getByRole("list", { name: "Apps", exact: true });
-  await expect(home.locator(".os-icon__label").nth(1)).toHaveText("arXiv Search");
+  await expect(home.locator(".os-icon__label").nth(3)).toHaveText("arXiv Search");
   await expect(home.locator(".os-icon")).toHaveCount(14);
 });
 

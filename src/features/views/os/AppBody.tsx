@@ -105,13 +105,13 @@ function ResumeViewer() {
 }
 
 function Readme({ actions }: { actions: OsActions }) {
-  const appList: AppId[] = ["search", "projects", "arxiv", "library", "github", "forward", "designs"];
+  const appList: AppId[] = ["search", "library", "github", "projects", "arxiv", "forward", "designs"];
   return (
     <div className="os-note">
       <p><strong>Hi, I'm Sid Agarwal.</strong> {roleLine}.</p>
       <p>This site is a browser-based desktop simulation, and its apps are my portfolio. It does not control your computer or files.</p>
       <p>Drag desktop icons to arrange them; Shift + arrow keys also move a focused icon. Positions are saved in this browser. Drag title bars to move windows, their edges or corners to resize, and double-click a title bar to maximize. The taskbar restores minimized apps. Settings, in Start or behind the taskbar's gear, changes the wallpaper, style, clock, and motion.</p>
-      <p>arXiv Search has its own icon beside the Projects folder, which holds shortcuts to my other project repositories and Reader (which Microsoft links also open). Other designs holds Training run, Terminal, and Journal, and Games holds the games. The Start menu and the phone home screen use the same folders, and Start search finds the apps inside them. Resume and README.txt start at the bottom-left of the desktop.</p>
+      <p>Sid Search, Library, and GitHub start on the top row of the desktop. arXiv Search has its own icon beside the Projects folder on the second row; the folder holds shortcuts to my other project repositories and Reader (which Microsoft links also open). Other designs holds Training run, Terminal, and Journal, and Games holds the games. The Start menu and the phone home screen use the same folders, and Start search finds the apps inside them. Resume and README.txt start at the bottom-left of the desktop.</p>
       <ul>
         {appList.map((id) => (
           <li key={id}>
