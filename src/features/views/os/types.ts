@@ -1,6 +1,8 @@
 import type { SiteView } from "../siteViews";
 import type { AppId } from "./apps";
 
+export type OsStyle = "modern" | "retro";
+
 export type Rect = { x: number; y: number; w: number; h: number };
 
 /* What a routed link asked a native app to show; seq changes on every request so repeating a link re-applies it. */

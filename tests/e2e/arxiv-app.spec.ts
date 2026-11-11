@@ -66,6 +66,48 @@ async function openArxiv(page: Page, style = "modern") {
   return win;
 }
 
+const iconLabels = {
+  search: "Sid Search", projects: "Projects", arxiv: "arXiv Search", library: "Library", github: "GitHub",
+  forward: "Forward pass", designs: "Other designs",
+  games: "Games", markets: "Markets", launches: "Launches", leaderboards: "AI leaderboards",
+  resume: "Resume.pdf", readme: "README.txt"
+};
+type IconId = keyof typeof iconLabels;
+type Layout = Partial<Record<IconId, { col: number; row: number }>>;
+
+/* Opens the desktop with an icon arrangement already saved in browser storage. */
+async function openSavedDesktop(page: Page, saved: Layout, viewport = { width: 1440, height: 900 }) {
+  await page.addInitScript((layout) => localStorage.setItem("lab-os-icons-v2", JSON.stringify(layout)), saved);
+  await blockOutside(page);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize(viewport);
+  await page.goto("./?view=os");
+  await page.getByRole("button", { name: "Show desktop", exact: true }).click();
+}
+
+/* Each desktop icon's grid cell, read from where it renders, and the number of columns that fit. */
+async function desktopCells(page: Page) {
+  const desk = (await page.locator(".os-desktop").boundingBox())!;
+  const items = await page.locator(".os-icons > li").evaluateAll((list) => list.map((item) => {
+    const { x, y } = item.getBoundingClientRect();
+    return { label: item.querySelector(".os-icon__label")?.textContent ?? "", x, y };
+  }));
+  const ids = Object.keys(iconLabels) as IconId[];
+  const cells: Layout = {};
+  for (const { label, x, y } of items) {
+    const id = ids.find((key) => iconLabels[key] === label);
+    if (!id) throw new Error(`Unexpected desktop icon "${label}"`);
+    cells[id] = { col: (x - desk.x - 8) / 92, row: (y - desk.y - 8) / 92 };
+  }
+  return { cells, columns: Math.floor((desk.width - 16) / 92) };
+}
+
+function expectNoOverlap(cells: Layout) {
+  const slots = Object.values(cells).map(({ col, row }) => `${col},${row}`);
+  expect(slots).toHaveLength(Object.keys(iconLabels).length);
+  expect(new Set(slots).size, "no two icons share a slot").toBe(slots.length);
+}
+
 async function expectRepoInGitHub(page: Page, repo: string) {
   const github = page.locator(githubWin);
   await expect(github).toHaveClass(/is-active/);
@@ -122,7 +164,7 @@ test("arXiv Search is a top-level app in the Start menu and on the phone home sc
   await page.goto("./?view=os");
   const home = page.locator(".os-home").getByRole("list", { name: "Apps", exact: true });
   await expect(home.locator(".os-icon__label").nth(1)).toHaveText("arXiv Search");
-  await expect(home.locator(".os-icon")).toHaveCount(13);
+  await expect(home.locator(".os-icon")).toHaveCount(14);
   await expect(home.locator(".os-icon", { hasText: "Reader" })).toHaveCount(0);
   await home.locator(".os-icon", { hasText: "Projects" }).click();
   const phoneFolder = page.getByRole("list", { name: "Projects apps", exact: true });
@@ -137,28 +179,70 @@ test("arXiv Search is a top-level app in the Start menu and on the phone home sc
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
 });
 
-test("a desktop arrangement saved before arXiv Search had an icon gives it a free slot", async ({ page }) => {
-  await page.addInitScript(() => {
-    const saved = {
-      search: { col: 0, row: 0 }, projects: { col: 1, row: 0 }, library: { col: 2, row: 0 }, github: { col: 3, row: 0 },
-      forward: { col: 0, row: 1 }, designs: { col: 1, row: 1 },
-      games: { col: 0, row: 2 }, markets: { col: 1, row: 2 }, launches: { col: 2, row: 2 }, leaderboards: { col: 3, row: 2 },
-      resume: { col: 0, row: 8 }, readme: { col: 1, row: 8 }
-    };
-    localStorage.setItem("lab-os-icons-v2", JSON.stringify(saved));
-  });
-  await openDesktop(page);
-  const icons = page.locator(".os-icons");
-  const at = async (name: string) => {
-    const box = (await icons.getByRole("button", { name, exact: true }).boundingBox())!;
-    return { x: box.x, y: box.y };
+test("a desktop arrangement saved before arXiv Search had an icon puts it beside Projects", async ({ page }) => {
+  const saved: Layout = {
+    search: { col: 0, row: 0 }, projects: { col: 1, row: 0 }, library: { col: 2, row: 0 }, github: { col: 3, row: 0 },
+    forward: { col: 0, row: 1 }, designs: { col: 1, row: 1 },
+    games: { col: 0, row: 2 }, markets: { col: 1, row: 2 }, launches: { col: 2, row: 2 }, leaderboards: { col: 3, row: 2 },
+    resume: { col: 0, row: 8 }, readme: { col: 1, row: 8 }
   };
-  const library = await at("Library");
-  expect(library.x - (await at("Sid Search")).x, "saved icons keep their places").toBe(184);
-  const games = await at("Games");
-  expect(await at("arXiv Search"), "arXiv Search takes the first free slot, below Games").toEqual({ x: games.x, y: games.y + 92 });
-  const boxes = await page.locator(".os-icons > li").evaluateAll((items) => items.map((item) => `${item.getBoundingClientRect().x},${item.getBoundingClientRect().y}`));
-  expect(new Set(boxes).size).toBe(boxes.length);
+  await openSavedDesktop(page, saved);
+  const { cells } = await desktopCells(page);
+  expect(cells, "arXiv Search sits right of Projects; Library and GitHub move one column right; nothing else moves").toEqual({
+    ...saved, arxiv: { col: 2, row: 0 }, library: { col: 3, row: 0 }, github: { col: 4, row: 0 }
+  });
+  expectNoOverlap(cells);
+
+  /* Moving any icon saves the whole arrangement, arXiv Search included, so later visits match. */
+  await page.locator(".os-icons").getByRole("button", { name: "GitHub", exact: true }).focus();
+  await page.keyboard.press("Shift+ArrowRight");
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("lab-os-icons-v2") ?? "{}"));
+  expect(stored).toMatchObject({ projects: { col: 1, row: 0 }, arxiv: { col: 2, row: 0 }, library: { col: 3, row: 0 }, github: { col: 5, row: 0 } });
+
+  /* The phone home screen lists apps in menu order, whatever the desktop arrangement. */
+  await page.setViewportSize({ width: 390, height: 844 });
+  const home = page.locator(".os-home").getByRole("list", { name: "Apps", exact: true });
+  await expect(home.locator(".os-icon__label").nth(1)).toHaveText("arXiv Search");
+  await expect(home.locator(".os-icon")).toHaveCount(14);
+});
+
+test("when the shift does not fit a full row, arXiv Search takes the nearest free slot in that row", async ({ page }) => {
+  const saved: Layout = {
+    search: { col: 0, row: 0 }, projects: { col: 2, row: 0 }, library: { col: 3, row: 0 }, github: { col: 4, row: 0 },
+    games: { col: 5, row: 0 }, markets: { col: 6, row: 0 }, launches: { col: 7, row: 0 },
+    forward: { col: 0, row: 1 }, designs: { col: 1, row: 1 }, leaderboards: { col: 0, row: 2 },
+    resume: { col: 0, row: 3 }, readme: { col: 1, row: 3 }
+  };
+  await openSavedDesktop(page, saved, { width: 800, height: 600 });
+  const { cells, columns } = await desktopCells(page);
+  expect(columns, "the narrowest desktop has eight columns, so row 0 is full from Projects on").toBe(8);
+  expect(cells, "saved icons keep their places; arXiv Search takes the gap left of Projects, not a new row").toEqual({ ...saved, arxiv: { col: 1, row: 0 } });
+  expectNoOverlap(cells);
+});
+
+test("arXiv Search goes beside Projects where the user moved it", async ({ page }) => {
+  const saved: Layout = {
+    search: { col: 0, row: 0 }, library: { col: 2, row: 0 }, github: { col: 3, row: 0 },
+    forward: { col: 0, row: 1 }, designs: { col: 1, row: 1 }, projects: { col: 2, row: 1 },
+    games: { col: 0, row: 2 }, markets: { col: 1, row: 2 }, launches: { col: 2, row: 2 }, leaderboards: { col: 3, row: 2 },
+    resume: { col: 0, row: 8 }, readme: { col: 1, row: 8 }
+  };
+  await openSavedDesktop(page, saved);
+  const { cells } = await desktopCells(page);
+  expect(cells).toEqual({ ...saved, arxiv: { col: 3, row: 1 } });
+  expectNoOverlap(cells);
+});
+
+test("a saved arXiv Search position is kept", async ({ page }) => {
+  const saved: Layout = {
+    search: { col: 0, row: 0 }, projects: { col: 1, row: 0 }, library: { col: 3, row: 0 }, github: { col: 4, row: 0 },
+    forward: { col: 0, row: 1 }, designs: { col: 1, row: 1 }, arxiv: { col: 6, row: 3 },
+    games: { col: 0, row: 2 }, markets: { col: 1, row: 2 }, launches: { col: 2, row: 2 }, leaderboards: { col: 3, row: 2 },
+    resume: { col: 0, row: 8 }, readme: { col: 1, row: 8 }
+  };
+  await openSavedDesktop(page, saved);
+  const { cells } = await desktopCells(page);
+  expect(cells, "no icon moves into arXiv Search's default slot, and arXiv Search stays where it was saved").toEqual(saved);
 });
 
 test("NVDocs RAG, HireMe.AI, and Financial models open their repositories in GitHub, and Reader opens from the folder", async ({ page }) => {
