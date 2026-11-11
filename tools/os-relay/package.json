@@ -1,0 +1,19 @@
+{
+  "name": "os-lab-relay",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Local-only, allow-listed WISP relay for the OS Lab network preview.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/cli.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@mercuryworkshop/wisp-js": "0.5.2",
+    "ws": "8.22.1"
+  }
+}
