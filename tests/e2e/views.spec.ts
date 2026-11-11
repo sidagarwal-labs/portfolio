@@ -332,6 +332,9 @@ test("Sid Search's Library mixes books and podcasts and filters them by topic in
   await expect(items).toHaveCount(27);
   await expect(library.locator(".se-badge", { hasText: "Book" })).toHaveCount(11);
   await expect(library.locator(".se-badge", { hasText: "Podcast" })).toHaveCount(16);
+  const shelfTops = await items.evaluateAll((cards) => cards.slice(0, 6).map((card) => Math.round(card.getBoundingClientRect().top)));
+  expect(new Set(shelfTops.slice(0, 5)).size, "five covers per row on desktop").toBe(1);
+  expect(shelfTops[5]).toBeGreaterThan(shelfTops[0]);
 
   const nvidia = items.filter({ hasText: "The Nvidia Way" });
   await expect(nvidia.getByRole("link")).toHaveAttribute("href", /^https:\/\/www\.amazon\.com\//);
@@ -389,16 +392,30 @@ test("Sid Search's Library fits a phone", async ({ page }) => {
     await page.goto("./?view=search#library");
     await expect(page.locator("#library")).toBeInViewport();
     const section = await page.locator("#library").boundingBox();
-    for (const box of [".se-filters button", ".se-shelf > li", ".se-section__head .se-button"]) {
+    for (const box of [".se-filters", ".se-shelf > li", ".se-section__head .se-button"]) {
       for (const element of await page.locator(`#library ${box}`).all()) {
         const rect = await element.boundingBox();
         expect(rect!.x + rect!.width, `${box} at ${width}px`).toBeLessThanOrEqual(section!.x + section!.width + 0.5);
       }
     }
-    const tops = await page.locator("#library .se-shelf > li").evaluateAll((cards) => cards.slice(0, 3).map((card) => Math.round(card.getBoundingClientRect().top)));
-    expect(tops[0], `two covers per row at ${width}px`).toBe(tops[1]);
-    expect(tops[2]).toBeGreaterThan(tops[0]);
+    const tops = await page.locator("#library .se-shelf > li").evaluateAll((cards) => cards.slice(0, 4).map((card) => Math.round(card.getBoundingClientRect().top)));
+    expect(new Set(tops.slice(0, 3)).size, `three covers per row at ${width}px`).toBe(1);
+    expect(tops[3]).toBeGreaterThan(tops[0]);
+
+    /* The topic chips stay on one row and scroll inside it; picking a chip still filters. */
+    const filters = page.getByRole("group", { name: "Library topics" });
+    const chips = filters.getByRole("button");
+    const chipTops = await chips.evaluateAll((buttons) => buttons.map((button) => Math.round(button.getBoundingClientRect().top)));
+    expect(new Set(chipTops).size, `chips share a row at ${width}px`).toBe(1);
+    expect(await filters.evaluate((group) => group.scrollWidth > group.clientWidth)).toBe(true);
+    const science = filters.getByRole("button", { name: /^Science & how to think/ });
+    await science.click();
+    await expect(science).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("#library .se-shelf > li")).toHaveCount(5);
+    await expect(science).toBeInViewport({ ratio: 0.9 });
     expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
+    await chips.first().click();
+    await expect(page.locator("#library .se-shelf > li")).toHaveCount(27);
   }
 });
 

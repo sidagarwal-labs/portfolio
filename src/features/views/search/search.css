@@ -396,7 +396,7 @@ html.se-booting { overflow: hidden; }
 
 .se-library__stats { margin: 14px 0 20px; }
 
-.se-shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 22px 16px; margin: 0; padding: 0; list-style: none; }
+.se-shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 20px 14px; margin: 0; padding: 0; list-style: none; }
 
 .se-shelf li { display: grid; align-content: start; gap: 2px; min-width: 0; }
 
@@ -416,7 +416,7 @@ html.se-booting { overflow: hidden; }
 
 .se-badge { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; line-height: 1.4; text-transform: uppercase; }
 
-.se-shelf__title { color: var(--link); font-size: 14.5px; line-height: 1.35; overflow-wrap: anywhere; }
+.se-shelf__title { color: var(--link); font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
 
 .se-shelf__link:hover .se-shelf__title { text-decoration: underline; }
 
@@ -498,12 +498,21 @@ html.se-booting { overflow: hidden; }
   .se-video__player__icon { width: 40px; height: 28px; border-radius: 8px; }
   .se-video__player__icon svg { width: 20px; height: 20px; }
   .se-links { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  /* The topic chips scroll sideways in one row instead of wrapping onto three. */
+  .se-filters { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+  .se-filters::-webkit-scrollbar { display: none; }
+  .se-filters button { flex: 0 0 auto; }
+  .se-filters button:focus-visible { outline-offset: -2px; }
+  .se-shelf { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 10px; }
+  .se-art { border-radius: 10px; }
+  .se-badge { font-size: 10px; }
+  .se-shelf__title { font-size: 13px; }
+  .se-shelf__by { font-size: 11.5px; }
 }
 
 @media (max-width: 420px) {
   .se-sitelinks { gap: 14px 18px; }
   .se-sitelinks a { font-size: 16px; }
-  .se-shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .se-panel { padding: 16px; }
   .se-panel__head img { width: 64px; height: 64px; }
 }
