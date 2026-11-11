@@ -6,7 +6,6 @@ import { ReducedMotionOverride, usePrefersReducedMotion } from "../../../hooks/u
 import BootSequence, { labLogo } from "../search/BootSequence";
 import { hasBooted, rememberBoot } from "../search/bootState";
 import { useSiteView } from "../SiteViewContext";
-import { siteViews } from "../siteViews";
 import { contactLinks, roleLine } from "../viewData";
 import { apps, type AppId } from "./apps";
 import { isOsMessage, openInNewTab, type OsMessage } from "./embed";
@@ -623,20 +622,6 @@ function DesktopShell() {
                         </li>
                       );
                     })}
-                  </ul>
-                  <h2 className="os-menu__heading">Style</h2>
-                  <div className="os-menu__seg" role="group" aria-label="Style">
-                    <button type="button" aria-pressed={!retro} onClick={() => changeStyle("modern")}>Modern</button>
-                    <button type="button" aria-pressed={retro} onClick={() => changeStyle("retro")}>Retro</button>
-                  </div>
-                  <button type="button" className="os-menu__item" onClick={() => { arrangeIcons(); setMenuOpen(false); }}>Arrange desktop icons</button>
-                  <h2 className="os-menu__heading">Full-page views</h2>
-                  <ul className="os-menu__list" aria-label="Full-page views">
-                    {siteViews.filter((view) => view.id !== "os").map((view) => (
-                      <li key={view.id}>
-                        <button type="button" className="os-menu__item" onClick={() => setView(view.id)}>{view.label}</button>
-                      </li>
-                    ))}
                   </ul>
                 </div>
               </div>
