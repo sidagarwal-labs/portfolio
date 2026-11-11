@@ -164,7 +164,7 @@ test("arXiv Search is a top-level app in the Start menu and on the phone home sc
   await page.goto("./?view=os");
   const home = page.locator(".os-home").getByRole("list", { name: "Apps", exact: true });
   await expect(home.locator(".os-icon__label").nth(1)).toHaveText("arXiv Search");
-  await expect(home.locator(".os-icon")).toHaveCount(14);
+  await expect(home.locator(".os-icon")).toHaveCount(15);
   await expect(home.locator(".os-icon", { hasText: "Reader" })).toHaveCount(0);
   await home.locator(".os-icon", { hasText: "Projects" }).click();
   const phoneFolder = page.getByRole("list", { name: "Projects apps", exact: true });
@@ -203,7 +203,7 @@ test("a desktop arrangement saved before arXiv Search had an icon puts it beside
   await page.setViewportSize({ width: 390, height: 844 });
   const home = page.locator(".os-home").getByRole("list", { name: "Apps", exact: true });
   await expect(home.locator(".os-icon__label").nth(1)).toHaveText("arXiv Search");
-  await expect(home.locator(".os-icon")).toHaveCount(14);
+  await expect(home.locator(".os-icon")).toHaveCount(15);
 });
 
 test("when the shift does not fit a full row, arXiv Search takes the nearest free slot in that row", async ({ page }) => {

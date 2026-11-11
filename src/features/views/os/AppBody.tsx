@@ -191,6 +191,7 @@ function AppBody({ id, app, src, target, active, actions }: AppBodyProps) {
   if (def.kind === "site" && def.view) {
     return <iframe ref={frameRef} className="os-frame" name={frameName(def.view)} src={src} title={def.title} />;
   }
+  if (def.kind === "frame") return <iframe ref={frameRef} className="os-frame" src={src} title={def.title} />;
   if (def.kind === "pdf") return <ResumeViewer />;
   if (def.kind === "note") return <Readme actions={actions} />;
   if (def.kind === "folder") return <AppFolder folder={def} actions={actions} />;

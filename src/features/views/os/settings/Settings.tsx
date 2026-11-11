@@ -5,7 +5,7 @@ import type { OsActions, OsStyle, OsTarget } from "../types";
 import { clockFormat, currentWallpaper, labOsStorage, useOsSettings, wallpapers, type ClockHours, type Motion } from "./osSettings";
 import "./settings.css";
 
-const installedApps = Object.values(apps).filter((app) => app.kind === "app" || app.kind === "game" || app.kind === "site").length;
+const installedApps = Object.values(apps).filter((app) => app.kind === "app" || app.kind === "game" || app.kind === "site" || app.kind === "frame").length;
 const styles: { id: OsStyle; label: string }[] = [{ id: "modern", label: "Modern" }, { id: "retro", label: "Retro" }];
 const clocks: { id: ClockHours; label: string }[] = [{ id: "12", label: "12-hour" }, { id: "24", label: "24-hour" }];
 const motions: { id: Motion; label: string }[] = [{ id: "system", label: "System" }, { id: "reduce", label: "On" }, { id: "full", label: "Off" }];
