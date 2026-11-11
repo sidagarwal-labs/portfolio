@@ -7,8 +7,8 @@ import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { usePrefersReducedMotion } from "../../hooks/usePrefersReducedMotion";
 import { embeddedView, replaceHistoryState } from "../views/os/embed";
 import {
-  AI_STACK_SHEET, conversionNote, direction, distance, formatDay, formatMarketCap, formatPercent, formatPrice, formatRatio,
-  formatTime, groupStack, layerId, layerLabel, listing, useAiStack, type AiStackRow, type AiStackState, type StackLayer
+  AI_STACK_SHEET, calculatingNote, conversionNote, direction, distance, formatDay, formatMarketCap, formatPercent, formatPrice, formatRatio,
+  formatTime, groupStack, layerId, layerLabel, listing, perShareNote, useAiStack, type AiStackRow, type AiStackState, type StackLayer
 } from "./aiStack";
 import LivePageShell from "./LivePageShell";
 import MarketsInsights, { TightnessBadge } from "./MarketsInsights";
@@ -52,6 +52,12 @@ const reveal = (element: Element | null | undefined, smooth: boolean) =>
 /* Says when the market cap is the sheet's foreign-currency figure converted to US dollars. */
 function MarketCapNote({ row }: { row: AiStackRow }) {
   const note = conversionNote(row);
+  return note ? <small className="mk-stats__note">{note}</small> : null;
+}
+
+/* Says when the price, EPS, or 52-week range are the sheet's foreign-currency figures converted to US dollars. */
+function PerShareNote({ row }: { row: AiStackRow }) {
+  const note = perShareNote(row);
   return note ? <small className="mk-stats__note">{note}</small> : null;
 }
 
@@ -208,9 +214,12 @@ function MarketsTabs({ tab, onChange }: { tab: Tab; onChange: (tab: Tab) => void
   );
 }
 
-function stackStatus({ source, asOf, loading }: AiStackState) {
+function stackStatus({ source, asOf, loading, rows }: AiStackState) {
   if (loading) return `Checking the tracker sheet for newer prices. Showing the saved snapshot from ${formatDay(asOf)} until then.`;
-  if (source === "live") return `Live from the tracker sheet, read at ${formatTime(asOf)}. Its Google Finance prices can be delayed up to 20 minutes.`;
+  if (source === "live") {
+    const calculating = calculatingNote(rows);
+    return `Live from the tracker sheet, read at ${formatTime(asOf)}. Its Google Finance prices can be delayed up to 20 minutes.${calculating ? ` ${calculating}` : ""}`;
+  }
   return `Saved snapshot from ${formatDay(asOf)}. The live sheet couldn't be reached.`;
 }
 
@@ -442,6 +451,7 @@ function Preview({ row, rows, inline }: { row: AiStackRow; rows: AiStackRow[]; i
         <p className="mk-preview__price">
           <strong>{formatPrice(row.price)}</strong>
           {row.change !== null && <span data-direction={direction(row.change)}>{formatPercent(row.change)} today</span>}
+          <PerShareNote row={row} />
         </p>
       </div>
       <TradingViewWidget
@@ -550,6 +560,7 @@ function FullView({ row, rows, heading, onBack }: { row: AiStackRow; rows: AiSta
           <strong>{formatPrice(row.price)}</strong>
           {row.change !== null && <span className="mk-quote__change" data-direction={direction(row.change)}>{formatPercent(row.change)} today</span>}
           <small>Price from the tracker sheet</small>
+          <PerShareNote row={row} />
         </div>
       </div>
 

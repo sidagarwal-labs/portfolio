@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import snapshot from "../../content/generated/ai-stack.json";
 import {
-  AI_STACK_CSV, AI_STACK_SHEET, CURRENCY_NAMES, FALLBACK_FX, parseAiStack, type AiStackRow, type FxRates
+  AI_STACK_CSV, AI_STACK_SHEET, CURRENCY_NAMES, FALLBACK_FX, fillPending, parseAiStack, type AiStackRow, type FxRates
 } from "../../content/aiStackSheet.mjs";
 
 export { AI_STACK_SHEET, type AiStackRow, type FxRates };
@@ -21,7 +21,8 @@ const liveState = (read: NonNullable<typeof live>): AiStackState =>
   ({ rows: read.rows, source: "live", asOf: new Date(read.fetchedAt).toISOString(), loading: false, fx });
 
 /* The published sheet's CSV allows cross-origin reads, so Markets reads it live and falls back to the
-   build-time snapshot when the request fails, times out, or returns something that isn't the tracker. */
+   build-time snapshot when the request fails, times out, or returns something that isn't the tracker. Cells the sheet
+   is still calculating ("Loading...") show the snapshot's values. */
 export function useAiStack(): AiStackState {
   const [state, setState] = useState<AiStackState>(() => (live ? liveState(live) : { ...snapshotState, loading: true }));
 
@@ -36,7 +37,7 @@ export function useAiStack(): AiStackState {
         return response.text();
       })
       .then((text) => {
-        live = { rows: parseAiStack(text, fx), fetchedAt: Date.now() };
+        live = { rows: fillPending(parseAiStack(text, fx), saved.rows), fetchedAt: Date.now() };
         if (active) setState(liveState(live));
       })
       .catch(() => {
@@ -215,6 +216,12 @@ export const formatRatesDay = (fx: FxRates) => ratesDay.format(new Date(`${fx.as
 export const conversionNote = (row: AiStackRow) =>
   row.marketCapCurrency && row.marketCap !== null ? `converted from ${CURRENCY_NAMES[row.marketCapCurrency]}` : undefined;
 
+/* "Per-share figures converted from South Korean won" for a price, EPS, or 52-week range the sheet gave in won. */
+export const perShareNote = (row: AiStackRow) =>
+  row.perShareCurrency ? `Per-share figures converted from ${CURRENCY_NAMES[row.perShareCurrency]}` : undefined;
+
+const listOf = (items: string[]) => (items.length > 1 ? `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}` : items[0]);
+
 /* "Market caps converted to US dollars at Nov 10, 2026 exchange rates: TSM and ASX from Taiwan dollars, SKHY from South Korean won." */
 export function conversionsNote(rows: AiStackRow[], fx: FxRates) {
   const byCurrency = new Map<NonNullable<AiStackRow["marketCapCurrency"]>, string[]>();
@@ -225,9 +232,15 @@ export function conversionsNote(rows: AiStackRow[], fx: FxRates) {
     byCurrency.set(row.marketCapCurrency, symbols);
   }
   if (!byCurrency.size) return undefined;
-  const and = (items: string[]) => (items.length > 1 ? `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}` : items[0]);
-  const parts = [...byCurrency].map(([currency, symbols]) => `${and(symbols)} from ${CURRENCY_NAMES[currency]}`);
+  const parts = [...byCurrency].map(([currency, symbols]) => `${listOf(symbols)} from ${CURRENCY_NAMES[currency]}`);
   return `Market caps converted to US dollars at ${formatRatesDay(fx)} exchange rates: ${parts.join(", ")}.`;
+}
+
+/* Names the companies with figures a live read caught the sheet still calculating. */
+export function calculatingNote(rows: AiStackRow[]) {
+  const symbols = [...new Set(rows.filter((row) => row.pending || row.carried).map((row) => row.symbol))];
+  if (!symbols.length) return undefined;
+  return `The sheet was still calculating some figures for ${listOf(symbols)}; the saved snapshot's values stand in where it has them.`;
 }
 
 export const direction = (value: number | null) =>

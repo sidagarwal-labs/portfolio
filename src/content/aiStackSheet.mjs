@@ -23,6 +23,9 @@ const columns = {
 };
 const required = ["symbol", "layer", "level"];
 const numeric = ["price", "marketCap", "change", "eps", "pe", "beta", "high", "low"];
+const perShare = ["price", "eps", "high", "low"];
+/* Google's published CSV can catch the sheet mid-calculation, when GOOGLEFINANCE cells read "Loading...". */
+const stillCalculating = /^loading/i;
 
 /**
  * The largest market cap, in billions of US dollars, the parser accepts ($20T, several times the largest company
@@ -31,9 +34,10 @@ const numeric = ["price", "marketCap", "change", "eps", "pe", "beta", "high", "l
 export const MAX_PLAUSIBLE_MARKET_CAP_B = 20_000;
 
 /**
- * US listings (ADRs) whose price Google Finance gives in US dollars but whose market cap it gives in the home
- * market's currency. `shares` is the rough number of US-priced shares (ADR equivalents), in billions; it only has to
- * tell the two currencies apart, so it needn't be exact.
+ * Listings Google Finance gives some figures for in the home market's currency. For a US listing (an ADR) that's only
+ * the market cap; for one quoted on its home exchange (with `usdPrice`) it's the price, EPS, and 52-week range too.
+ * `shares` is the rough number of shares priced in the sheet, in billions, and `usdPrice` a rough share price in US
+ * dollars; each only has to tell the two currencies apart, so neither needs to be exact.
  */
 export const FOREIGN_LISTINGS = {
   /* TSMC: about 25.9B common shares, 5 per ADR. */
@@ -41,7 +45,9 @@ export const FOREIGN_LISTINGS = {
   /* ASE Technology: about 4.4B common shares, 2 per ADR. */
   ASX: { currency: "TWD", shares: 2.2 },
   /* SK hynix: the sheet's earlier US-dollar figures ($584B at $129.06). */
-  SKHY: { currency: "KRW", shares: 4.5 }
+  SKHY: { currency: "KRW", shares: 4.5 },
+  /* Samsung Electronics on the Korea Exchange (KRX:005930): about 5.9B common and 0.8B preferred shares, near $150. */
+  SAMSUNG: { currency: "KRW", shares: 6.5, usdPrice: 150 }
 };
 
 export const CURRENCY_NAMES = { TWD: "Taiwan dollars", KRW: "South Korean won" };
@@ -89,30 +95,48 @@ export function parseSheetNumber(value) {
 }
 
 /**
- * Puts a known foreign listing's market cap in US dollars. The sheet's figure is taken to be in the home currency when
- * the share count it implies (cap / price) is closer to the listing's share count times the exchange rate than to
- * the share count itself (on a log scale), so a figure the sheet already gives in dollars is left alone.
+ * Puts a known foreign listing's figures in US dollars. A figure is taken to be in the home currency when it's closer
+ * to its expected size in dollars times the exchange rate than to that size itself (on a log scale), so a figure the
+ * sheet already gives in dollars is left alone. A home-quoted listing's price and 52-week range are checked against
+ * its rough dollar price and its EPS against price / P/E (the same in either currency); a market cap is checked
+ * through the share count it implies (cap / price).
  */
-function capInUsd(row, fx) {
+function toUsd(row, fx) {
   const listing = FOREIGN_LISTINGS[row.symbol.toUpperCase()];
-  if (!listing || row.marketCap === null) return;
+  if (!listing) return;
   const perUsd = fx?.perUsd?.[listing.currency];
+  const inHome = (value, usd) => perUsd > 1 && value !== null && usd > 0 && Math.abs(value) / usd > Math.sqrt(perUsd);
+  const convert = (key) => (row[key] = Math.round((row[key] / perUsd) * 100) / 100);
+
+  if (listing.usdPrice) {
+    const converted = ["price", "high", "low"].filter((key) => inHome(row[key], listing.usdPrice));
+    converted.forEach(convert);
+    const epsInHome = row.pe > 0 ? inHome(row.eps, (row.price ?? listing.usdPrice) / row.pe) : row.eps !== null && converted.includes("price");
+    if (epsInHome) {
+      convert("eps");
+      converted.push("eps");
+    }
+    if (converted.length) row.perShareCurrency = listing.currency;
+  }
+
+  if (row.marketCap === null) return;
   /* Without a price, the 52-week range stands in for it; it's well within the margin the check needs. */
   const price = row.price ?? (row.high !== null && row.low !== null ? Math.sqrt(row.high * row.low) : row.high ?? row.low);
   if (!(price > 0) || !(perUsd > 1)) {
     row.marketCap = null;
     row.marketCapRejected = true;
   } else if (row.marketCap / price / listing.shares > Math.sqrt(perUsd)) {
-    row.marketCap = Math.round((row.marketCap / perUsd) * 100) / 100;
+    convert("marketCap");
     row.marketCapCurrency = listing.currency;
   }
 }
 
 /**
- * Normalizes the sheet's CSV into one row per listing; throws when the expected columns or rows are missing. A known
- * foreign listing's market cap in its home currency is converted to US dollars at `fx` and flagged
- * marketCapCurrency. A market cap that is still above MAX_PLAUSIBLE_MARKET_CAP_B, or a foreign listing's cap whose
- * currency can't be told, becomes null and the row is flagged marketCapRejected.
+ * Normalizes the sheet's CSV into one row per listing; throws when the expected columns or rows are missing. Cells the
+ * sheet was still calculating ("Loading...") are null and listed in the row's `pending`. A known foreign listing's
+ * figures in its home currency are converted to US dollars at `fx` and flagged marketCapCurrency (the market cap) or
+ * perShareCurrency (price, EPS, 52-week range). A market cap that is still above MAX_PLAUSIBLE_MARKET_CAP_B, or a
+ * foreign listing's cap whose currency can't be told, becomes null and the row is flagged marketCapRejected.
  */
 export function parseAiStack(text, fx = FALLBACK_FX) {
   const [header = [], ...lines] = parseCsv(text.replace(/^\uFEFF/, ""));
@@ -129,7 +153,9 @@ export function parseAiStack(text, fx = FALLBACK_FX) {
     if (!symbol || !layer || !Number.isInteger(level)) continue;
     const row = { symbol, area: cell(line, "area").replace(/\s+/g, " "), layer, level };
     for (const key of numeric) row[key] = parseSheetNumber(cell(line, key));
-    capInUsd(row, fx);
+    const pending = numeric.filter((key) => stillCalculating.test(cell(line, key)));
+    if (pending.length) row.pending = pending;
+    toUsd(row, fx);
     if (row.marketCap !== null && row.marketCap > MAX_PLAUSIBLE_MARKET_CAP_B) {
       row.marketCap = null;
       row.marketCapRejected = true;
@@ -138,4 +164,36 @@ export function parseAiStack(text, fx = FALLBACK_FX) {
   }
   if (!rows.length) throw new Error("no rows");
   return rows;
+}
+
+/**
+ * Fills the figures a read caught still calculating from an earlier read (such as the build-time snapshot): the same
+ * company at the same level, else at any level, since a company's figures are the same at each. Filled fields are
+ * listed in the row's `carried`; any without an earlier value stay null and pending. Neither input is changed.
+ */
+export function fillPending(rows, earlier = []) {
+  return rows.map((row) => {
+    if (!row.pending) return row;
+    const sources = earlier
+      .filter((item) => item.symbol.toUpperCase() === row.symbol.toUpperCase())
+      .sort((a, b) => Number(b.level === row.level) - Number(a.level === row.level));
+    const next = { ...row };
+    const carried = [];
+    const pending = [];
+    for (const key of row.pending) {
+      const source = sources.find((item) => typeof item[key] === "number");
+      if (!source) {
+        pending.push(key);
+        continue;
+      }
+      next[key] = source[key];
+      carried.push(key);
+      if (key === "marketCap" && source.marketCapCurrency) next.marketCapCurrency = source.marketCapCurrency;
+      if (perShare.includes(key) && source.perShareCurrency) next.perShareCurrency = source.perShareCurrency;
+    }
+    if (pending.length) next.pending = pending;
+    else delete next.pending;
+    if (carried.length) next.carried = carried;
+    return next;
+  });
 }

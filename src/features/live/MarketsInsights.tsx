@@ -564,11 +564,14 @@ function Treemap({ rows, prices, fx, onPick }: { rows: AiStackRow[]; prices: str
   const layout = useMemo(() => (width > 0 ? treemap(rows, width, height) : { groups: [], tiles: [] }), [rows, width, height]);
   const caps = useMemo(() => splitCaps(rows), [rows]);
   const byKey = useMemo(() => new Map(rows.map((row) => [`${row.level}:${row.symbol}`, row])), [rows]);
-  /* Placements with no usable cap: blank or #N/A in the sheet, or set aside by the parser as not billions of US dollars. */
+  /* Placements with no usable cap: blank or #N/A in the sheet, still calculating there, or set aside by the parser as
+     not billions of US dollars. */
   const gaps = rows.filter((_, index) => caps[index] <= 0);
-  const named = (rejected: boolean) => [...new Set(gaps.filter((row) => Boolean(row.marketCapRejected) === rejected).map((row) => row.symbol))];
-  const missing = named(false);
-  const rejected = named(true);
+  const reason = (row: AiStackRow) => (row.marketCapRejected ? "rejected" : row.pending?.includes("marketCap") ? "pending" : "missing");
+  const named = (kind: ReturnType<typeof reason>) => [...new Set(gaps.filter((row) => reason(row) === kind).map((row) => row.symbol))];
+  const missing = named("missing");
+  const pending = named("pending");
+  const rejected = named("rejected");
   const converted = conversionsNote(rows, fx);
 
   return (
@@ -577,7 +580,7 @@ function Treemap({ rows, prices, fx, onPick }: { rows: AiStackRow[]; prices: str
       title="The stack by market cap"
       intro="Every company sized by market cap inside its layer and level, colored by today's move. Pick a tile to see the company in the stack."
       asOf={converted ? [prices, `Exchange rates as of ${formatRatesDay(fx)}`] : [prices]}
-      caveat={`A company at several levels has its market cap split evenly across them, so each is counted once.${converted ? ` ${converted}` : ""}${missing.length ? ` No market cap in the sheet for ${missing.join(", ")}.` : ""}${rejected.length ? ` No usable market cap for ${rejected.join(", ")} (the sheet's ${rejected.length > 1 ? "values aren't" : "value isn't"} in billions of US dollars).` : ""}`}
+      caveat={`A company at several levels has its market cap split evenly across them, so each is counted once.${converted ? ` ${converted}` : ""}${missing.length ? ` No market cap in the sheet for ${missing.join(", ")}.` : ""}${pending.length ? ` The sheet was still calculating the market cap for ${pending.join(", ")}.` : ""}${rejected.length ? ` No usable market cap for ${rejected.join(", ")} (the sheet's ${rejected.length > 1 ? "values aren't" : "value isn't"} in billions of US dollars).` : ""}`}
       table={
         <table className="mk-data__table">
           <caption className="mk-sr">Market cap and day change for every company placement in the stack</caption>

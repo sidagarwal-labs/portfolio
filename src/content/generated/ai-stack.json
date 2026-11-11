@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-11T02:02:02.620Z",
+  "generatedAt": "2026-11-11T02:45:02.580Z",
   "sheet": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiLfygL3LFE2X_ynXjE5IzIKrvVPT_AFSwuZCZn59pMUd0dsR4Tdpx-OUxaDmDiMYrioLurLWE3_CO/pubhtml",
   "source": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQiLfygL3LFE2X_ynXjE5IzIKrvVPT_AFSwuZCZn59pMUd0dsR4Tdpx-OUxaDmDiMYrioLurLWE3_CO/pub?output=csv",
   "fx": {
@@ -45,7 +45,7 @@
       "layer": "Chips",
       "level": 1,
       "price": 168.8,
-      "marketCap": 4070,
+      "marketCap": 4068,
       "change": -5.53,
       "eps": 7.91,
       "pe": 21.34,
@@ -185,14 +185,13 @@
       "layer": "Chips",
       "level": 4,
       "price": 35.48,
-      "marketCap": 82.24,
+      "marketCap": 83,
       "change": 3.26,
       "eps": 1.04,
       "pe": 34.04,
       "beta": 1.73,
       "high": 47.93,
-      "low": 13.35,
-      "marketCapCurrency": "TWD"
+      "low": 13.35
     },
     {
       "symbol": "AMKR",
@@ -214,7 +213,7 @@
       "layer": "Chips",
       "level": 4,
       "price": 169.47,
-      "marketCap": 12,
+      "marketCap": 13,
       "change": 1.52,
       "eps": 4.03,
       "pe": 42,
@@ -255,14 +254,15 @@
       "area": "Memory - HBM",
       "layer": "Chips",
       "level": 5,
-      "price": null,
-      "marketCap": null,
-      "change": null,
-      "eps": null,
-      "pe": null,
+      "price": 150.13,
+      "marketCap": 973,
+      "change": 1.31,
+      "eps": 16.81,
+      "pe": 8.94,
       "beta": null,
       "high": null,
-      "low": null
+      "low": null,
+      "perShareCurrency": "KRW"
     },
     {
       "symbol": "SKHY",
@@ -270,14 +270,13 @@
       "layer": "Chips",
       "level": 5,
       "price": 129.66,
-      "marketCap": 673.78,
+      "marketCap": 674,
       "change": -3.51,
       "eps": 17,
       "pe": 7.63,
       "beta": null,
       "high": 199.87,
-      "low": 122.5,
-      "marketCapCurrency": "KRW"
+      "low": 122.5
     },
     {
       "symbol": "TSM",
@@ -285,14 +284,13 @@
       "layer": "Chips",
       "level": 6,
       "price": 396.48,
-      "marketCap": 1843,
+      "marketCap": 1861,
       "change": 2.02,
       "eps": 14.99,
       "pe": 26.44,
       "beta": 1.42,
       "high": 487.47,
-      "low": 266.82,
-      "marketCapCurrency": "TWD"
+      "low": 266.82
     },
     {
       "symbol": "INTC",
