@@ -127,6 +127,12 @@ test("the Start menu leaves style, icon arrangement, and full-page views to Sett
   await expect(menu.getByRole("list", { name: "Full-page views" })).toHaveCount(0);
   await expect(menu.getByRole("button", { name: /^(Modern|Retro|Arrange desktop icons)$/ })).toHaveCount(0);
   await expect(menu.getByRole("list", { name: "System", exact: true }).getByRole("button", { name: "Settings", exact: true })).toBeVisible();
+  /* Settings sits under Contact, so it stays in view without scrolling the apps column. */
+  const rightColumn = menu.getByRole("list", { name: "Contact", exact: true }).locator("..");
+  await expect(rightColumn.getByRole("list", { name: "System", exact: true })).toBeInViewport();
+  await menu.getByRole("searchbox", { name: "Search apps" }).fill("settings");
+  await expect(menu.getByRole("list", { name: "System", exact: true })).toHaveCount(0);
+  await expect(menu.getByRole("list", { name: "Search results", exact: true }).getByRole("button")).toHaveText(["Settings"]);
 });
 
 test("Settings arranges desktop icons", async ({ page }) => {
@@ -165,7 +171,7 @@ for (const style of ["modern", "retro"]) {
       const button = views.getByRole("button", { name, exact: true });
       await expect(button).toHaveAccessibleDescription(/.+/);
       await button.click();
-      await expect(page).toHaveURL(new RegExp(`\\?view=${view}$`));
+      await expect(page).toHaveURL(new RegExp(`[?&]view=${view}(&|$)`));
       await expect(page.locator(".os")).toHaveCount(0);
       await expect(page.locator("html")).not.toHaveAttribute("data-os-style", /.+/);
       if (view !== "journal") await expect(page.locator("html")).toHaveAttribute("data-view", view);
@@ -183,7 +189,7 @@ test("Settings on a phone offers the full-page views", async ({ page }) => {
   await views.scrollIntoViewIfNeeded();
   await expect(views.getByRole("button")).toHaveCount(fullPageViews.length);
   await views.getByRole("button", { name: "Training run", exact: true }).click();
-  await expect(page).toHaveURL(/\?view=training$/);
+  await expect(page).toHaveURL(/[?&]view=training(&|$)/);
   await expect(page.locator("html")).toHaveAttribute("data-view", "training");
 });
 

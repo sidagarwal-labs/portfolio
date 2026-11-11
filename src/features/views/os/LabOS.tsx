@@ -15,7 +15,7 @@ import type { DeskSize, OsActions, OsStyle, OsWin, Rect } from "./types";
 import { clearSavedSettings, clockFormat, currentWallpaper, defaultSettings, OsSettingsContext, readSettings, styleKey, writeSettings, type OsSettings, type OsSettingsApi } from "./settings/osSettings";
 import { SignalStatus, SignalsProvider } from "./Signals";
 import DesktopIcons, { iconAreaWidth } from "./DesktopIcons";
-import StartMenuApps from "./StartMenuApps";
+import StartMenuApps, { appSections, systemSections } from "./StartMenuApps";
 import PhoneHomeApps from "./PhoneHomeApps";
 import "../search/search.css";
 import "./os.css";
@@ -606,7 +606,7 @@ function DesktopShell() {
               </label>
               <div className="os-menu__cols">
                 <div>
-                  <StartMenuApps query={appQuery} open={open} />
+                  <StartMenuApps query={appQuery} open={open} sections={appSections} />
                 </div>
                 <div>
                   <h2 className="os-menu__heading">Contact</h2>
@@ -623,6 +623,7 @@ function DesktopShell() {
                       );
                     })}
                   </ul>
+                  {!appQuery.trim() && <StartMenuApps query="" open={open} sections={systemSections} />}
                 </div>
               </div>
               <div className="os-menu__foot">
