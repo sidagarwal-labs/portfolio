@@ -29,7 +29,7 @@ function LibraryItemCard({ item }: { item: LibraryItem }) {
           />
         </span>
         <span className="se-badge">
-          <Icon size={12} strokeWidth={2.2} aria-hidden="true" />
+          <Icon size={11} strokeWidth={2.2} aria-hidden="true" />
           {item.kind === "book" ? "Book" : "Podcast"}
         </span>
         <span className="se-shelf__title">{item.title}</span>

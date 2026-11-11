@@ -14,6 +14,7 @@ import LibrarySection from "./LibrarySection";
 import RoboticsSection from "./RoboticsSection";
 import { matchesTerm, phraseBoost, queryTerms, runSearch, searchDocs, type SearchDoc } from "./searchIndex";
 import Source from "./Source";
+import { useScrollsX } from "./useScrollsX";
 import { embeddedView, postToOs } from "../os/embed";
 import "./search.css";
 
@@ -57,6 +58,7 @@ function SearchPage() {
   const tabsRef = useRef<HTMLElement>(null);
   const matchesRef = useRef<HTMLElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [storiesRef, storiesScroll] = useScrollsX<HTMLUListElement>();
 
   /* On phones the header sticks at minus the bar's height, so only the tabs row stays pinned. */
   useEffect(() => {
@@ -324,7 +326,7 @@ function SearchPage() {
                     companies across chips, power, data centers, and applications.
                   </p>
                 )}
-                <ul className="se-stories">
+                <ul className="se-stories" ref={storiesRef} aria-label="Featured research notes" tabIndex={storiesScroll ? 0 : undefined}>
                   {featuredResearchNotes.map((note) => (
                     <li key={note.slug}>
                       <a href={note.href} target="_blank" rel="noopener noreferrer">
@@ -335,15 +337,17 @@ function SearchPage() {
                     </li>
                   ))}
                 </ul>
-                <ol className="se-results se-results--essays">
-                  {profileContent.writing.map((entry) => (
-                    <li className="se-result" key={entry.slug}>
-                      <Source href={`/writing/${entry.slug}`} route />
-                      <h3><Link className="se-result__title" to={`/writing/${entry.slug}`}>{entry.title}</Link></h3>
-                      <p className="se-result__snippet"><span className="se-kind">{entry.date}</span> {entry.summary}</p>
-                    </li>
-                  ))}
-                </ol>
+                {profileContent.writing.length > 0 && (
+                  <ol className="se-results se-results--essays">
+                    {profileContent.writing.map((entry) => (
+                      <li className="se-result" key={entry.slug}>
+                        <Source href={`/writing/${entry.slug}`} route />
+                        <h3><Link className="se-result__title" to={`/writing/${entry.slug}`}>{entry.title}</Link></h3>
+                        <p className="se-result__snippet"><span className="se-kind">{entry.date}</span> {entry.summary}</p>
+                      </li>
+                    ))}
+                  </ol>
+                )}
                 <p className="notes-insights se-insights">
                   Charts and deep dives built from these notes live in{" "}
                   <Link to={marketsInsightsPath}>Markets › Insights</Link>.
