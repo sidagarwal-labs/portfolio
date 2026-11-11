@@ -192,15 +192,35 @@ test("Sid Search keeps Pitt Pirates links on its Robotics section and plays matc
 
   const team = robotics.getByRole("article", { name: "Pitt Pirates" });
   await expect(team).toContainText("FRC Team 2642");
-  await expect(team).toContainText("2013-2018");
-  await expect(team).toContainText("Team captain in 2017");
-  await expect(team).toContainText("5 official events");
-  await expect(team).toContainText("2014, 2016, 2017, 2018");
+  await expect(team.getByRole("list", { name: "Team highlights" }).getByRole("listitem")).toHaveText([
+    "6 seasons, 2013-2018", "5 official event wins", "4 FIRST Championships", "2017 captain, and a mentor"
+  ]);
+  /* Robot names and Championship years live in the season timeline, not the card. */
+  await expect(team).not.toContainText("Ashley Whippet");
+  await expect(team).not.toContainText("2014, 2016");
   await expect(team.getByRole("link", { name: "The Blue Alliance" })).toHaveAttribute("href", "https://www.thebluealliance.com/team/2642/history");
 
-  const seasons = robotics.locator(".se-results--seasons .se-result__title");
-  await expect(seasons).toHaveText(["2013 season: Ashley Whippet", "2014 season: JoJo", "2016 season: Excalibot", "2017 season: Gemini", "2018 season: Riptide"]);
-  await expect(seasons.nth(3)).toHaveAttribute("href", "https://www.thebluealliance.com/team/2642/2017");
+  /* The seasons are a compact timeline: one row each, under one shared The Blue Alliance source line. */
+  const seasons = robotics.locator(".se-results--seasons > li");
+  await expect(seasons).toHaveCount(5);
+  await expect(seasons.locator(".se-season__year")).toHaveText(["2013", "2014", "2016", "2017", "2018"]);
+  await expect(seasons.getByRole("link")).toHaveText(["2013 season: Ashley Whippet", "2014 season: JoJo", "2016 season: Excalibot", "2017 season: Gemini", "2018 season: Riptide"]);
+  await expect(seasons.nth(3).getByRole("link")).toHaveAttribute("href", "https://www.thebluealliance.com/team/2642/2017");
+  await expect(seasons.nth(0).getByRole("heading", { level: 4 })).toHaveText("2013 season: Ashley Whippet");
+  await expect(seasons.nth(3).locator(".se-season__result")).toHaveText(
+    "Pitt County and Raleigh district wins, the North Carolina State Championship Chairman's Award, and Raleigh's Industrial Design Award. Third in the district points standings."
+  );
+  await expect(seasons.nth(3).getByRole("list", { name: "2017 highlights" }).getByRole("listitem")).toHaveText(["2 event wins", "FIRST Championship", "My captain season"]);
+  const shared = robotics.locator(".se-source", { hasText: "The Blue Alliance" });
+  await expect(shared).toHaveCount(1);
+  await expect(shared.locator(".se-source__url")).toHaveText("thebluealliance.com › team › 2642");
+  const rows = await seasons.evaluateAll((items) => items.map((item) => {
+    const [year, title] = [item.querySelector(".se-season__year")!, item.querySelector("a")!].map((element) => element.getBoundingClientRect());
+    return { height: item.getBoundingClientRect().height, sameLine: Math.abs(year.top - title.top) < 4 && year.right < title.left };
+  }));
+  expect(rows.every((row) => row.sameLine), "year and robot share a line").toBe(true);
+  expect(rows[0].height, "a one-line result fits one row").toBeLessThan(50);
+  await expect(robotics.locator(".se-links")).toContainText("The Pickup Line (2015)");
 
   const images = robotics.locator(".se-image");
   await expect(images).toHaveCount(3);

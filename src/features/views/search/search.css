@@ -279,15 +279,42 @@ html.se-booting { overflow: hidden; }
 
 .se-team__head { display: flex; align-items: center; gap: 16px; }
 
-.se-team__badge { display: grid; flex: 0 0 auto; place-items: center; width: 64px; height: 64px; border-radius: 14px; background: var(--se-tint); color: var(--link); font-family: var(--se-mono); font-size: 18px; font-weight: 700; }
+.se-team__badge { display: grid; flex: 0 0 auto; place-items: center; width: 54px; height: 54px; border-radius: 14px; background: var(--se-tint); color: var(--link); font-family: var(--se-mono); font-size: 17px; font-weight: 700; }
 
 .se-team h3 { margin: 0; font-size: 22px; font-weight: 500; line-height: 1.25; }
 
 .se-team__head p { margin-top: 2px; color: var(--muted); font-size: 14.5px; line-height: 1.4; }
 
-.se-team__about { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--se-body); font-size: 15px; line-height: 1.6; }
+.se-team__about { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--se-body); font-size: 15px; line-height: 1.6; }
 
-.se-results--seasons { gap: 26px; }
+.se-team__stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 14px 0 0; padding: 0; list-style: none; }
+
+.se-team__stats li { display: grid; align-content: start; gap: 1px; min-width: 0; padding: 8px 12px; border-radius: 10px; background: #f6f8fb; }
+
+.se-team__stats strong { color: var(--ink); font-size: 20px; font-variant-numeric: tabular-nums; font-weight: 600; line-height: 1.25; }
+
+.se-team__stats span { color: var(--muted); font-size: 12.5px; line-height: 1.35; }
+
+.se-team .se-panel__actions { margin-top: 14px; }
+
+/* One row per season under a single shared source line; robot, result, and chips flow together. */
+.se-results--seasons { gap: 0; margin-top: 10px; border-top: 1px solid var(--line); }
+
+.se-season { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+
+.se-season__year { color: var(--muted); font-family: var(--se-mono); font-size: 14px; font-weight: 600; line-height: 24px; }
+
+.se-season__body { min-width: 0; color: var(--se-body); font-size: 14.5px; line-height: 24px; }
+
+.se-season h4, .se-season__result { display: inline; margin: 0; }
+
+.se-season h4 { font-size: 16px; font-weight: 500; }
+
+.se-season h4::after { content: " —" / ""; color: var(--muted); font-weight: 400; }
+
+.se-season .se-chips { display: inline-flex; gap: 4px; margin: 0; vertical-align: 1px; }
+
+.se-season .se-chips li { padding: 0 8px; font-size: 12px; line-height: 18px; }
 
 .se-note { margin-top: 22px; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
 
@@ -449,6 +476,9 @@ html.se-booting { overflow: hidden; }
   .se-chrome__dots { display: none; }
   .se-chrome__address { padding: 0 10px; font-size: 12px; }
   .se-team { padding: 16px; }
+  .se-team__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .se-season { grid-template-columns: 40px minmax(0, 1fr); gap: 10px; }
+  .se-season__year { font-size: 13px; }
   .se-images { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .se-images li:first-child { grid-column: 1 / -1; }
   .se-video { grid-template-columns: minmax(0, 1fr); }
