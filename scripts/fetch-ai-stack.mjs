@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /*
- * Writes src/content/generated/ai-stack.json from Sid's published AI / LLM Stack Tracker sheet. The Markets page
- * reads the same CSV live and falls back to this snapshot. When the fetch or validation fails, the previous
+ * Writes src/content/generated/ai-stack.json from Sid's published AI / LLM Stack Tracker sheet, with the exchange rates
+ * used to put foreign listings' market caps in US dollars. The Markets page reads the same CSV live, converting at the
+ * snapshot's rates, and falls back to this snapshot. When the fetch or validation fails, the previous
  * snapshot is kept and the script exits 0 so a deploy never breaks; it exits 1 only when no usable snapshot exists.
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
