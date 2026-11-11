@@ -2,6 +2,7 @@ import { useRef, type KeyboardEvent } from "react";
 import { ExternalLink } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import LivePageShell from "./LivePageShell";
+import LabTrends from "./LabTrends";
 import {
   arenaBoards, arenaHref, formatDay, formatScore, formatUncertainty, leaderboards, orgName, useArenaBoard,
   type ArenaBoard, type Benchmark
@@ -167,7 +168,7 @@ function LeaderboardsPage() {
       section="leaderboards"
       title="AI leaderboards"
       documentTitle="AI leaderboards"
-      lede="Which models people prefer in blind head-to-head votes, and how the frontier scores on the hardest public benchmarks."
+      lede="Which models people prefer in blind head-to-head votes, how the frontier scores on the hardest public benchmarks, and how each lab has improved release by release."
       meta={`Arena refreshes live in your browser; benchmarks update daily. Snapshot from ${formatDay(leaderboards.generatedAt)}.`}
       sources={
         <>
@@ -201,6 +202,12 @@ function LeaderboardsPage() {
         <p className="live-section__intro">Fixed tests with right answers. Settings differ between runs, such as reasoning effort and agent harness, so treat small gaps as noise.</p>
         <Tabs label="Benchmarks" idPrefix="bench" items={benchmarks.map((item) => ({ id: item.id, label: item.name.replace(/ \(.*\)$/, "") }))} value={bench.id} onChange={(id) => select("bench", id)} />
         <BenchmarkPanel bench={bench} />
+      </section>
+
+      <section className="live-section" id="labs" aria-labelledby="lb-labs-title">
+        <h2 id="lb-labs-title" className="live-section__title">Labs: progress release by release</h2>
+        <p className="live-section__intro">How each lab's models have improved, one release at a time, on Epoch AI's Capabilities Index (ECI), which combines many benchmarks into one scale. Labs with at least three scored releases are included; the eight with the highest scores are shown first.</p>
+        <LabTrends />
       </section>
     </LivePageShell>
   );
