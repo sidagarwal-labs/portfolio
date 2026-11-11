@@ -283,17 +283,18 @@ test("links to arxiv.agarwal-labs.com in Sid Search open the arXiv Search app in
   const frame = page.frameLocator(`${searchWin} iframe`);
   await expect(frame.locator("#se-query")).toHaveValue("Sid Agarwal");
 
-  const card = frame.locator("#intro").getByRole("article", { name: "arXiv Search" });
-  await expect(card).toContainText("Featured project");
-  await expect(card.locator(".se-featured__stats dd")).toHaveText([/^0\.5068 →\s*to 0\.8418$/, "93%", "23,304"]);
-  await card.getByRole("link", { name: "Open arXiv Search" }).click();
+  const project = frame.locator("#lab .se-results .se-result").filter({
+    has: frame.getByRole("heading", { name: "arXiv Search", exact: true })
+  });
+  await expect(project).toBeVisible();
+  await project.getByRole("link", { name: "arXiv Search", exact: true }).click();
   const win = page.locator(arxivWin);
   await expect(win).toHaveClass(/is-active/);
   await expect(win.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
 
   await page.locator(".os-task", { hasText: "Sid Search" }).click();
   await expect(page.locator(searchWin)).toHaveClass(/is-active/);
-  await card.getByRole("link", { name: "arXiv Search on GitHub" }).click();
+  await project.getByRole("link", { name: "arXiv Search on GitHub" }).click();
   await expectRepoInGitHub(page, "arxiv-search");
 
   // A link to a page on the site opens it in Try it live, in the same window.
@@ -317,36 +318,30 @@ test("links to arxiv.agarwal-labs.com in Sid Search open the arXiv Search app in
   expect(opened).toEqual([]);
 });
 
-test("Sid Search features arXiv Search on the All and Projects tabs and links to the live site outside Lab OS", async ({ page }) => {
+test("Sid Search shows arXiv Search as a regular project and links to the live site outside Lab OS", async ({ page }) => {
   await mockArxiv(page, false);
   await blockOutside(page);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("./?view=search");
 
-  const allCard = page.locator("#intro").getByRole("article", { name: "arXiv Search" });
-  await expect(allCard).toBeInViewport();
-  await expect(allCard.locator(".se-featured__stats dt")).toHaveText(["nDCG@10", "Source R@10", "arXiv papers"]);
-  await expect(allCard.locator(".se-featured__stats dd")).toHaveText([/^0\.5068 →\s*to 0\.8418$/, "93%", "23,304"]);
-  await expect(allCard.getByRole("link", { name: "arXiv Search on GitHub" })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/arxiv-search");
+  await expect(page.locator(".se-featured")).toHaveCount(0);
 
   const lab = page.locator("#lab");
-  await expect(lab.locator(".se-featured")).toHaveCount(1);
-  await expect(lab.locator("h2 + .se-featured")).toHaveCount(1);
-  await expect(lab.locator(".se-results .se-result__title")).toHaveText(["NVDocs RAG", "HireMe.AI", "Financial models"]);
+  await expect(lab.locator(".se-results .se-result__title")).toHaveText(["arXiv Search", "NVDocs RAG", "HireMe.AI", "Financial models"]);
+  await expect(lab.getByRole("link", { name: "arXiv Search on GitHub" })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/arxiv-search");
 
   const query = page.getByLabel("Search Sid's work");
   for (const term of ["arxiv", "RAG", "retrieval"]) {
     await query.fill(term);
-    await expect(page.locator(".se-matches .se-featured"), term).toHaveCount(1);
     await expect(page.locator(".se-matches .se-result h3", { hasText: "arXiv Search" }), term).toHaveCount(1);
   }
-  await expect(page.locator("#intro .se-featured")).toHaveCount(0);
-  await query.fill("robotics");
   await expect(page.locator(".se-matches .se-featured")).toHaveCount(0);
+  await query.fill("robotics");
+  await expect(page.locator(".se-matches .se-result h3", { hasText: "arXiv Search" })).toHaveCount(0);
   await query.fill("");
 
-  const open = page.locator("#intro").getByRole("link", { name: "Open arXiv Search" });
+  const open = lab.getByRole("link", { name: "arXiv Search", exact: true });
   await expect(open).toHaveAttribute("href", "https://arxiv.agarwal-labs.com/");
   await open.click();
   await expect(page).toHaveURL("https://arxiv.agarwal-labs.com/");
