@@ -33,14 +33,16 @@ html[data-os-style="retro"] {
   line-height: 1.4;
 }
 
+/* --os-wall-default is the Default wallpaper; the shell sets the chosen one as an inline background. */
 .os--modern {
-  background:
+  --os-wall-default:
     radial-gradient(90% 70% at 15% 10%, #34477c 0%, transparent 60%),
     radial-gradient(80% 70% at 90% 95%, #1d5f68 0%, transparent 60%),
     #10141d;
+  background: var(--os-wall-default);
 }
 
-.os--retro { --os-taskbar: calc(38px + env(safe-area-inset-bottom)); background: #008080; color: #000; font-family: var(--os-retro-font); font-size: 13px; }
+.os--retro { --os-taskbar: calc(38px + env(safe-area-inset-bottom)); --os-wall-default: #008080; background: var(--os-wall-default); color: #000; font-family: var(--os-retro-font); font-size: 13px; }
 
 .os :focus-visible { outline: 2px solid #9dbbff; outline-offset: 2px; }
 
@@ -221,9 +223,9 @@ html[data-os-style="retro"] {
 
 .os-tray time { font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-.os-style-toggle { display: inline-grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: inherit; cursor: pointer; }
+.os-style-toggle, .os-tray-button { display: inline-grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 7px; background: transparent; color: inherit; cursor: pointer; }
 
-.os-style-toggle:hover { background: rgba(255, 255, 255, 0.14); }
+.os-style-toggle:hover, .os-tray-button:hover { background: rgba(255, 255, 255, 0.14); }
 
 /* ---------- Start menu ---------- */
 
@@ -403,9 +405,9 @@ html[data-os-style="retro"] {
 .os-menu__search input { min-width: 0; width: 100%; border: 0; background: transparent; color: inherit; font: inherit; outline-offset: 3px; }
 .os--retro .os-menu__search { margin: 8px 4px; border: 0; border-radius: 0; background: #fff; box-shadow: var(--bevel-in); }
 
-.os--retro .os-style-toggle { width: 22px; height: 22px; border-radius: 0; }
+.os--retro .os-style-toggle, .os--retro .os-tray-button { width: 22px; height: 22px; border-radius: 0; }
 
-.os--retro .os-style-toggle:hover { background: transparent; box-shadow: var(--bevel-thin-out); }
+.os--retro .os-style-toggle:hover, .os--retro .os-tray-button:hover { background: transparent; box-shadow: var(--bevel-thin-out); }
 
 /* Start menu */
 .os--retro .os-menu { bottom: var(--os-taskbar); left: 2px; width: min(460px, calc(100% - 4px)); height: min(600px, calc(100% - var(--os-taskbar) - 8px)); padding: 3px; border: 0; border-radius: 0; background: #c0c0c0; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: var(--bevel-out); color: #000; animation: none; }
@@ -552,7 +554,34 @@ html[data-os-style="retro"] {
 
 @keyframes os-menu { from { opacity: 0; transform: translateY(-6px); } }
 
-@media (prefers-reduced-motion: reduce) {
-  .os-win, .os--phone .os-win, .os-menu, .os-menu__item .os-menu__chevron { animation: none; transition: none; }
-  .os-win.is-minimized { transition: none; }
-}
+/* os--still: Reduce motion is on, or follows a device that asks for it. */
+.os--still .os-win, .os--still.os--phone .os-win, .os--retro.os--still.os--phone .os-win, .os--still .os-menu, .os--still .os-menu__item .os-menu__chevron { animation: none; transition: none; }
+
+.os--still .os-win.is-minimized { transition: none; }
+
+/* os--no-motion: Reduce motion was turned on in Settings, so app animations stop too. */
+.os--no-motion *, .os--no-motion *::before, .os--no-motion *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; transition-delay: 0s !important; scroll-behavior: auto !important; }
+
+/* ---------- Light wallpapers ---------- */
+
+.os--wall-light .os-home { color: #10141d; }
+
+.os--wall-light .os-icons .os-icon, .os--wall-light .os-home .os-icon, .os--wall-light .os-home__date { color: #10141d; text-shadow: 0 1px 2px rgba(255, 255, 255, 0.7); }
+
+.os--wall-light .os-icons .os-icon:hover { background: rgba(0, 0, 0, 0.08); }
+
+.os--modern.os--wall-light .os-widget { border-color: rgba(16, 20, 29, 0.12); background: rgba(255, 255, 255, 0.55); }
+
+.os--modern.os--wall-light .os-widget__who span { color: #3b4250; }
+
+.os--modern.os--wall-light .os-home .os-button { border-color: rgba(16, 20, 29, 0.25); background: rgba(255, 255, 255, 0.5); color: #10141d; }
+
+.os--modern.os--wall-light .os-home .os-button:hover { background: rgba(255, 255, 255, 0.75); }
+
+.os--modern.os--wall-light .os-home .os-button--primary { border-color: #1d2433; background: #1d2433; color: #fff; }
+
+.os--retro.os--wall-light .os-icons .os-icon, .os--retro.os--wall-light .os-home .os-icon, .os--retro.os--wall-light .os-home__date { color: #000; text-shadow: none; }
+
+.os--retro.os--wall-light .os-icons .os-icon:hover { background: transparent; }
+
+.os--retro.os--wall-light .os-icons .os-icon:focus .os-icon__label { color: #fff; }

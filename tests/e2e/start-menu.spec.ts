@@ -148,7 +148,7 @@ for (const style of ["modern", "retro"]) {
       await page.setViewportSize({ width, height: 760 });
       await page.goto(`./?view=os&style=${style}`);
       const home = page.locator(".os-home").getByRole("list", { name: "Apps", exact: true });
-      await expect(home.locator(".os-icon__label")).toHaveText([...topLevel, ...folders, ...experiments, ...documents]);
+      await expect(home.locator(".os-icon__label")).toHaveText([...topLevel, ...folders, ...experiments, ...documents, "Settings"]);
       expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
       const clipped = await home.locator(".os-icon__label").evaluateAll((labels) => labels
         .filter((label) => label.scrollWidth > label.clientWidth || label.scrollHeight > label.clientHeight)

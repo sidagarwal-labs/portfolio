@@ -27,6 +27,81 @@ function readPositions(): Positions {
   }
 }
 
+/* Saved icons claim their slots first. An icon with no saved position takes its default slot, or else joins its default
+   neighbour wherever the user put it: right of the icon before it in its group (left of the next one if it leads the group). */
+function layoutIcons(saved: Positions, columns: number, rows: number): Positions {
+  const result: Positions = {};
+  const taken = new Map<number, AppId>();
+  const slot = (col: number, row: number) => col * rows + row;
+  const isFree = (col: number, row: number) => col >= 0 && col < columns && !taken.has(slot(col, row));
+  const put = (id: AppId, col: number, row: number) => { result[id] = { col, row }; taken.set(slot(col, row), id); };
+  const putFirstFree = (id: AppId) => {
+    let next = 0;
+    while (taken.has(next)) next += 1;
+    put(id, Math.floor(next / rows), next % rows);
+  };
+  /* Moves the run of icons starting at col one column right, if the row has room past its end. */
+  const shiftRight = (col: number, row: number) => {
+    let end = col;
+    while (end < columns && taken.has(slot(end, row))) end += 1;
+    if (end >= columns) return false;
+    for (let from = end - 1; from >= col; from -= 1) {
+      const id = taken.get(slot(from, row));
+      if (!id) continue;
+      taken.delete(slot(from, row));
+      put(id, from + 1, row);
+    }
+    return true;
+  };
+  const putNearest = (id: AppId, col: number, row: number, preferRight: boolean) => {
+    for (let distance = 0; distance <= columns; distance += 1) {
+      for (const candidate of preferRight ? [col + distance, col - distance] : [col - distance, col + distance]) {
+        if (isFree(candidate, row)) { put(id, candidate, row); return; }
+      }
+    }
+    putFirstFree(id);
+  };
+
+  const groups = [...desktopRows.map((ids, row) => ({ ids, row })), { ids: desktopDocuments, row: rows - 1 }];
+  const layout = groups.flatMap(({ ids, row }) => ids.map((id, col) => ({ id, ids, col: clamp(col, 0, columns - 1), row: clamp(row, 0, rows - 1) })));
+  for (const { id } of layout) {
+    const position = saved[id];
+    if (!position) continue;
+    const col = clamp(position.col, 0, columns - 1);
+    const row = clamp(position.row, 0, rows - 1);
+    if (isFree(col, row)) put(id, col, row);
+    else putFirstFree(id);
+  }
+
+  /* Returns false to retry once the neighbour has a place (when both icons are new); the retry places it regardless. */
+  const placeNew = ({ id, ids, col, row }: (typeof layout)[number], final: boolean) => {
+    if (isFree(col, row)) { put(id, col, row); return true; }
+    const index = ids.indexOf(id);
+    const leads = index === 0;
+    const neighbourId = leads ? ids[1] : ids[index - 1];
+    const neighbour = neighbourId ? result[neighbourId] : undefined;
+    if (!neighbour) {
+      if (!final) return false;
+      putNearest(id, col, row, true);
+    } else if (!leads) {
+      const after = neighbour.col + 1;
+      if (after < columns && shiftRight(after, neighbour.row)) put(id, after, neighbour.row);
+      else putNearest(id, after, neighbour.row, true);
+    } else if (isFree(neighbour.col - 1, neighbour.row)) {
+      put(id, neighbour.col - 1, neighbour.row);
+    } else if (shiftRight(neighbour.col, neighbour.row)) {
+      put(id, neighbour.col, neighbour.row);
+    } else {
+      putNearest(id, neighbour.col - 1, neighbour.row, false);
+    }
+    return true;
+  };
+  const waiting: typeof layout = [];
+  for (const item of layout) if (!saved[item.id] && !placeNew(item, false)) waiting.push(item);
+  for (const item of waiting) placeNew(item, true);
+  return result;
+}
+
 function DesktopIcons({ desk, open, reset }: { desk: DeskSize; open: (id: AppId) => void; reset: number }) {
   const [saved, setSaved] = useState(readPositions);
   const [notice, setNotice] = useState("");
@@ -34,27 +109,7 @@ function DesktopIcons({ desk, open, reset }: { desk: DeskSize; open: (id: AppId)
   const lastReset = useRef(reset);
   const columns = Math.max(1, Math.floor((desk.w - 16) / iconCell));
   const rows = Math.max(1, Math.floor((desk.h - 16) / iconCell));
-  const positions = useMemo(() => {
-    const result: Positions = {};
-    const used = new Set<number>();
-    const layout = [
-      ...desktopRows.flatMap((items, row) => items.map((id, col) => ({ id, col, row }))),
-      ...desktopDocuments.map((id, col) => ({ id, col, row: rows - 1 }))
-    ];
-    /* Saved icons claim their slots first, so an icon added later takes a free slot instead of moving the user's icons. */
-    const ordered = [...layout.filter(({ id }) => saved[id]), ...layout.filter(({ id }) => !saved[id])];
-    for (const { id, col, row } of ordered) {
-      const desired = saved[id] ?? { col, row };
-      let slot = clamp(desired.col, 0, columns - 1) * rows + clamp(desired.row, 0, rows - 1);
-      if (used.has(slot)) {
-        slot = 0;
-        while (used.has(slot)) slot += 1;
-      }
-      used.add(slot);
-      result[id] = { col: Math.floor(slot / rows), row: slot % rows };
-    }
-    return result;
-  }, [saved, rows, columns]);
+  const positions = useMemo(() => layoutIcons(saved, columns, rows), [saved, rows, columns]);
 
   useEffect(() => {
     if (lastReset.current === reset) return;
