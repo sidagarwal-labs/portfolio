@@ -1,4 +1,4 @@
-import { Fragment, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   bottlenecks, capexAllocation, demandReadMore, demandSignals, explainers, NOTES_AS_OF, NOTES_HOME, sources,
   tightnessLabel, tightnessScale, type Bottleneck, type Source
@@ -6,7 +6,7 @@ import {
 import {
   direction, formatDay, formatMarketCap, formatPercent, formatTime, layerLabel, type AiStackRow, type AiStackState
 } from "./aiStack";
-import { bucketShares, levelName, pricedInPoints, pricedInReadout, splitCaps, treemap } from "./stackInsights";
+import { bucketShares, levelName, pricedInPoints, pricedInReadout, splitCaps, treemap, type PricedPoint } from "./stackInsights";
 
 const noteDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 const notesAsOf = `Notes as of ${noteDay.format(new Date(`${NOTES_AS_OF}T12:00:00Z`))}`;
@@ -283,10 +283,42 @@ function CapexBar({ rows, onJump, LevelLink }: { rows: AiStackRow[]; onJump: (le
 
 /* ---------- Are the bottlenecks priced in? ---------- */
 
+const pricedSummary = (point: PricedPoint) =>
+  `L${point.level} ${point.name}, ${point.layer} layer. ` +
+  `Tightness: ${point.bottlenecks.map((item) => `${tightnessLabel(item.tightness)} (${item.name})`).join("; ")}. ` +
+  `Median ${formatPercent(point.medianFromHigh, 1)} from the 52-week high. Combined market cap ${formatMarketCap(point.marketCap)}. ` +
+  `Companies: ${point.symbols.join(", ")}.`;
+
+type Box = { left: number; top: number; right: number; bottom: number };
+type TipPlace = { side: "above" | "below" | "right" | "left"; left: number; top: number };
+
+/* Puts a tooltip of the given size beside a bubble (both relative to the chart): above, below, right, or left, the
+   first that fits inside the chart; otherwise above or below, whichever has more room, kept inside the chart. */
+function placeTip(dot: Box, width: number, height: number, chartWidth: number, chartHeight: number, gap = 8): TipPlace {
+  const clamp = (value: number, max: number) => Math.min(Math.max(0, value), Math.max(0, max));
+  const left = clamp((dot.left + dot.right) / 2 - width / 2, chartWidth - width);
+  const top = clamp((dot.top + dot.bottom) / 2 - height / 2, chartHeight - height);
+  const above = dot.top - gap - height;
+  const below = dot.bottom + gap;
+  if (above >= 0) return { side: "above", left, top: above };
+  if (below + height <= chartHeight) return { side: "below", left, top: below };
+  if (dot.right + gap + width <= chartWidth) return { side: "right", left: dot.right + gap, top };
+  if (dot.left - gap - width >= 0) return { side: "left", left: dot.left - gap - width, top };
+  return dot.top >= chartHeight - dot.bottom
+    ? { side: "above", left, top: clamp(above, chartHeight - height) }
+    : { side: "below", left, top: clamp(below, chartHeight - height) };
+}
+
 function PricedIn({ rows, prices }: { rows: AiStackRow[]; prices: string }) {
   const points = useMemo(() => pricedInPoints(rows), [rows]);
   const readout = pricedInReadout(points);
   const [ref, width] = useWidth<HTMLDivElement>();
+  const tipRef = useRef<HTMLDivElement>(null);
+  /* A level's details show while the pointer is over its bubble, or while the bubble is focused or tapped. */
+  const [hovered, setHovered] = useState<number | null>(null);
+  const [picked, setPicked] = useState<number | null>(null);
+  const [place, setPlace] = useState<TipPlace | null>(null);
+  const press = useRef({ touch: false, open: false });
   const plotted = points.filter((point) => point.medianFromHigh !== null);
   const W = Math.max(280, width);
   const H = W < 520 ? 300 : 340;
@@ -299,12 +331,60 @@ function PricedIn({ rows, prices }: { rows: AiStackRow[]; prices: string }) {
   const radius = (cap: number) => 5 + (W < 520 ? 14 : 20) * Math.sqrt(Math.max(0, cap) / maxCap);
   const ticks = Array.from({ length: Math.round(-floor / 10) + 1 }, (_, index) => -index * 10).filter((tick, index, all) => all.length <= 7 || index % 2 === 0);
   const spread = W < 520 ? 22 : 34;
+  const dots = tightnessScale.flatMap((step) => {
+    const same = plotted.filter((point) => point.score === step.score).sort((a, b) => a.level - b.level);
+    return same.map((point, index) => ({
+      ...point,
+      cx: Math.min(W - margin.right - 4, Math.max(margin.left + 4, x(point.score) + (index - (same.length - 1) / 2) * spread)),
+      cy: y(point.medianFromHigh!),
+      r: radius(point.marketCap)
+    }));
+  });
+  const active = dots.find((dot) => dot.level === (hovered ?? picked)) ?? null;
+  const activeLevel = active?.level ?? null;
+  const close = () => {
+    setHovered(null);
+    setPicked(null);
+  };
+
+  /* Escape, or a press anywhere but a bubble, puts the details away. */
+  useEffect(() => {
+    if (activeLevel === null) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    const onDown = (event: PointerEvent) => {
+      if (!(event.target instanceof Element && ref.current?.contains(event.target) && event.target.closest(".mk-dot"))) close();
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown);
+    };
+  }, [activeLevel, ref]);
+
+  useLayoutEffect(() => {
+    const chart = ref.current;
+    const tip = tipRef.current;
+    const circle = chart?.querySelector(`.mk-dot[data-level="${activeLevel}"] circle`);
+    if (!chart || !tip || !circle) {
+      setPlace(null);
+      return;
+    }
+    const box = chart.getBoundingClientRect();
+    const dot = circle.getBoundingClientRect();
+    setPlace(placeTip(
+      { left: dot.left - box.left, top: dot.top - box.top, right: dot.right - box.left, bottom: dot.bottom - box.top },
+      tip.offsetWidth, tip.offsetHeight, chart.clientWidth, chart.clientHeight
+    ));
+  }, [activeLevel, width, points, ref]);
 
   return (
     <Insight
       id="priced-in"
       title="Are the bottlenecks priced in?"
-      intro="Each ranked level's tightness in the notes against how far its stocks sit, at the median, from their 52-week highs. Bubble size is the level's combined market cap."
+      intro="Each ranked level's tightness in the notes against how far its stocks sit, at the median, from their 52-week highs. Bubble size is the level's combined market cap. Hover over, focus, or tap a bubble for the level's details."
       asOf={[prices, notesAsOf]}
       caveat="A comparison, not a causal claim: prices move for many reasons, whole-company market caps include non-AI businesses, and the ranking is a scenario from the notes."
       sources={[sources.ranking]}
@@ -329,35 +409,83 @@ function PricedIn({ rows, prices }: { rows: AiStackRow[]; prices: string }) {
       <p className="mk-readout" data-testid="priced-in-readout">{readout}</p>
       <div className="mk-chart" ref={ref}>
         {width > 0 && (
-          <svg className="mk-scatter" width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-labelledby="mk-scatter-title mk-scatter-desc">
+          <svg
+            className="mk-scatter"
+            width={W}
+            height={H}
+            viewBox={`0 0 ${W} ${H}`}
+            role="group"
+            aria-labelledby="mk-scatter-title mk-scatter-desc"
+            data-active={active ? "" : undefined}
+          >
             <title id="mk-scatter-title">Bottleneck tightness against median distance from the 52-week high</title>
             <desc id="mk-scatter-desc">{readout} The data table below lists every level.</desc>
             {ticks.map((tick) => (
-              <g key={tick} className="mk-axis">
+              <g key={tick} className="mk-axis" aria-hidden="true">
                 <line x1={margin.left} x2={W - margin.right} y1={y(tick)} y2={y(tick)} />
                 <text x={margin.left - 6} y={y(tick)} dy="0.32em" textAnchor="end">{tick}%</text>
               </g>
             ))}
             {tightnessScale.map((step) => (
-              <text key={step.id} className="mk-axis__x" x={x(step.score)} y={H - margin.bottom + 18} textAnchor="middle">
+              <text key={step.id} className="mk-axis__x" x={x(step.score)} y={H - margin.bottom + 18} textAnchor="middle" aria-hidden="true">
                 {W < 520 ? step.label.replace("Medium-high", "Med-high") : step.label}
               </text>
             ))}
-            <text className="mk-axis__title" x={margin.left + (W - margin.left - margin.right) / 2} y={H - 6} textAnchor="middle">Tightness in the notes →</text>
-            {tightnessScale.flatMap((step) => {
-              const same = plotted.filter((point) => point.score === step.score).sort((a, b) => a.level - b.level);
-              return same.map((point, index) => {
-                const cx = Math.min(W - margin.right - 4, Math.max(margin.left + 4, x(point.score) + (index - (same.length - 1) / 2) * spread));
-                const cy = y(point.medianFromHigh!);
-                return (
-                  <g key={point.level} className="mk-dot" data-layer={point.layerId} data-level={point.level}>
-                    <circle cx={cx} cy={cy} r={radius(point.marketCap)} />
-                    <text x={cx} y={cy} dy="0.35em" textAnchor="middle">L{point.level}</text>
-                  </g>
-                );
-              });
-            })}
+            <text className="mk-axis__title" x={margin.left + (W - margin.left - margin.right) / 2} y={H - 6} textAnchor="middle" aria-hidden="true">Tightness in the notes →</text>
+            {dots.map((dot) => (
+              <g
+                key={dot.level}
+                className="mk-dot"
+                data-layer={dot.layerId}
+                data-level={dot.level}
+                data-active={dot.level === activeLevel || undefined}
+                tabIndex={0}
+                role="img"
+                aria-label={pricedSummary(dot)}
+                onPointerEnter={(event) => {
+                  if (event.pointerType !== "touch") setHovered(dot.level);
+                }}
+                onPointerLeave={(event) => {
+                  if (event.pointerType !== "touch") close();
+                }}
+                onPointerDown={(event) => {
+                  press.current = { touch: event.pointerType === "touch", open: dot.level === activeLevel };
+                }}
+                /* A tap opens the details, and a second tap on the same bubble closes them. */
+                onClick={() => (press.current.touch && press.current.open ? close() : setPicked(dot.level))}
+                onFocus={() => setPicked(dot.level)}
+                onBlur={() => setPicked((level) => (level === dot.level ? null : level))}
+              >
+                <circle cx={dot.cx} cy={dot.cy} r={dot.r} />
+                <text x={dot.cx} y={dot.cy} dy="0.35em" textAnchor="middle">L{dot.level}</text>
+              </g>
+            ))}
+            {active && <circle className="mk-scatter__ring" data-layer={active.layerId} cx={active.cx} cy={active.cy} r={active.r + 4} aria-hidden="true" />}
           </svg>
+        )}
+        {active && (
+          <div
+            ref={tipRef}
+            className="mk-tip"
+            data-testid="priced-in-tip"
+            data-layer={active.layerId}
+            data-side={place?.side}
+            aria-hidden="true"
+            style={place ? { left: place.left, top: place.top } : { left: 0, top: 0, visibility: "hidden" }}
+          >
+            <p className="mk-tip__title">L{active.level} · {active.name}</p>
+            <p className="mk-tip__layer">{active.layer} layer</p>
+            <ul className="mk-tip__notes">
+              {active.bottlenecks.map((item) => (
+                <li key={item.id}><span className="mk-badge" data-tightness={item.tightness}>{tightnessLabel(item.tightness)}</span> {item.name}</li>
+              ))}
+            </ul>
+            <dl className="mk-tip__stats">
+              <div><dt>Median from 52-week high</dt><dd>{formatPercent(active.medianFromHigh, 1)}</dd></div>
+              <div><dt>Combined market cap</dt><dd>{formatMarketCap(active.marketCap)}</dd></div>
+              <div data-stat="companies"><dt>Companies</dt><dd>{active.symbols.join(", ")}</dd></div>
+            </dl>
+          </div>
         )}
       </div>
     </Insight>
