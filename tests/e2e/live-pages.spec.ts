@@ -1425,6 +1425,192 @@ test("AI leaderboards read Arena live, keep tabs linkable, and fall back to the 
   await expect(page.locator(".lb-leaders li")).toHaveCount(7);
 });
 
+type LabRelease = { model: string; date: string; eci: number; low?: number; high?: number };
+const labHistory = (JSON.parse(readFileSync(new URL("../../src/content/generated/leaderboards.json", import.meta.url), "utf8")) as {
+  epoch: { labs: { org: string; models: LabRelease[] }[] };
+}).epoch.labs;
+const bestOf = (models: LabRelease[]) => Math.max(...models.map((release) => release.eci));
+/* The eight labs with the highest scores show by default. */
+const defaultLabs = [...labHistory].sort((a, b) => bestOf(b.models) - bestOf(a.models)).slice(0, 8);
+const releaseDay = (date: string) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(Date.parse(date));
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const labPoint = (page: Page, org: string, index: number) => page.locator(`.lb-point[data-key="${labHistory.findIndex((lab) => lab.org === org)}-${index}"]`);
+
+/* The release with the highest score sits alone at the top of the chart. */
+function topRelease() {
+  const lab = defaultLabs.reduce((best, item) => (bestOf(item.models) > bestOf(best.models) ? item : best));
+  const index = lab.models.findIndex((release) => release.eci === bestOf(lab.models));
+  return { org: lab.org, index, release: lab.models[index] };
+}
+
+test("the Labs view plots each lab's releases, with details on hover and focus", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("./leaderboards");
+  const section = page.locator("#labs");
+  await expect(section.getByRole("heading", { name: "Labs: progress release by release" })).toBeVisible();
+  expect(labHistory.length).toBeGreaterThan(8);
+  for (const lab of labHistory) expect(lab.models.length, lab.org).toBeGreaterThanOrEqual(3);
+
+  /* One line per default lab, a point per release, and one tab stop per lab. */
+  await expect(section.locator(".lb-line")).toHaveCount(8);
+  for (const lab of defaultLabs) await expect(section.locator(`.lb-line[data-lab="${lab.org}"]`)).toHaveCount(1);
+  await expect(section.locator(".lb-point")).toHaveCount(defaultLabs.reduce((sum, lab) => sum + lab.models.length, 0));
+  await expect(section.locator('.lb-point[tabindex="0"]')).toHaveCount(8);
+  await expect(section.locator(".lb-frontier")).toHaveCount(1);
+
+  const tip = page.getByTestId("lab-tip");
+  const top = topRelease();
+  await expect(labPoint(page, top.org, top.index)).toHaveAttribute(
+    "aria-label",
+    new RegExp(`^${escapeRegExp(`${top.release.model}, ${top.org}, released ${releaseDay(top.release.date)}: ECI ${top.release.eci.toFixed(1)}`)}`)
+  );
+
+  /* Hovering over a point shows its release, and dims the other labs. */
+  await expect(tip).toHaveCount(0);
+  await labPoint(page, top.org, top.index).hover();
+  await expect(tip.locator(".lb-tip__title")).toHaveText(top.release.model);
+  await expect(tip.locator(".lb-tip__lab")).toHaveText(top.org);
+  await expect(tip).toContainText(releaseDay(top.release.date));
+  await expect(tip).toContainText(`ECI${top.release.eci.toFixed(1)}`);
+  await expect(tip.locator(".lb-tip__link")).toHaveAttribute("href", "https://epoch.ai/benchmarks/eci");
+  const other = defaultLabs.find((lab) => lab.org !== top.org)!.org;
+  await expect(section.locator(`.lb-points[data-lab="${other}"]`)).toHaveAttribute("data-dim", "true");
+  await expect(section.locator(`.lb-points[data-lab="${top.org}"]`)).not.toHaveAttribute("data-dim");
+  const chartBox = (await section.locator(".lb-chart").boundingBox())!;
+  const tipBox = (await tip.boundingBox())!;
+  expect(tipBox.x).toBeGreaterThanOrEqual(chartBox.x - 1);
+  expect(tipBox.x + tipBox.width).toBeLessThanOrEqual(chartBox.x + chartBox.width + 1);
+  await page.mouse.move(4, 4);
+  await expect(tip).toHaveCount(0);
+
+  /* From the keyboard: Tab reaches each lab's latest release, and the arrow keys step through that lab's releases. */
+  const [first, second] = defaultLabs;
+  await section.getByRole("button", { name: "Show as table" }).focus();
+  await page.keyboard.press("Tab");
+  await expect(labPoint(page, first.org, first.models.length - 1)).toBeFocused();
+  await expect(tip.locator(".lb-tip__title")).toHaveText(first.models[first.models.length - 1].model);
+  await page.keyboard.press("ArrowLeft");
+  await expect(labPoint(page, first.org, first.models.length - 2)).toBeFocused();
+  await expect(tip.locator(".lb-tip__title")).toHaveText(first.models[first.models.length - 2].model);
+  await expect(section.locator('.lb-point[tabindex="0"]')).toHaveCount(8);
+  await page.keyboard.press("Home");
+  await expect(labPoint(page, first.org, 0)).toBeFocused();
+  await expect(tip.locator(".lb-tip__title")).toHaveText(first.models[0].model);
+  await page.keyboard.press("Tab");
+  await expect(labPoint(page, second.org, second.models.length - 1)).toBeFocused();
+  await expect(tip.locator(".lb-tip__lab")).toHaveText(second.org);
+  /* Shift+Tab returns to the release last visited in the first lab. */
+  await page.keyboard.press("Shift+Tab");
+  await expect(labPoint(page, first.org, 0)).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(tip).toHaveCount(0);
+  await expect(labPoint(page, first.org, 0)).toBeFocused();
+});
+
+test("the Labs legend hides and highlights labs, and the table lists the same releases", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("./leaderboards");
+  const section = page.locator("#labs");
+  const lines = section.locator(".lb-line");
+  const [first, second] = defaultLabs;
+  const extra = labHistory.find((lab) => !defaultLabs.includes(lab))!;
+
+  /* Unchecking a lab removes its line and points. */
+  await section.getByRole("checkbox", { name: `Show ${second.org}` }).uncheck();
+  await expect(lines).toHaveCount(7);
+  await expect(section.locator(`.lb-line[data-lab="${second.org}"]`)).toHaveCount(0);
+  await expect(section.locator(`.lb-points[data-lab="${second.org}"]`)).toHaveCount(0);
+
+  /* Pressing a lab's name highlights it; a hidden lab is shown first. */
+  const highlight = section.getByRole("button", { name: `Highlight ${first.org}` });
+  await highlight.click();
+  await expect(highlight).toHaveAttribute("aria-pressed", "true");
+  await expect(section.locator(`.lb-points[data-lab="${first.org}"]`)).not.toHaveAttribute("data-dim");
+  await expect(section.locator(`.lb-points[data-lab="${defaultLabs[2].org}"]`)).toHaveAttribute("data-dim", "true");
+  await section.getByRole("button", { name: `Highlight ${extra.org}` }).click();
+  await expect(section.getByRole("checkbox", { name: `Show ${extra.org}` })).toBeChecked();
+  await expect(highlight).toHaveAttribute("aria-pressed", "false");
+  await expect(section.locator(`.lb-line[data-lab="${extra.org}"]`)).toHaveCount(1);
+  await expect(lines).toHaveCount(8);
+
+  /* The table lists the plotted releases, lab by lab, oldest first. */
+  const shown = labHistory.filter((lab) => lab.org !== second.org && (defaultLabs.includes(lab) || lab === extra));
+  const plotted = await section.locator(".lb-point").count();
+  const toggle = section.getByRole("button", { name: "Show as table" });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await expect(section.locator(".lb-chart")).toBeHidden();
+  const table = section.getByRole("table", { name: "Epoch Capabilities Index by release, grouped by lab" });
+  await expect(table.locator(".lb-labs__group th")).toHaveText(shown.map((lab) => new RegExp(`^${escapeRegExp(lab.org)} ${lab.models.length} releases`)));
+  await expect(table.locator("th.lb-model > span")).toHaveText(shown.flatMap((lab) => lab.models.map((release) => release.model)));
+  expect(await table.locator("th.lb-model").count()).toBe(plotted);
+  const release = shown[0].models[0];
+  const row = table.locator("tbody tr:not(.lb-labs__group)").first();
+  await expect(row).toContainText(releaseDay(release.date));
+  await expect(row).toContainText(release.eci.toFixed(1));
+  await toggle.click();
+  await expect(table).toHaveCount(0);
+  await expect(lines).toHaveCount(8);
+
+  /* The frontier line can be turned off, and Reset restores the default labs. */
+  await section.getByRole("checkbox", { name: "Frontier (best of any lab)" }).uncheck();
+  await expect(section.locator(".lb-frontier")).toHaveCount(0);
+  await section.getByRole("button", { name: "Reset" }).click();
+  await expect(lines).toHaveCount(8);
+  for (const lab of defaultLabs) await expect(section.locator(`.lb-line[data-lab="${lab.org}"]`)).toHaveCount(1);
+  await expect(section.getByRole("button", { pressed: true })).toHaveCount(0);
+  await section.getByRole("button", { name: "Show all labs" }).click();
+  await expect(lines).toHaveCount(labHistory.length);
+});
+
+test.describe("Labs on a touch screen", () => {
+  test.use({ hasTouch: true });
+
+  for (const width of [390, 320]) {
+    test(`the Labs chart fits a ${width}px phone, and a tap shows a release`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto("./leaderboards");
+      const section = page.locator("#labs");
+      const chart = section.locator(".lb-chart");
+      await chart.scrollIntoViewIfNeeded();
+      await expect(section.locator(".lb-line")).toHaveCount(8);
+      expect(await horizontalOverflow(page)).toBe(0);
+      const svg = (await chart.locator("svg").boundingBox())!;
+      expect(svg.x).toBeGreaterThanOrEqual(0);
+      expect(svg.x + svg.width).toBeLessThanOrEqual(width);
+
+      /* The legend wraps onto several rows inside the screen. */
+      const chips = section.locator(".lb-legend li");
+      const firstChip = (await chips.first().boundingBox())!;
+      const lastChip = (await chips.last().boundingBox())!;
+      expect(lastChip.y).toBeGreaterThan(firstChip.y);
+      for (const box of await chips.evaluateAll((items) => items.map((item) => item.getBoundingClientRect().right))) expect(box).toBeLessThanOrEqual(width);
+
+      /* A tap shows the release inside the chart; a second tap, or a tap elsewhere, puts it away. */
+      const tip = page.getByTestId("lab-tip");
+      const top = topRelease();
+      const point = labPoint(page, top.org, top.index);
+      await point.tap();
+      await expect(tip.locator(".lb-tip__title")).toHaveText(top.release.model);
+      const chartBox = (await chart.boundingBox())!;
+      const tipBox = (await tip.boundingBox())!;
+      expect(tipBox.x).toBeGreaterThanOrEqual(chartBox.x - 1);
+      expect(tipBox.x + tipBox.width).toBeLessThanOrEqual(chartBox.x + chartBox.width + 1);
+      expect(await horizontalOverflow(page)).toBe(0);
+      await point.tap();
+      await expect(tip).toHaveCount(0);
+      await point.tap();
+      await expect(tip).toBeVisible();
+      await section.locator(".lb-panel__head p").first().tap();
+      await expect(tip).toHaveCount(0);
+
+      await section.getByRole("button", { name: "Show as table" }).tap();
+      await expect(section.getByRole("table")).toBeVisible();
+      expect(await horizontalOverflow(page)).toBe(0);
+    });
+  }
+});
+
 test("live pages fit a phone screen", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   for (const path of ["./markets", "./markets?symbol=NVDA", "./launches", "./leaderboards"]) {
