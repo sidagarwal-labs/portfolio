@@ -1,3 +1,5 @@
+import { desktopShown, trackScreen } from "./desktop.js";
+
 const V86_VERSION = "0.5.473";
 const CDN = `https://cdn.jsdelivr.net/npm/v86@${V86_VERSION}/build/`;
 /* The npm package has no BIOS images, so they come from the v86 repository at the commit the package was built from. */
@@ -17,11 +19,23 @@ const files = {
   bios: { url: `${BIOS}seabios.bin`, sha256: "73e3f359102e3a9982c35fce98eb7cd08f18303ac7f1ba6ebfbe6cdc1c244d98", bytes: 131_072, wire: 60_587 },
   vgaBios: { url: `${BIOS}vgabios.bin`, sha256: "a4bc0d80cc3ca028c73dafa8fee396b8d054ce87ebd8abfbd31b06b437607880", bytes: 36_352, wire: 14_455 },
   linux: { url: `${IMAGES}linux.iso`, sha256: "b311d065b9acc17e5bf1dd4d12f06e70efaf2f0d8b2c7be3bbbb25076f494885", bytes: 5_666_816, wire: 2_241_455 },
-  freedos: { url: `${IMAGES}freedos722.img`, sha256: "6c7b3c62823d538e20797fecae6dc55d2572455791a573a7de2cdba0b583f6be", bytes: 737_280, wire: 571_097 }
+  freedos: { url: `${IMAGES}freedos722.img`, sha256: "6c7b3c62823d538e20797fecae6dc55d2572455791a573a7de2cdba0b583f6be", bytes: 737_280, wire: 571_097 },
+  kolibri: { url: `${IMAGES}kolibri.img`, sha256: "b1b2e83adee123922b948a2f2e12e7f9a997d7df72e3fb18b7e286337192a8dd", bytes: 1_474_560, wire: 1_198_431 }
 };
 const runtimeFiles = [files.libv86, files.wasm, files.bios, files.vgaBios];
 
 const guests = {
+  kolibri: {
+    name: "KolibriOS",
+    image: files.kolibri,
+    /* KolibriOS draws its desktop at 800×600 in 32-bit colour, which needs more video memory than the text guests. */
+    memory: 64 * 1024 * 1024,
+    vgaMemory: 8 * 1024 * 1024,
+    ready: "desktop",
+    mouse: true,
+    resumeNeedsImage: true,
+    options: (image) => ({ fda: { buffer: image } })
+  },
   linux: {
     name: "Linux",
     image: files.linux,
@@ -85,6 +99,7 @@ const metrics = {
 };
 
 let emulator = null;
+let screen = null;
 let runningGuest = null;
 let busy = false;
 let bootPending = false;
@@ -99,7 +114,7 @@ window.osLab = metrics;
 const round = (ms) => Math.round(ms);
 const seconds = (ms) => `${(ms / 1000).toFixed(1)} s`;
 const size = (bytes) => (bytes >= 1e6 ? `${(bytes / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1e3))} KB`);
-const selectedGuest = () => ui.radios.find((radio) => radio.checked)?.value ?? "linux";
+const selectedGuest = () => ui.radios.find((radio) => radio.checked)?.value ?? "kolibri";
 const hex = (buffer) => Array.from(new Uint8Array(buffer), (byte) => byte.toString(16).padStart(2, "0")).join("");
 
 function setPhase(phase, message) {
@@ -109,8 +124,12 @@ function setPhase(phase, message) {
   render();
 }
 
-function compatible(meta) {
-  return Boolean(meta) && meta.version === V86_VERSION && meta.memory === MEMORY && meta.vgaMemory === VGA_MEMORY;
+const memoryOf = (id) => ({ memory: guests[id].memory ?? MEMORY, vgaMemory: guests[id].vgaMemory ?? VGA_MEMORY });
+
+function compatible(meta, id) {
+  if (!meta) return false;
+  const { memory, vgaMemory } = memoryOf(id);
+  return meta.version === V86_VERSION && meta.memory === memory && meta.vgaMemory === vgaMemory;
 }
 
 function downloadSize(id, resume = false) {
@@ -130,13 +149,13 @@ function render() {
   ui.save.disabled = busy || !emulator;
   ui.poweroff.disabled = busy || !emulator;
   ui.forget.disabled = busy || !meta;
-  ui.restore.disabled = busy || !compatible(meta) || (Boolean(emulator) && !sameGuest);
+  ui.restore.disabled = busy || !compatible(meta, id) || (Boolean(emulator) && !sameGuest);
   const resumeBytes = downloadSize(id, true);
   ui.restore.textContent = sameGuest ? "Restore" : resumeBytes ? `Resume save · ${size(resumeBytes)} download` : "Resume save";
   ui.keyboard.hidden = !coarse || !emulator;
   for (const radio of ui.radios) radio.disabled = busy || Boolean(emulator);
   if (!meta) ui.saved.textContent = "";
-  else if (!compatible(meta)) ui.saved.textContent = `The ${guest.name} save is from another emulator version and can't be restored.`;
+  else if (!compatible(meta, id)) ui.saved.textContent = `The ${guest.name} save is from another emulator version and can't be restored.`;
   else ui.saved.textContent = `${guest.name} save: ${size(meta.storedBytes)} in this browser, from ${new Date(meta.savedAt).toLocaleString()}.`;
   renderMetrics();
 }
@@ -280,8 +299,8 @@ function syncKeyboard() {
 function createEmulator(id, image, initialState) {
   const emu = new window.V86({
     wasm_fn: instantiateWasm,
-    memory_size: MEMORY,
-    vga_memory_size: VGA_MEMORY,
+    memory_size: memoryOf(id).memory,
+    vga_memory_size: memoryOf(id).vgaMemory,
     screen_container: ui.display,
     bios: { buffer: runtime.bios },
     vga_bios: { buffer: runtime.vgaBios },
@@ -297,6 +316,7 @@ function createEmulator(id, image, initialState) {
   /* The keyboard adapter listens on the whole window and starts enabled, so it is switched off until the screen has focus. */
   emu.add_listener("emulator-ready", syncKeyboard);
   emu.add_listener("emulator-started", syncKeyboard);
+  screen = trackScreen(emu);
   emulator = emu;
   runningGuest = id;
   metrics.guest = id;
@@ -365,11 +385,14 @@ async function boot() {
   bootPending = true;
   setPhase("booting", `Booting ${guest.name}…`);
   focusScreen();
-  const found = await emu.wait_until_vga_screen_contains(guest.prompt, { timeout_msec: 180_000 });
+  const found = guest.ready === "desktop"
+    ? await screen.until(desktopShown, 180_000)
+    : await emu.wait_until_vga_screen_contains(guest.prompt, { timeout_msec: 180_000 });
   if (emu !== emulator || !bootPending) return;
   bootPending = false;
+  const goal = guest.ready ?? "prompt";
   if (!found) {
-    setPhase("running", `${guest.name} is running, but no prompt appeared within 3 minutes.`);
+    setPhase("running", `${guest.name} is running, but no ${goal} appeared within 3 minutes.`);
     return;
   }
   const readyAt = performance.now();
@@ -377,7 +400,7 @@ async function boot() {
   metrics.timings.coldBoot = round(readyAt - clickAt);
   metrics.bootInstructions = emu.get_instruction_counter();
   metrics.bootMips = Math.round(metrics.bootInstructions / (readyAt - bootAt) / 1000);
-  const message = `${guest.name} is up: prompt ${seconds(readyAt - bootAt)} after start, ${seconds(readyAt - clickAt)} after you pressed Boot.`;
+  const message = `${guest.name} is up: ${goal} ${seconds(readyAt - bootAt)} after start, ${seconds(readyAt - clickAt)} after you pressed Boot.`;
   /* A save started during boot reports its own result, then switches to "running". */
   if (metrics.phase === "booting") setPhase("running", message);
   else renderMetrics();
@@ -457,8 +480,7 @@ async function save() {
     const meta = {
       guest: id,
       version: V86_VERSION,
-      memory: MEMORY,
-      vgaMemory: VGA_MEMORY,
+      ...memoryOf(id),
       encoding: canCompress ? "gzip" : "raw",
       stateBytes: state.byteLength,
       storedBytes: data.byteLength,
@@ -494,7 +516,7 @@ async function readState(id) {
 async function restore() {
   const id = selectedGuest();
   const guest = guests[id];
-  if (!compatible(saves[id])) return;
+  if (!compatible(saves[id], id)) return;
   const clickAt = performance.now();
   const inPlace = Boolean(emulator) && runningGuest === id;
   busy = true;
