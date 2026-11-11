@@ -165,15 +165,14 @@ test("the Markets AI stack groups the tracker sheet by layer and level", async (
   await expect(status).toHaveText(/^Live from the tracker sheet, read at .+\. Its Google Finance prices can be delayed up to 20 minutes\.$/);
 
   await expect(page.locator(".mk-layer h2")).toHaveText(["Chips", "Data center", "Data", "Application"]);
+  await expect(page.locator(".mk-layer__head > p")).toHaveText(["Levels 1–5 · 3 companies", "Levels 8–13 · 2 companies", "Level 15 · 1 company", "Level 16 · 1 company"]);
   const chips = page.locator("#mk-layer-chips");
-  await expect(chips.locator(".mk-layer__head > p")).toHaveText("Levels 1–5 · 3 companies");
-  await expect(chips.locator(".mk-layer__stats dd")).toHaveText(["+0.75%", "-37.5%", "1 up, 1 down"]);
-  await expect(page.locator("#mk-layer-data-center .mk-layer__stats dd")).toHaveText(["-1.25%", "-15.0%", "1 up, 1 down"]);
   await expect(chips.locator(".mk-level__number")).toHaveText(["Level 1", "Level 5"]);
   await expect(chips.locator(".mk-group__name")).toHaveText(["Designing", "Memory - HBM"]);
+  await expect(chips.locator(".mk-group__count")).toHaveText([", 2 companies", ", 1 company"]);
 
   /* Levels the research notes rank as bottlenecks carry the ranking's badge. */
-  await expect(page.getByRole("group", { name: /^Level 5 Memory - HBM ?, bottleneck HBM capacity and bandwidth: Very high$/ })).toBeVisible();
+  await expect(page.getByRole("group", { name: /^Level 5 Memory - HBM ?, 1 company ?, bottleneck HBM capacity and bandwidth: ?Very high$/ })).toBeVisible();
   await expect(page.locator("#mk-level-1 .mk-badge")).toHaveAttribute("data-tightness", "high");
   await expect(page.locator("#mk-level-5 .mk-badge")).toHaveAttribute("data-tightness", "very-high");
   await expect(page.locator("#mk-level-8 .mk-badge")).toHaveText("Very high");
@@ -199,6 +198,112 @@ test("the Markets AI stack groups the tracker sheet by layer and level", async (
   await expect(page.locator(".live-foot__sources")).not.toContainText(/Finnhub|watchlist/i);
 });
 
+test("the Markets stack opens level by level under summaries of the whole stack and each layer", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("./markets");
+  await expect(page.locator(".mk-status")).toHaveAttribute("data-source", "live");
+  const tiles = (scope: Locator) => scope.locator(".mk-summary dd");
+
+  /* The whole stack counts each company once (MSFT sits in two layers); Samsung's #N/A cap is left out and named. */
+  const overview = page.getByRole("region", { name: "Whole stack" });
+  await expect(overview.locator(".mk-overview__head > p")).toHaveText("4 layers · 6 levels · 6 companies");
+  await expect(overview.locator(".mk-summary dt"))
+    .toHaveText(["Market cap", "Median day", "Today", "Median from 52w high", "Top gainer", "Top loser", "Largest", "Tightest bottleneck"]);
+  await expect(tiles(overview))
+    .toHaveText(["$6.91T No value for SAMSUNG", "+0.50%", "3 up, 2 down", "-20.0%", "NVDA +2.50%", "VRT -3.00%", "NVDA $3.65T", "Very high HBM capacity and bandwidth"]);
+  await expect(overview.locator(".mk-overview__note")).toHaveText("A company in more than one layer counts once here, and in each of its layers below.");
+  await expect(tiles(page.locator("#mk-layer-chips")))
+    .toHaveText(["$3.85T No value for SAMSUNG", "+0.75%", "1 up, 1 down", "-37.5%", "NVDA +2.50%", "AMD -1.00%", "NVDA $3.65T", "Very high HBM capacity and bandwidth"]);
+  await expect(tiles(page.locator("#mk-layer-data-center")))
+    .toHaveText(["$3.00T", "-1.25%", "1 up, 1 down", "-15.0%", "MSFT +0.50%", "VRT -3.00%", "MSFT $2.97T", "Very high Deployable accelerator systems"]);
+  await expect(tiles(page.locator("#mk-layer-data"))).toHaveText(["$60B", "+1.00%", "1 up, 0 down", "-10.0%", "SNOW +1.00%", "—", "SNOW $60B", "None ranked"]);
+  await expect(tiles(page.locator("#mk-layer-application"))).toHaveText(["$2.97T", "+0.50%", "1 up, 0 down", "-20.0%", "MSFT +0.50%", "—", "MSFT $2.97T", "None ranked"]);
+
+  /* Layers start open and levels closed, so each level shows its name, count, and badge until it's opened. */
+  const layerToggles = page.locator(".mk-layer__toggle");
+  const levelToggles = page.locator(".mk-group__toggle");
+  await expect(layerToggles).toHaveCount(4);
+  for (const toggle of await layerToggles.all()) await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await expect(levelToggles).toHaveCount(6);
+  for (const toggle of await levelToggles.all()) await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator("a[data-row-key]:visible")).toHaveCount(0);
+
+  const dataCenter = page.getByRole("button", { name: "Data center", exact: true });
+  const level8 = page.getByRole("button", { name: /^Level 8 / });
+  const vrt = page.locator('a[data-row-key="8:VRT"]');
+  await expect(dataCenter).toHaveAttribute("aria-controls", "mk-layer-data-center-levels");
+  await expect(level8).toHaveAttribute("aria-controls", "mk-level-8-rows");
+  await level8.click();
+  await expect(level8).toHaveAttribute("aria-expanded", "true");
+  await expect(vrt).toBeVisible();
+  await expect(page.locator('a[data-row-key="13:MSFT"]')).toBeHidden();
+  /* Closing a layer hides its levels but not its summary, and its levels come back as they were. */
+  await dataCenter.click();
+  await expect(dataCenter).toHaveAttribute("aria-expanded", "false");
+  await expect(level8).toBeHidden();
+  await expect(page.locator("#mk-layer-data-center .mk-summary")).toBeVisible();
+  await dataCenter.click();
+  await expect(level8).toHaveAttribute("aria-expanded", "true");
+  await expect(vrt).toBeVisible();
+  /* Each open level is one tab stop after its toggle: its chosen row, or else its first. */
+  await level8.focus();
+  await page.keyboard.press("Tab");
+  await expect(vrt).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: /^Level 13 / })).toBeFocused();
+  await level8.click();
+  await expect(vrt).toBeHidden();
+
+  const expandAll = page.getByRole("button", { name: "Expand all" });
+  const collapseAll = page.getByRole("button", { name: "Collapse all" });
+  await expect(expandAll).toHaveAttribute("aria-disabled", "false");
+  await expect(collapseAll).toHaveAttribute("aria-disabled", "false");
+  await expandAll.click();
+  await expect(expandAll).toHaveAttribute("aria-disabled", "true");
+  await expect(page.locator("a[data-row-key]:visible")).toHaveCount(7);
+  await expect(page.locator('a[data-row-key][tabindex="0"]')).toHaveCount(6);
+  /* The arrow keys skip the rows of a closed level. */
+  await page.getByRole("button", { name: /^Level 15 / }).click();
+  await page.locator('a[data-row-key="13:MSFT"]').focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.locator('a[data-row-key="16:MSFT"]')).toBeFocused();
+  await page.keyboard.press("ArrowUp");
+  await expect(page.locator('a[data-row-key="13:MSFT"]')).toBeFocused();
+  await collapseAll.click();
+  await expect(collapseAll).toHaveAttribute("aria-disabled", "true");
+  await expect(expandAll).toHaveAttribute("aria-disabled", "false");
+  for (const toggle of await layerToggles.all()) await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator(".mk-summary:visible")).toHaveCount(5);
+
+  /* A company named in a summary opens its layer and level, and is picked without adding history. */
+  const entries = await historyLength(page);
+  await overview.getByRole("button", { name: "VRT -3.00%" }).click();
+  await expect(page).toHaveURL(/\/markets\?symbol=VRT$/);
+  await expect(vrt).toBeFocused();
+  await expect(vrt).toBeInViewport();
+  await expect(vrt).toHaveAttribute("aria-current", "true");
+  await expect(page.getByRole("complementary", { name: "Preview" }).getByRole("heading", { name: "Vertiv", level: 2 })).toBeVisible();
+  await expect(dataCenter).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator('.mk-layer__toggle[aria-expanded="true"]')).toHaveCount(1);
+  await expect(page.locator('.mk-group__toggle[aria-expanded="true"]')).toHaveCount(1);
+  await expect(level8).toHaveAttribute("aria-expanded", "true");
+  expect(await historyLength(page)).toBe(entries);
+  /* What the reader opened and closed stays that way across tabs. */
+  await level8.click();
+  await page.getByRole("tab", { name: "Insights" }).click();
+  await page.getByRole("tab", { name: "Stack" }).click();
+  await expect(level8).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator('.mk-layer__toggle[aria-expanded="true"]')).toHaveCount(1);
+
+  /* A shared link opens just its company's level. */
+  await page.goto("./markets?symbol=vrt");
+  await expect(page.locator(".mk-status")).toHaveAttribute("data-source", "live");
+  await expect(vrt).toBeVisible();
+  await expect(page.locator('.mk-group__toggle[aria-expanded="true"]')).toHaveCount(1);
+  await expect(level8).toHaveAttribute("aria-expanded", "true");
+});
+
 test("picking a Markets company previews it beside the stack without moving the page", async ({ page }) => {
   const scripts: string[] = [];
   page.on("request", (request) => { if (request.url().startsWith("https://s3.tradingview.com/")) scripts.push(request.url()); });
@@ -219,6 +324,7 @@ test("picking a Markets company previews it beside the stack without moving the 
   await expect(chart.getByRole("link", { name: "Open it on TradingView" })).toHaveAttribute("href", "https://www.tradingview.com/symbols/NASDAQ-NVDA/");
   expect(scripts.some((url) => url.endsWith("/embed-widget-mini-symbol-overview.js"))).toBe(true);
 
+  await page.getByRole("button", { name: "Expand all" }).click();
   const entries = await historyLength(page);
   const snow = page.locator('a[data-row-key="15:SNOW"]');
   await snow.evaluate((link) => link.scrollIntoView({ block: "center" }));
@@ -240,7 +346,7 @@ test("picking a Markets company previews it beside the stack without moving the 
   expect(await settledScrollY(page)).toBe(scrollY);
   await expect(snow).toBeFocused();
 
-  /* The arrow keys, Home, and End move through the companies and preview each one; the list is one tab stop. */
+  /* The arrow keys, Home, and End move through the open levels' companies and preview each one; each level is one tab stop. */
   const msft13 = page.locator('a[data-row-key="13:MSFT"]');
   const msft16 = page.locator('a[data-row-key="16:MSFT"]');
   await page.keyboard.press("ArrowUp");
@@ -263,7 +369,8 @@ test("picking a Markets company previews it beside the stack without moving the 
   await expect(page).toHaveURL(/\/markets\?symbol=NVDA$/);
   await page.keyboard.press("End");
   await expect(msft16).toBeFocused();
-  await expect(page.locator('a[data-row-key][tabindex="0"]')).toHaveCount(1);
+  await expect(page.locator('a[data-row-key][tabindex="0"]')).toHaveCount(6);
+  await expect(msft16).toHaveAttribute("tabindex", "0");
   /* Enter on a row picks it too. */
   await page.locator('a[data-row-key="8:VRT"]').focus();
   await page.keyboard.press("Enter");
@@ -287,6 +394,7 @@ test("a Markets company's full view is its own page, and Back returns to the sta
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("./markets");
   await expect(page.locator(".mk-status")).toHaveAttribute("data-source", "live");
+  await page.getByRole("button", { name: /^Level 16 / }).click();
   const msft = page.locator('a[data-row-key="16:MSFT"]');
   await msft.evaluate((link) => link.scrollIntoView({ block: "center" }));
   await msft.click();
@@ -352,6 +460,7 @@ test("a Markets company's full view is its own page, and Back returns to the sta
   await detail.getByRole("button", { name: "Back to stack" }).click();
   await expect(page).toHaveURL(/\/markets\?symbol=SAMSUNG$/);
   await expect(page.locator('a[data-row-key="5:SAMSUNG"]')).toBeFocused();
+  await expect(page.getByRole("button", { name: /^Level 5 / })).toHaveAttribute("aria-expanded", "true");
   await expect(page.getByRole("complementary", { name: "Preview" }).getByRole("heading", { name: "Samsung Electronics", level: 2 })).toBeVisible();
   expect(await historyLength(page)).toBe(shared);
 });
@@ -952,10 +1061,14 @@ test("on a phone the Markets preview opens under the chosen company and nothing 
   await expect(page.getByRole("complementary", { name: "Preview" })).toHaveCount(0);
   const inline = page.locator("li.mk-row-preview");
   const previewAfter = () => inline.evaluate((item) => item.previousElementSibling?.getAttribute("data-symbol"));
+  /* The first company is chosen, but its preview waits under its row until the reader opens that level. */
+  await expect(inline).toHaveCount(0);
+  await page.getByRole("button", { name: /^Level 1 / }).click();
   await expect(inline).toHaveCount(1);
   expect(await previewAfter()).toBe("NVDA");
   await expect(inline.getByRole("heading", { name: "NVIDIA", level: 4 })).toBeVisible();
 
+  await page.getByRole("button", { name: /^Level 8 / }).click();
   const vrt = page.locator('a[data-row-key="8:VRT"]');
   await vrt.evaluate((link) => link.scrollIntoView({ block: "center" }));
   const top = await vrt.evaluate((link) => link.getBoundingClientRect().top);
@@ -985,6 +1098,9 @@ test("on a phone the Markets preview opens under the chosen company and nothing 
       if (path.includes("insights")) {
         await expect(page.locator(".mk-treemap__tile")).toHaveCount(6);
         for (const summary of await page.locator(".mk-data > summary").all()) await summary.click();
+      } else if (!path.includes("full")) {
+        await page.getByRole("button", { name: "Expand all" }).click();
+        await expect(page.locator("a[data-row-key]:visible")).toHaveCount(7);
       }
       expect(await horizontalOverflow(page), `${path} at ${width}px`).toBe(0);
     }
@@ -1004,6 +1120,7 @@ test("in a Lab OS window, Markets previews replace each other and the full view 
   await expect(frame.locator(".mk-status")).toHaveAttribute("data-source", "live");
   await expect(back).toBeDisabled();
 
+  await frame.getByRole("button", { name: "Expand all" }).click();
   await frame.locator('a[data-row-key="16:MSFT"]').click();
   await expect(address).toHaveText("agarwal-labs.com/markets?symbol=MSFT");
   await expect(frame.locator("#mk-preview-title")).toHaveText("Microsoft");

@@ -199,6 +199,7 @@ test("AI / LLM Stack Tracker links open the Markets window", async ({ page }) =>
 
   /* An open Markets window is navigated rather than duplicated, and keeps its own history. Picking a company replaces
      the window's page instead of adding to it. */
+  await app.locator("#mk-layer-chips").getByRole("button", { name: /^Level 1 / }).click();
   await app.locator("#mk-layer-chips").getByRole("link", { name: /^NVDA/ }).click();
   await expect(address).toHaveText("agarwal-labs.com/markets?symbol=NVDA");
   await expect(app.locator("#mk-preview-title")).toHaveText("NVIDIA");
