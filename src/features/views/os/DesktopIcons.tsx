@@ -253,6 +253,7 @@ function DesktopIcons({ desk, open, reset }: { desk: DeskSize; open: (id: AppId)
   return (
     <>
       <p className="sr-only" id="os-icon-help">Click to open. Drag to move icons; they snap to the grid. Shift and arrow keys also move the focused icon. Drag across the desktop or Control-click icons to select several; Enter opens them and Escape clears the selection.</p>
+      {marquee && <div className="os-marquee" aria-hidden="true" style={marquee} />}
       <ul ref={listRef} className="os-icons" aria-label="Desktop" aria-describedby="os-icon-help">
         {desktopApps.map((id) => {
           const Icon = apps[id].icon;
@@ -286,7 +287,6 @@ function DesktopIcons({ desk, open, reset }: { desk: DeskSize; open: (id: AppId)
           );
         })}
       </ul>
-      {marquee && <div className="os-marquee" aria-hidden="true" style={marquee} />}
       {notice && <p className="os-desktop-notice" role="status">{notice}</p>}
     </>
   );
