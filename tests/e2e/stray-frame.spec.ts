@@ -46,8 +46,8 @@ async function addFrame(page: Page, src: string) {
 test("the site in an unnamed frame on this site shows a notice instead of a second Lab OS", async ({ page }) => {
   await blockOutside(page);
   await watchNestedChrome(page);
-  await page.goto("./?view=os");
-  await expect(page.locator(".os-desktop")).toHaveCount(1);
+  // A plain page from this origin keeps the test light; the arXiv test below runs inside the full Lab OS.
+  await page.goto("./icon-192.png");
 
   for (const path of ["./?view=os", "./markets", "./writing/learning-to-code-with-llms", "./leaderboards"]) {
     await page.evaluate(() => document.getElementById("stray")?.remove());
@@ -59,15 +59,13 @@ test("the site in an unnamed frame on this site shows a notice instead of a seco
     await expect(frame.locator(siteChrome)).toHaveCount(0);
   }
   expect(await page.evaluate(() => (window as unknown as { __nestedChrome?: string }).__nestedChrome)).toBeUndefined();
-  await expect(page.locator(".os-desktop")).toHaveCount(1);
 });
 
 test("the site framed by another origin offers to open in its own tab", async ({ page, baseURL }) => {
   await blockOutside(page);
   const site = new URL(baseURL!);
   // The same server under another host name is another origin, and still a local one the browser lets frame it.
-  await page.goto(`http://localhost:${site.port}/`);
-  await page.evaluate(() => (document.body.innerHTML = ""));
+  await page.goto(`http://localhost:${site.port}/icon-192.png`);
   const frame = await addFrame(page, site.href);
 
   await expect(frame.getByRole("heading", { name: "Agarwal Labs opens in its own tab" })).toBeVisible();
