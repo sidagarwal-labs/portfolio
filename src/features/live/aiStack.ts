@@ -236,11 +236,12 @@ export function conversionsNote(rows: AiStackRow[], fx: FxRates) {
   return `Market caps converted to US dollars at ${formatRatesDay(fx)} exchange rates: ${parts.join(", ")}.`;
 }
 
-/* Names the companies with figures a live read caught the sheet still calculating. */
+/* Names the companies with figures a live read caught the sheet still calculating; past four, three and a count of the rest. */
 export function calculatingNote(rows: AiStackRow[]) {
   const symbols = [...new Set(rows.filter((row) => row.pending || row.carried).map((row) => row.symbol))];
   if (!symbols.length) return undefined;
-  return `The sheet was still calculating some figures for ${listOf(symbols)}; the saved snapshot's values stand in where it has them.`;
+  const named = symbols.length > 4 ? [...symbols.slice(0, 3), `${symbols.length - 3} more companies`] : symbols;
+  return `The sheet was still calculating some figures for ${listOf(named)}; the saved snapshot's values stand in where it has them.`;
 }
 
 export const direction = (value: number | null) =>
