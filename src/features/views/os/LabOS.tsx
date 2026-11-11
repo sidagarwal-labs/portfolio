@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type RefObject } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode, type RefObject } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Briefcase, CodeXml, FileText, Mail, Monitor, Palette, Power, RotateCcw, Search, Wifi, WifiOff } from "lucide-react";
+import { Briefcase, CodeXml, FileText, Mail, Monitor, Palette, Power, RotateCcw, Search, Settings as Gear, Wifi, WifiOff } from "lucide-react";
 import { profileContent } from "../../../content/siteContent";
-import { usePrefersReducedMotion } from "../../../hooks/usePrefersReducedMotion";
+import { ReducedMotionOverride, usePrefersReducedMotion } from "../../../hooks/usePrefersReducedMotion";
 import BootSequence, { labLogo } from "../search/BootSequence";
 import { hasBooted, rememberBoot } from "../search/bootState";
 import { useSiteView } from "../SiteViewContext";
@@ -12,7 +12,8 @@ import { apps, type AppId } from "./apps";
 import { isOsMessage, openInNewTab, type OsMessage } from "./embed";
 import { isLinkApp, pageApp, routeLink } from "./linkRoutes";
 import OsWindow, { clamp } from "./OsWindow";
-import type { DeskSize, OsActions, OsWin, Rect } from "./types";
+import type { DeskSize, OsActions, OsStyle, OsWin, Rect } from "./types";
+import { clearSavedSettings, clockFormat, currentWallpaper, defaultSettings, OsSettingsContext, readSettings, styleKey, writeSettings, type OsSettings, type OsSettingsApi } from "./settings/osSettings";
 import { SignalStatus, SignalsProvider } from "./Signals";
 import DesktopIcons, { iconAreaWidth } from "./DesktopIcons";
 import StartMenuApps from "./StartMenuApps";
@@ -20,11 +21,7 @@ import PhoneHomeApps from "./PhoneHomeApps";
 import "../search/search.css";
 import "./os.css";
 
-type OsStyle = "modern" | "retro";
-
-const styleKey = "lab-os-style-v1";
 const phoneQuery = "(max-width: 760px), (max-height: 500px)";
-const timeFormat = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" });
 const dayFormat = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
 const contactIcons: Record<string, typeof Mail> = { Email: Mail, LinkedIn: Briefcase, GitHub: CodeXml };
 
@@ -121,11 +118,17 @@ function isPlainClick(event: ReactMouseEvent) {
 }
 
 function DesktopShell() {
-  const reducedMotion = usePrefersReducedMotion();
+  const deviceReducedMotion = usePrefersReducedMotion();
   const { setView } = useSiteView();
   const location = useLocation();
   const navigate = useNavigate();
-  const [booting, setBooting] = useState(() => !reducedMotion && !hasBooted());
+  /* Read synchronously so the first paint already shows the saved wallpaper. */
+  const [settings, setSettings] = useState<OsSettings>(readSettings);
+  const [saved, setSaved] = useState(true);
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  const still = settings.motion === "reduce" || (settings.motion === "system" && deviceReducedMotion);
+  const [booting, setBooting] = useState(() => !still && !hasBooted());
   const [style, setStyle] = useState<OsStyle>(() => readStyle(location.search));
   const phone = useMediaQuery(phoneQuery);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -185,8 +188,8 @@ function DesktopShell() {
   }, []);
 
   useEffect(() => {
-    if (booting && reducedMotion) finishBoot();
-  }, [booting, reducedMotion, finishBoot]);
+    if (booting && still) finishBoot();
+  }, [booting, still, finishBoot]);
 
   useEffect(() => {
     if (rootRef.current) rootRef.current.inert = booting || off;
@@ -374,16 +377,45 @@ function DesktopShell() {
     return top?.id;
   }, [windows, off, booting]);
 
-  const changeStyle = (next: OsStyle) => {
-    setStyle(next);
-    writeStyle(next);
+  const dropStyleParam = useCallback(() => {
     const params = new URLSearchParams(location.search);
     if (params.has("style")) {
       params.delete("style");
       const search = params.toString();
       navigate({ search: search ? `?${search}` : "", hash: location.hash }, { replace: true });
     }
-  };
+  }, [location.search, location.hash, navigate]);
+
+  const changeStyle = useCallback((next: OsStyle) => {
+    setStyle(next);
+    writeStyle(next);
+    dropStyleParam();
+  }, [dropStyleParam]);
+
+  const updateSettings = useCallback((patch: Partial<OsSettings>) => {
+    const next = { ...settingsRef.current, ...patch };
+    settingsRef.current = next;
+    setSettings(next);
+    setSaved(writeSettings(next));
+  }, []);
+
+  const arrangeIcons = useCallback(() => setIconReset((value) => value + 1), []);
+
+  const resetAll = useCallback(() => {
+    setSaved(clearSavedSettings());
+    settingsRef.current = defaultSettings;
+    setSettings(defaultSettings);
+    setStyle("modern");
+    dropStyleParam();
+    setIconReset((value) => value + 1);
+  }, [dropStyleParam]);
+
+  const settingsApi = useMemo<OsSettingsApi>(
+    () => ({ settings, update: updateSettings, style, setStyle: changeStyle, deviceReducedMotion, phone, saved, arrangeIcons, resetAll }),
+    [settings, updateSettings, style, changeStyle, deviceReducedMotion, phone, saved, arrangeIcons, resetAll]
+  );
+  const timeFormat = useMemo(() => clockFormat(settings.clock, settings.seconds), [settings.clock, settings.seconds]);
+  const wall = currentWallpaper(settings);
 
   const openResume = (event: ReactMouseEvent<HTMLAnchorElement>) => {
     if (phone || !isPlainClick(event)) return;
@@ -411,7 +443,7 @@ function DesktopShell() {
     setDesktopWindows([]);
     setOff(false);
     launch();
-    setBooting(!reducedMotion);
+    setBooting(!still);
   };
 
   const showDesktop = () => {
@@ -457,8 +489,13 @@ function DesktopShell() {
   );
 
   return (
-    <>
-      <div ref={rootRef} className={`os os--${style}${phone ? " os--phone" : ""}`}>
+    <OsProviders api={settingsApi} still={still}>
+      <div
+        ref={rootRef}
+        className={`os os--${style}${phone ? " os--phone" : ""}${still ? " os--still" : ""}${settings.motion === "reduce" ? " os--no-motion" : ""}${wall.tone === "light" ? " os--wall-light" : ""}`}
+        data-wallpaper={settings.wallpaper}
+        style={{ background: wall.background }}
+      >
         <h1 className="sr-only">Sid Agarwal's portfolio, running as Lab OS</h1>
 
         {phone ? (
@@ -527,6 +564,9 @@ function DesktopShell() {
             <span className="os-tray">
               <span role="img" aria-label={online ? "Browser online" : "Browser offline"} title={online ? "Browser reports a network connection" : "Browser reports no network connection"}>{online ? <Wifi size={14} /> : <WifiOff size={14} />}</span>
               {styleToggle}
+              <button type="button" className="os-tray-button" onClick={() => open("settings")} title="Open Settings" aria-label="Open Settings">
+                <Gear size={15} strokeWidth={2} aria-hidden="true" />
+              </button>
               <button ref={clockRef} type="button" className="os-clock" aria-label="Date and calendar" aria-expanded={calendarOpen} aria-controls="os-calendar" onClick={() => { setMenuOpen(false); setCalendarOpen((value) => !value); }}>
                 <time dateTime={now.toISOString()}>{timeFormat.format(now)}<span>{dayFormat.format(now)}</span></time>
               </button>
@@ -589,7 +629,7 @@ function DesktopShell() {
                     <button type="button" aria-pressed={!retro} onClick={() => changeStyle("modern")}>Modern</button>
                     <button type="button" aria-pressed={retro} onClick={() => changeStyle("retro")}>Retro</button>
                   </div>
-                  <button type="button" className="os-menu__item" onClick={() => { setIconReset((value) => value + 1); setMenuOpen(false); }}>Arrange desktop icons</button>
+                  <button type="button" className="os-menu__item" onClick={() => { arrangeIcons(); setMenuOpen(false); }}>Arrange desktop icons</button>
                   <h2 className="os-menu__heading">Full-page views</h2>
                   <ul className="os-menu__list" aria-label="Full-page views">
                     {siteViews.filter((view) => view.id !== "os").map((view) => (
@@ -626,7 +666,16 @@ function DesktopShell() {
           </button>
         </div>
       )}
-    </>
+    </OsProviders>
+  );
+}
+
+/* Apps inside Lab OS read its settings, and its Reduce motion choice replaces the device preference for them. */
+function OsProviders({ api, still, children }: { api: OsSettingsApi; still: boolean; children: ReactNode }) {
+  return (
+    <OsSettingsContext.Provider value={api}>
+      <ReducedMotionOverride.Provider value={still}>{children}</ReducedMotionOverride.Provider>
+    </OsSettingsContext.Provider>
   );
 }
 
