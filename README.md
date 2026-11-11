@@ -151,6 +151,25 @@ The site works without these steps; other users then get the 90-day public-event
 
 For local Worker development, put `GITHUB_TOKEN=...` in `workers/github-proxy/.dev.vars` (git-ignored) and run `npx wrangler@4 dev` in that folder; set `VITE_GITHUB_PROXY_URL=http://localhost:8787` in `.env.local` to use it from the dev site.
 
+## Feedback form
+
+Lab OS has a **Send feedback** button in the taskbar tray, a **Send feedback** entry at the bottom of the Start menu, and a **Feedback** section in the Settings app (the way in on phones). Visitors pick thumbs up or down and can add a comment of up to 1,000 characters. The form says, next to the comment box, that feedback is posted publicly on GitHub and must not include personal or sensitive information.
+
+The form (`src/features/views/os/feedback/`) sends `POST <proxy>/feedback/v1` to the same Worker, using `VITE_GITHUB_PROXY_URL` as the base (`VITE_FEEDBACK_API_URL` is a test-only override: `vite.config.ts` sets it in `--mode test` so Playwright can stub the endpoint). The Worker (`workers/github-proxy/src/feedback.mjs`) creates a **public issue in this repository** labeled `feedback` plus `thumbs-up` or `thumbs-down`:
+
+- **Origins and limits:** only agarwal-labs.com, www.agarwal-labs.com, and localhost origins (others get 403); JSON only, at most 4 KB; 3 submissions per minute per IP in each Cloudflare location (the `FEEDBACK_LIMITER` binding); a hidden honeypot field must stay empty (if a bot fills it, the Worker answers `201 {"ok":true}` without creating an issue).
+- **Safe issue content:** the title uses a fixed display name looked up from the validated app or view id (for example `Feedback: 👍 on Markets`; unknown ids become `Lab OS`), never visitor text. Context values must match a strict character allowlist. The comment, with control and bidi characters stripped, goes inside a fenced code block whose fence is longer than any backtick run in it, so it can't render markdown, HTML, images, links, or @mentions. The body also has the rating, page context, and a UTC timestamp; no IP address or user agent is stored.
+- **Token:** a separate Worker secret, `FEEDBACK_TOKEN`, never in the site build. Without it the route answers 503 `feedback-unavailable`; GitHub failures answer 502 without details.
+- **Fallback:** if the proxy URL isn't set, or the Worker fails for any reason, the form offers a prefilled "new issue" link on GitHub with the rating, context, and comment, which the visitor submits themselves.
+
+### One-time feedback setup
+
+1. Create a fine-grained personal access token (GitHub › Settings › Developer settings › Fine-grained tokens): Resource owner **sidagarwal-labs**, Repository access **Only select repositories** › `sidagarwal-labs/portfolio`, and Repository permissions **Issues: Read and write** (Metadata: Read-only is added automatically). No other permissions. Set an expiry and note the date.
+2. Add it as the repository secret `GH_FEEDBACK_TOKEN`: `gh secret set GH_FEEDBACK_TOKEN --repo sidagarwal-labs/portfolio`.
+3. Run the **GitHub proxy** workflow from the Actions tab. It stores `GH_FEEDBACK_TOKEN` as the Worker secret `FEEDBACK_TOKEN` (when the secret is missing, the deploy still runs and leaves any existing `FEEDBACK_TOKEN` alone). Renew the token before it expires the same way.
+
+For local testing, add `FEEDBACK_TOKEN=...` to `workers/github-proxy/.dev.vars`; note that every successful submission creates a real public issue. `npm run test:worker` and `tests/e2e/feedback.spec.ts` stub GitHub and the Worker, so they never create issues.
+
 ## Verification
 
 ```sh

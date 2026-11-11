@@ -23,6 +23,8 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       GH_PROXY_TOKEN: ${{ secrets.GH_PROXY_TOKEN }}
+      # Optional: the feedback form's issues-only token. Without it, POST /feedback/v1 answers 503 and the site links to GitHub instead.
+      GH_FEEDBACK_TOKEN: ${{ secrets.GH_FEEDBACK_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,10 +52,14 @@ jobs:
           # Rate limiting bindings need Wrangler 4.36.0 or later.
           wranglerVersion: "4"
           command: deploy
+          # wrangler-action fails on an empty secret, so FEEDBACK_TOKEN is only listed when GH_FEEDBACK_TOKEN is set
+          # (the blank line otherwise is dropped). Deploys never delete Worker secrets, so a stored FEEDBACK_TOKEN stays.
           secrets: |
             GITHUB_TOKEN
+            ${{ env.GH_FEEDBACK_TOKEN != '' && 'FEEDBACK_TOKEN' || '' }}
         env:
           GITHUB_TOKEN: ${{ env.GH_PROXY_TOKEN }}
+          FEEDBACK_TOKEN: ${{ env.GH_FEEDBACK_TOKEN }}
 
       - name: Check deployed proxy
         if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' && env.GH_PROXY_TOKEN != ''

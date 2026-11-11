@@ -194,6 +194,14 @@ export default function Settings({ actions }: { target?: OsTarget; actions: OsAc
         </section>
 
         <section className="os-set__section">
+          <h2>Feedback</h2>
+          <div className="os-set__action">
+            <p>Give the site a thumbs up or down, with an optional comment. It's posted publicly as a GitHub issue.</p>
+            <button type="button" className="os-button" onClick={(event) => actions.feedback(event.currentTarget)}>Send feedback</button>
+          </div>
+        </section>
+
+        <section className="os-set__section">
           <h2>About this PC</h2>
           <dl className="os-set__specs">
             <div><dt>Operating system</dt><dd>Lab OS</dd></div>
