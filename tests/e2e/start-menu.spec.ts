@@ -4,6 +4,7 @@ const topLevel = ["Sid Search", "arXiv Search", "Library", "GitHub", "Forward pa
 const folders = ["Projects", "Other designs", "Games"];
 const designs = ["Training run", "Terminal", "Journal"];
 const games = ["Snake", "Mines", "Blocks", "Rank It", "Next Token"];
+const experiments = ["Linux & DOS"];
 const documents = ["Resume.pdf", "README.txt"];
 
 test.beforeEach(async ({ page }) => {
@@ -32,6 +33,7 @@ for (const style of ["modern", "retro"]) {
     const menu = await openStart(page, style);
     const appList = menu.getByRole("list", { name: "Apps", exact: true });
     await expect(appList.locator(":scope > li > button")).toHaveText([...topLevel, ...folders]);
+    await expect(menu.getByRole("list", { name: "Experiments", exact: true }).getByRole("button")).toHaveText(experiments);
     await expect(menu.getByRole("list", { name: "Documents", exact: true }).getByRole("button")).toHaveText(documents);
 
     const folder = appList.getByRole("button", { name: "Games", exact: true });
@@ -146,7 +148,7 @@ for (const style of ["modern", "retro"]) {
       await page.setViewportSize({ width, height: 760 });
       await page.goto(`./?view=os&style=${style}`);
       const home = page.locator(".os-home").getByRole("list", { name: "Apps", exact: true });
-      await expect(home.locator(".os-icon__label")).toHaveText([...topLevel, ...folders, ...documents]);
+      await expect(home.locator(".os-icon__label")).toHaveText([...topLevel, ...folders, ...experiments, ...documents]);
       expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
       const clipped = await home.locator(".os-icon__label").evaluateAll((labels) => labels
         .filter((label) => label.scrollWidth > label.clientWidth || label.scrollHeight > label.clientHeight)
