@@ -128,9 +128,10 @@ html[data-os-style="retro"] {
 
 .os-win__body { position: relative; flex: 1; min-height: 0; overflow: auto; background: #fff; color: #1f2328; }
 
-.os-win--site .os-win__body, .os-win--pdf .os-win__body { overflow: hidden; }
+.os-win--site .os-win__body, .os-win--pdf .os-win__body, .os-win--frame .os-win__body { overflow: hidden; }
 
 .os-frame { display: block; width: 100%; height: 100%; border: 0; background: #fff; }
+.os-win--frame .os-frame { background: #11141a; }
 
 .os-win__shield { position: absolute; inset: 0; }
 

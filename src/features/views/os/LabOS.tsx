@@ -239,7 +239,7 @@ function DesktopShell() {
       ...initialRect(app, size, current.length),
       z: ++zRef.current,
       minimized: false,
-      src: def.kind === "site" ? `${import.meta.env.BASE_URL}${(page ?? def.path)?.slice(1) ?? ""}${hash}` : undefined,
+      src: def.kind === "site" || def.kind === "frame" ? `${import.meta.env.BASE_URL}${(page ?? def.path)?.slice(1) ?? ""}${hash}` : undefined,
       history: [],
       index: -1,
       target
