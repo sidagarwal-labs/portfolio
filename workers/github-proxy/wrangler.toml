@@ -1,6 +1,8 @@
 # GitHub insights proxy for https://agarwal-labs.com (see README "GitHub app data").
 # The GraphQL token is a Worker secret, never stored here:
 #   npx wrangler secret put GITHUB_TOKEN   (or the GitHub proxy workflow's GH_PROXY_TOKEN secret)
+# The feedback form's issues-only token is a separate secret:
+#   npx wrangler secret put FEEDBACK_TOKEN (or the workflow's GH_FEEDBACK_TOKEN secret)
 name = "agarwal-labs-github-proxy"
 main = "src/index.mjs"
 compatibility_date = "2026-10-01"
@@ -14,4 +16,13 @@ namespace_id = "2642"
 
   [ratelimits.simple]
   limit = 30
+  period = 60
+
+# Feedback form (POST /feedback/v1): 3 submissions per 60 seconds per IP in each Cloudflare location.
+[[ratelimits]]
+name = "FEEDBACK_LIMITER"
+namespace_id = "2643"
+
+  [ratelimits.simple]
+  limit = 3
   period = 60

@@ -1,3 +1,4 @@
+import { FEEDBACK_ROUTE, handleFeedback } from "./feedback.mjs";
 import { fetchInsights, GitHubInsightsError, isValidLogin } from "./insights.mjs";
 
 const SITE_ORIGINS = new Set(["https://agarwal-labs.com", "https://www.agarwal-labs.com"]);
@@ -66,11 +67,13 @@ async function lookup(login, request, env, ctx) {
 async function route(request, env, ctx) {
   const url = new URL(request.url);
   if (request.method === "OPTIONS") {
+    const methods = url.pathname === FEEDBACK_ROUTE ? "POST, OPTIONS" : "GET, OPTIONS";
     return new Response(null, {
       status: 204,
-      headers: { Allow: "GET, OPTIONS", "Access-Control-Allow-Methods": "GET, OPTIONS", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Max-Age": "86400" }
+      headers: { Allow: methods, "Access-Control-Allow-Methods": methods, "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Max-Age": "86400" }
     });
   }
+  if (url.pathname === FEEDBACK_ROUTE) return handleFeedback(request, env, isAllowedOrigin);
   if (request.method !== "GET") return errorResponse("method-not-allowed", 405, { Allow: "GET, OPTIONS" });
   if (url.pathname === "/health") return json({ ok: true }, 200);
 
