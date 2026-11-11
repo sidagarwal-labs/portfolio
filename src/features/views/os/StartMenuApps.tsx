@@ -1,9 +1,13 @@
 import { Fragment, useState } from "react";
 import { ChevronRight, FolderOpen } from "lucide-react";
-import { apps, folderApps, menuSections, type AppId } from "./apps";
+import { apps, folderApps, menuSections, type AppId, type MenuSection } from "./apps";
 
 type Open = (id: AppId) => void;
 type Entry = { id: AppId; folder?: string };
+
+/* Start shows System under Contact in its right column, which keeps the two columns closer in height. */
+export const appSections = menuSections.filter((section) => section.label !== "System");
+export const systemSections = menuSections.filter((section) => section.label === "System");
 
 /* Every app the menu opens, with folders flattened in place, so search also finds the apps inside them. */
 const searchable = menuSections.flatMap((section) => section.items.flatMap((id): Entry[] => {
@@ -28,8 +32,8 @@ function MenuApp({ id, folder, open }: { id: AppId; folder?: string; open: Open 
   );
 }
 
-/* The Start menu's app groups. Folders stay open until the menu closes; a search lists matching apps flat. */
-function StartMenuApps({ query, open }: { query: string; open: Open }) {
+/* Start menu app groups. Folders stay open until the menu closes; a search lists every matching app flat. */
+function StartMenuApps({ query, open, sections = menuSections }: { query: string; open: Open; sections?: MenuSection[] }) {
   const [expanded, setExpanded] = useState<AppId[]>([]);
   const needle = query.trim().toLowerCase();
 
@@ -50,7 +54,7 @@ function StartMenuApps({ query, open }: { query: string; open: Open }) {
 
   return (
     <>
-      {menuSections.map((section) => (
+      {sections.map((section) => (
         <Fragment key={section.label}>
           <h2 className="os-menu__heading">{section.label}</h2>
           <ul className="os-menu__list" aria-label={section.label}>

@@ -116,6 +116,8 @@
 .ax-panel--live { display: flex; flex-direction: column; }
 .ax-live { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
 .ax-live__bar .os-address { margin-right: 4px; }
+.ax-live__note { margin: 0; padding: 6px 12px; border-bottom: 1px solid #e3e6ea; background: #eef6f1; color: #2c4a3c; font-size: 12.5px; line-height: 1.4; }
+.os--retro .ax-live__note { border-bottom-color: #808080; background: #ffffe1; color: #000; }
 .ax-live__stage { position: relative; flex: 1 1 auto; min-height: 0; background: #fff; }
 .ax-live__frame { position: absolute; inset: 0; }
 /* Clicks inside the cross-origin site never reach Lab OS, so an inactive window's site is covered until focused. */

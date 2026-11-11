@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { Check } from "lucide-react";
+import { siteViews } from "../../siteViews";
 import { apps } from "../apps";
 import type { OsActions, OsStyle, OsTarget } from "../types";
 import { clockFormat, currentWallpaper, labOsStorage, useOsSettings, wallpapers, type ClockHours, type Motion } from "./osSettings";
@@ -9,6 +10,7 @@ const installedApps = Object.values(apps).filter((app) => app.kind === "app" || 
 const styles: { id: OsStyle; label: string }[] = [{ id: "modern", label: "Modern" }, { id: "retro", label: "Retro" }];
 const clocks: { id: ClockHours; label: string }[] = [{ id: "12", label: "12-hour" }, { id: "24", label: "24-hour" }];
 const motions: { id: Motion; label: string }[] = [{ id: "system", label: "System" }, { id: "reduce", label: "On" }, { id: "full", label: "Off" }];
+const fullPageViews = siteViews.filter((view) => view.id !== "os");
 
 function formatBytes(bytes: number) {
   return bytes < 1024 ? `${bytes} bytes` : `${(bytes / 1024).toFixed(1)} KB`;
@@ -149,6 +151,21 @@ export default function Settings({ actions }: { target?: OsTarget; actions: OsAc
               System follows this device, which {deviceReducedMotion ? "asks for reduced motion" : "allows motion"}. On stops window, menu, and app animations, and skips the boot screen.
             </p>
           </fieldset>
+        </section>
+
+        <section className="os-set__section" aria-labelledby={`${id}-views`}>
+          <h2 id={`${id}-views`}>Full-page views</h2>
+          <p className="os-set__intro">A full-page view swaps Lab OS for another design of the whole site; its View button brings you back.</p>
+          <ul className="os-set__views" aria-label="Full-page views">
+            {fullPageViews.map((view) => (
+              <li key={view.id}>
+                <button type="button" className="os-set-view" onClick={() => actions.setView(view.id)} aria-labelledby={`${id}-view-${view.id}-name`} aria-describedby={`${id}-view-${view.id}`}>
+                  <span id={`${id}-view-${view.id}-name`} className="os-set-view__name">{view.label}</span>
+                  <span id={`${id}-view-${view.id}`} className="os-set-view__about">{view.description}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
         </section>
 
         <section className="os-set__section">

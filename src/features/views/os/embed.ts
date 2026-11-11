@@ -16,6 +16,28 @@ export const embeddedView = readEmbeddedView();
 
 export const frameName = (view: SiteView) => `${framePrefix}${view}`;
 
+/* The site in a frame that isn't a Lab OS window, such as when a framed site (arXiv Search) links back here.
+   It never starts the site there, so Lab OS can't nest inside itself (issue #92). "self" means this site is the
+   top window around the frame; "other" means some other site is, or the top can't be read. */
+export type StrayFrame = "self" | "other";
+
+function readStrayFrame(): StrayFrame | undefined {
+  if (typeof window === "undefined" || window.self === window.top || window.name.startsWith(framePrefix)) return undefined;
+  try {
+    return window.top?.location.origin === window.location.origin ? "self" : "other";
+  } catch {
+    return "other";
+  }
+}
+
+export const strayFrame = readStrayFrame();
+
+/* A stray frame tells the Lab OS around it right away, so the window it sits in can put its own page back. */
+export const strayFrameType = "agarwal-labs:stray-frame";
+
+export const isStrayFrameMessage = (data: unknown) =>
+  typeof data === "object" && data !== null && (data as { type?: unknown }).type === strayFrameType;
+
 /* Messages between the OS and the site apps running in its windows (same origin only). */
 export type OsMessage =
   | { type: "labos:open"; app: "resume" }

@@ -30,7 +30,7 @@ function ViewSwitcher() {
     };
   }, [open]);
 
-  /* Lab OS has its own menu for switching views. */
+  /* Lab OS switches views from its Settings app. */
   if (view === "os") return null;
 
   return (

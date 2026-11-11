@@ -67,12 +67,13 @@ export const apps: Record<AppId, AppDef> = {
   snake: app({ id: "snake", title: "Snake", label: "Snake", blurb: "Eat tokens, grow your context window.", icon: Worm, tint: "linear-gradient(145deg, #5dbf78, #2f8a4b)", kind: "game", size: { w: 440, h: 650 } }),
   mines: app({ id: "mines", title: "Mines", label: "Mines", blurb: "Classic minesweeper, 9 by 9.", icon: Bomb, tint: "linear-gradient(145deg, #7b8494, #4a5160)", kind: "game", size: { w: 420, h: 580 } }),
   rankit: app({ id: "rankit", title: "Rank It", label: "Rank It", blurb: "Beat Sid's arXiv search engine: rank real papers, scored with nDCG.", icon: ListOrdered, tint: "linear-gradient(145deg, #4cc3d9, #1f8aa3)", kind: "game", size: { w: 640, h: 700 } }),
-  settings: app({ id: "settings", title: "Settings", label: "Settings", blurb: "Wallpaper, style, clock, and motion for this PC, plus a reset and its specs.", icon: Settings, tint: "linear-gradient(145deg, #8a94a6, #4f5869)", kind: "app", size: { w: 760, h: 700 } }),
+  settings: app({ id: "settings", title: "Settings", label: "Settings", blurb: "Wallpaper, style, clock, motion, and full-page views for this PC, plus a reset and its specs.", icon: Settings, tint: "linear-gradient(145deg, #8a94a6, #4f5869)", kind: "app", size: { w: 760, h: 700 } }),
   nexttoken: app({ id: "nexttoken", title: "Next Token", label: "Next Token", blurb: "Guess a real model's next token, then run it live.", icon: MessageSquareText, tint: "linear-gradient(145deg, #e86fae, #b23f7c)", kind: "game", size: { w: 640, h: 680 } })
 };
 
 export const desktopRows: AppId[][] = [
-  ["search", "projects", "arxiv", "library", "github"],
+  ["search", "library", "github"],
+  ["projects", "arxiv"],
   ["forward", "designs"],
   ["games", "markets", "launches", "leaderboards"]
 ];
