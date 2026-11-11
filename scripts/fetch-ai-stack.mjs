@@ -7,7 +7,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { AI_STACK_CSV, AI_STACK_SHEET, parseAiStack } from "../src/content/aiStackSheet.mjs";
+import { AI_STACK_CSV, AI_STACK_SHEET, MAX_PLAUSIBLE_MARKET_CAP_B, parseAiStack } from "../src/content/aiStackSheet.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outFile = resolve(root, "src/content/generated/ai-stack.json");
@@ -30,6 +30,8 @@ async function main() {
     if (rows.length < minRows) throw new Error(`only ${rows.length} rows`);
     const priced = rows.filter((row) => row.price !== null).length;
     if (priced < rows.length / 2) throw new Error(`only ${priced} of ${rows.length} rows have a price`);
+    const rejected = [...new Set(rows.filter((row) => row.marketCapRejected).map((row) => row.symbol))];
+    if (rejected.length) console.warn(`ai-stack: market cap over $${MAX_PLAUSIBLE_MARKET_CAP_B}B treated as missing for ${rejected.join(", ")}`);
     await mkdir(dirname(outFile), { recursive: true });
     await writeFile(outFile, `${JSON.stringify({ generatedAt: new Date().toISOString(), sheet: AI_STACK_SHEET, source: AI_STACK_CSV, rows }, null, 2)}\n`);
     console.log(`ai-stack: ${rows.length} rows (${priced} priced) -> ${outFile}`);
