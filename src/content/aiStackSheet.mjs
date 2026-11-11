@@ -24,6 +24,12 @@ const columns = {
 const required = ["symbol", "layer", "level"];
 const numeric = ["price", "marketCap", "change", "eps", "pe", "beta", "high", "low"];
 
+/**
+ * The largest market cap, in billions of US dollars, the parser accepts ($20T, several times the largest company
+ * ever). A bigger figure can't be USD billions (for example a listing priced in won), so it is treated as missing.
+ */
+export const MAX_PLAUSIBLE_MARKET_CAP_B = 20_000;
+
 /** RFC 4180 CSV: quoted fields may contain commas, doubled quotes, and line breaks. */
 export function parseCsv(text) {
   const rows = [];
@@ -63,7 +69,10 @@ export function parseSheetNumber(value) {
   return /\d/.test(text) && Number.isFinite(number) ? number : null;
 }
 
-/** Normalizes the sheet's CSV into one row per listing; throws when the expected columns or rows are missing. */
+/**
+ * Normalizes the sheet's CSV into one row per listing; throws when the expected columns or rows are missing. A market
+ * cap above MAX_PLAUSIBLE_MARKET_CAP_B becomes null and the row is flagged marketCapRejected.
+ */
 export function parseAiStack(text) {
   const [header = [], ...lines] = parseCsv(text.replace(/^\uFEFF/, ""));
   const names = header.map((name) => name.trim().toLowerCase());
@@ -79,6 +88,10 @@ export function parseAiStack(text) {
     if (!symbol || !layer || !Number.isInteger(level)) continue;
     const row = { symbol, area: cell(line, "area").replace(/\s+/g, " "), layer, level };
     for (const key of numeric) row[key] = parseSheetNumber(cell(line, key));
+    if (row.marketCap !== null && row.marketCap > MAX_PLAUSIBLE_MARKET_CAP_B) {
+      row.marketCap = null;
+      row.marketCapRejected = true;
+    }
     rows.push(row);
   }
   if (!rows.length) throw new Error("no rows");

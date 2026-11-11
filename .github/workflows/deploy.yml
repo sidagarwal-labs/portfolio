@@ -53,7 +53,8 @@ jobs:
         run: npm run build
         env:
           VITE_FINNHUB_KEY: ${{ secrets.VITE_FINNHUB_KEY }}
-          VITE_GITHUB_PROXY_URL: ${{ vars.GITHUB_PROXY_URL }}
+          # GitHub rejects variable names starting with GITHUB_, hence GH_PROXY_URL.
+          VITE_GITHUB_PROXY_URL: ${{ vars.GH_PROXY_URL }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

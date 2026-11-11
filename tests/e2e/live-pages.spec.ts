@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { MAX_PLAUSIBLE_MARKET_CAP_B, parseAiStack } from "../../src/content/aiStackSheet.mjs";
 
 const upcomingApi = "https://ll.thespacedevs.com/2.3.0/launches/upcoming/**";
 const previousApi = "https://ll.thespacedevs.com/2.3.0/launches/previous/**";
@@ -21,6 +22,9 @@ const stackSheet = [
   'MSFT,Software productivity,Application,16,$400.00,"$2,970",0.50%,$12.00,33.33,0.90,$500.00,$320.00,-$100.00,-20.00%,$80.00,125.00%,,',
   ",,,,,,,,,,,,,,,,,"
 ].join("\r\n");
+
+/* SK hynix as the sheet once listed it: its market cap in billions of won (about $600B), not billions of dollars. */
+const skhyInWon = 'SKHY,Memory - HBM,Chips,5,$129.66,"$874,399",-3.51%,$17.00,7.63,#N/A,$199.87,$122.50,-$70.21,-35.13%,$7.16,105.84%,,';
 
 const csvResponse = (body: string, contentType = "text/csv") => ({ body, contentType, headers: { "access-control-allow-origin": "*" } });
 
@@ -359,6 +363,26 @@ test("the AI stack falls back to the saved snapshot when the sheet can't be read
   await expect(page.locator(".mk-row")).toHaveCount(stackSnapshot.rows.length);
 });
 
+test("the AI stack parser treats a market cap too large to be billions of dollars as missing", () => {
+  expect(MAX_PLAUSIBLE_MARKET_CAP_B).toBe(20_000);
+  const cap = (symbol: string, value: string) =>
+    `${symbol},Designing,Chips,1,$10.00,"${value}",1.00%,$1.00,10.00,1.00,$12.00,$8.00,-$2.00,-16.67%,$2.00,125.00%,,`;
+  const rows = parseAiStack([stackSheet, skhyInWon, cap("CEIL", "$20,000"), cap("OVER", "$20,000.50")].join("\r\n"));
+  const row = (symbol: string) => rows.find((item) => item.symbol === symbol);
+
+  /* The won figure becomes missing and is flagged; the rest of the row is kept. */
+  expect(row("SKHY")).toEqual({
+    symbol: "SKHY", area: "Memory - HBM", layer: "Chips", level: 5, price: 129.66, marketCap: null, marketCapRejected: true,
+    change: -3.51, eps: 17, pe: 7.63, beta: null, high: 199.87, low: 122.5
+  });
+  expect(row("OVER")).toMatchObject({ price: 10, marketCap: null, marketCapRejected: true });
+  /* The ceiling itself is still plausible, and a #N/A cap is missing without being flagged. */
+  expect(row("CEIL")).toMatchObject({ marketCap: 20_000 });
+  expect(row("NVDA")).toMatchObject({ marketCap: 3650 });
+  expect(row("SAMSUNG")).toMatchObject({ marketCap: null });
+  for (const symbol of ["CEIL", "NVDA", "SAMSUNG"]) expect(row(symbol)).not.toHaveProperty("marketCapRejected");
+});
+
 test("the Markets Insights tab shows the research notes' seven views, each with its data and sources", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -633,6 +657,32 @@ test("the priced-in bubbles fit their labels and keep apart at every width", asy
     expect(await horizontalOverflow(page), `${width}px`).toBe(0);
   }
 });
+
+test("Markets Insights leaves out a market cap too large to be billions of dollars and names the company", async ({ page }) => {
+  await page.unroute(stackCsv);
+  await page.route(stackCsv, (route) => route.fulfill(csvResponse([stackSheet, skhyInWon].join("\r\n"))));
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("./markets");
+  await expect(page.locator(".mk-status")).toHaveAttribute("data-source", "live");
+  /* The stack still shows the rest of the row; only the market cap is set aside. */
+  await expect(page.locator('a[data-row-key="5:SKHY"] .mk-row__num')).toHaveText([/\$129\.66$/, /-3\.51%$/, /-35\.1%$/]);
+
+  await page.getByRole("tab", { name: "Insights" }).click();
+  const treemap = page.locator("#mk-insight-treemap");
+  await expect(treemap.locator(".mk-treemap__tile")).toHaveCount(6);
+  await expect(treemap.locator('.mk-treemap__tile[data-symbol="SKHY"]')).toHaveCount(0);
+  await expect(treemap.locator(".mk-caveat")).toHaveText(
+    "A company at several levels has its market cap split evenly across them, so each is counted once. No market cap in the sheet for SAMSUNG. No usable market cap for SKHY (the sheet's value is too large to be in billions of US dollars)."
+  );
+  await treemap.locator("summary", { hasText: "Data table" }).click();
+  await expect(treemap.getByRole("table").locator("tbody tr", { hasText: "SKHY" }).locator("td").nth(2)).toHaveText("—");
+
+  /* The won figure doesn't swamp the market-cap shares: they match the sheet without SKHY. */
+  const shares = page.locator("#mk-insight-capex-vs-cap");
+  await shares.locator("summary", { hasText: "Data table" }).click();
+  await expect(shares.getByRole("table").locator("tbody td:nth-child(3)")).  toHaveText(["71.7%", "0.0%", "0.0%", "0.6%", "27.7%"]);
+  });
 
 test("Insights segments, levels, and tiles open their companies in the Stack tab", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });

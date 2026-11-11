@@ -563,7 +563,11 @@ function Treemap({ rows, prices, onPick }: { rows: AiStackRow[]; prices: string;
   const layout = useMemo(() => (width > 0 ? treemap(rows, width, height) : { groups: [], tiles: [] }), [rows, width, height]);
   const caps = useMemo(() => splitCaps(rows), [rows]);
   const byKey = useMemo(() => new Map(rows.map((row) => [`${row.level}:${row.symbol}`, row])), [rows]);
-  const missing = rows.filter((_, index) => caps[index] <= 0).map((row) => row.symbol);
+  /* Placements with no usable cap: blank or #N/A in the sheet, or rejected by the parser as too large to be USD billions. */
+  const gaps = rows.filter((_, index) => caps[index] <= 0);
+  const named = (rejected: boolean) => [...new Set(gaps.filter((row) => Boolean(row.marketCapRejected) === rejected).map((row) => row.symbol))];
+  const missing = named(false);
+  const rejected = named(true);
 
   return (
     <Insight
@@ -571,7 +575,7 @@ function Treemap({ rows, prices, onPick }: { rows: AiStackRow[]; prices: string;
       title="The stack by market cap"
       intro="Every company sized by market cap inside its layer and level, colored by today's move. Pick a tile to see the company in the stack."
       asOf={[prices]}
-      caveat={`A company at several levels has its market cap split evenly across them, so each is counted once.${missing.length ? ` No market cap in the sheet for ${missing.join(", ")}.` : ""}`}
+      caveat={`A company at several levels has its market cap split evenly across them, so each is counted once.${missing.length ? ` No market cap in the sheet for ${missing.join(", ")}.` : ""}${rejected.length ? ` No usable market cap for ${rejected.join(", ")} (the sheet's ${rejected.length > 1 ? "values are" : "value is"} too large to be in billions of US dollars).` : ""}`}
       table={
         <table className="mk-data__table">
           <caption className="mk-sr">Market cap and day change for every company placement in the stack</caption>

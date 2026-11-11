@@ -840,7 +840,7 @@ test("Start search and restart use the real desktop rather than a different thre
 });
 
 for (const style of ["modern", "retro"]) {
-  for (const viewport of [{ width: 1440, height: 900 }, { width: 1024, height: 768 }, { width: 800, height: 520 }]) {
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 720 }, { width: 1024, height: 768 }, { width: 800, height: 520 }]) {
     test(`desktop groups fit ${viewport.width}x${viewport.height} in ${style} style`, async ({ page }) => {
       await page.emulateMedia({ reducedMotion: "reduce" });
       await page.setViewportSize(viewport);
@@ -849,7 +849,7 @@ for (const style of ["modern", "retro"]) {
       const search = (await page.locator(searchWin).boundingBox())!;
       const desk = (await page.locator(".os-desktop").boundingBox())!;
       await page.getByRole("button", { name: "Show desktop", exact: true }).click();
-      const rows = [["Sid Search", "Projects", "Library", "GitHub"], ["Forward pass", "Other designs"], ["Games", "Markets", "Launches", "AI leaderboards"]];
+      const rows = [["Sid Search", "Projects", "arXiv Search", "Library", "GitHub"], ["Forward pass", "Other designs"], ["Games", "Markets", "Launches", "AI leaderboards"]];
       const labels = [...rows.flat(), "Resume.pdf", "README.txt"];
       await expect(page.locator(".os-icons .os-icon__label")).toHaveText(labels);
       const boxes = await page.locator(".os-icons > li").evaluateAll((icons) => icons.map((icon) => {
@@ -869,9 +869,9 @@ for (const style of ["modern", "retro"]) {
         expect(boxes[index].y + boxes[index].height).toBeLessThanOrEqual(desk.y + desk.height - 8);
       });
       expect(new Set(boxes.map(({ x, y }) => `${x},${y}`)).size).toBe(labels.length);
-      if (viewport.width === 1440) {
-        const widest = boxes[labels.indexOf("AI leaderboards")];
-        expect(search.x).toBeGreaterThanOrEqual(widest.x + widest.width + 12);
+      if (viewport.width >= 1280) {
+        const iconsRight = Math.max(...boxes.map(({ x, width }) => x + width));
+        expect(search.x).toBeGreaterThanOrEqual(iconsRight + 12);
         expect(search.width).toBeGreaterThanOrEqual(640);
       }
       expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);

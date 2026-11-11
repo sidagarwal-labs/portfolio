@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 const arxivWin = '.os-win[data-app="arxiv"]';
 const githubWin = '.os-win[data-app="github"]';
 const searchWin = '.os-win[data-app="search"]';
-const projects = ["arXiv Search", "NVDocs RAG", "HireMe.AI", "Financial models", "Reader"];
+const projects = ["NVDocs RAG", "HireMe.AI", "Financial models", "Reader"];
 
 /* Stands in for arxiv.agarwal-labs.com. Like the live site's portfolio.js, the ready variant posts only to the origin
    named by the frame's referrer, so it also proves the frame sends one. */
@@ -60,8 +60,7 @@ async function openProjectsFolder(page: Page) {
 
 async function openArxiv(page: Page, style = "modern") {
   await openDesktop(page, style);
-  const folder = await openProjectsFolder(page);
-  await folder.locator(".os-icon", { hasText: "arXiv Search" }).click();
+  await page.locator(".os-icons").getByRole("button", { name: "arXiv Search", exact: true }).click();
   const win = page.locator(arxivWin);
   await expect(win).toHaveClass(/is-active/);
   return win;
@@ -75,42 +74,91 @@ async function expectRepoInGitHub(page: Page, repo: string) {
   await expect(card).toHaveAttribute("aria-current", "true");
 }
 
-test("the Projects folder lists arXiv Search first on the desktop, in the Start menu, and on the phone", async ({ page }) => {
+test("the desktop shows arXiv Search right after the Projects folder, which lists the other four projects", async ({ page }) => {
   await openDesktop(page);
   const desktopLabels = await page.locator(".os-icons .os-icon__label").allTextContents();
-  expect(desktopLabels.slice(0, 2)).toEqual(["Sid Search", "Projects"]);
-  expect(desktopLabels).not.toContain("Reader");
+  expect(desktopLabels.slice(0, 5)).toEqual(["Sid Search", "Projects", "arXiv Search", "Library", "GitHub"]);
+  for (const title of projects) expect(desktopLabels).not.toContain(title);
+
+  const icons = page.locator(".os-icons");
+  const projectsBox = (await icons.getByRole("button", { name: "Projects", exact: true }).boundingBox())!;
+  const arxivIcon = icons.getByRole("button", { name: "arXiv Search", exact: true });
+  const arxivBox = (await arxivIcon.boundingBox())!;
+  expect(arxivBox.x, "arXiv Search sits one column right of Projects").toBe(projectsBox.x + 92);
+  expect(arxivBox.y).toBe(projectsBox.y);
+
   const folder = await openProjectsFolder(page);
   await expect(folder.locator(".os-icon__label")).toHaveText(projects);
+  await expect(folder.locator(".os-icon", { hasText: "arXiv Search" })).toHaveCount(0);
 
+  await showDesktop(page);
+  await arxivIcon.click();
+  const win = page.locator(arxivWin);
+  await expect(win).toHaveClass(/is-active/);
+  await expect(win.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
+  await expect(win.locator(".ax-stat__value").first()).toBeVisible();
+});
+
+test("arXiv Search is a top-level app in the Start menu and on the phone home screen", async ({ page }) => {
+  await openDesktop(page);
   await page.locator(".os-start").click();
   const menu = page.getByRole("dialog", { name: "Start menu" });
   const appList = menu.getByRole("list", { name: "Apps", exact: true });
   await expect(appList.locator(":scope > li > button", { hasText: "Reader" })).toHaveCount(0);
+  await expect(appList.locator(":scope > li > button").nth(1)).toHaveText("arXiv Search");
   await appList.getByRole("button", { name: "Projects", exact: true }).click();
   await expect(menu.getByRole("list", { name: "Projects", exact: true }).getByRole("button")).toHaveText(projects);
   const search = menu.getByRole("searchbox", { name: "Search apps" });
+  const results = menu.getByRole("list", { name: "Search results", exact: true });
   await search.fill("arxiv");
-  await expect(menu.getByRole("list", { name: "Search results", exact: true }).getByRole("button", { name: "arXiv Search", exact: true })).toHaveAccessibleDescription("in Projects");
+  await expect(results.getByRole("button", { name: "arXiv Search", exact: true })).toHaveAccessibleDescription("");
   await search.fill("reader");
-  await expect(menu.getByRole("list", { name: "Search results", exact: true }).getByRole("button", { name: "Reader", exact: true })).toHaveAccessibleDescription("in Projects");
+  await expect(results.getByRole("button", { name: "Reader", exact: true })).toHaveAccessibleDescription("in Projects");
+  await search.fill("");
+  await appList.getByRole("button", { name: "arXiv Search", exact: true }).click();
+  await expect(page.locator(arxivWin)).toHaveClass(/is-active/);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("./?view=os");
   const home = page.locator(".os-home").getByRole("list", { name: "Apps", exact: true });
-  await expect(home.locator(".os-icon", { hasText: "Projects" })).toBeVisible();
-  expect(await home.locator(".os-icon").count()).toBeLessThanOrEqual(12);
+  await expect(home.locator(".os-icon__label").nth(1)).toHaveText("arXiv Search");
+  await expect(home.locator(".os-icon")).toHaveCount(13);
   await expect(home.locator(".os-icon", { hasText: "Reader" })).toHaveCount(0);
   await home.locator(".os-icon", { hasText: "Projects" }).click();
   const phoneFolder = page.getByRole("list", { name: "Projects apps", exact: true });
   await expect(phoneFolder.locator(".os-icon__label")).toHaveText(projects);
-  await phoneFolder.locator(".os-icon", { hasText: "arXiv Search" }).click();
+  await page.locator('.os-win[data-app="projects"]').getByRole("button", { name: "Home" }).click();
+  await home.getByRole("button", { name: "arXiv Search", exact: true }).click();
   const win = page.locator(arxivWin);
   await expect(win).toHaveClass(/is-active/);
   expect((await win.boundingBox())?.width).toBe(390);
   await expect(win.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
   await expect(win.locator(".ax-stat__value").first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+});
+
+test("a desktop arrangement saved before arXiv Search had an icon gives it a free slot", async ({ page }) => {
+  await page.addInitScript(() => {
+    const saved = {
+      search: { col: 0, row: 0 }, projects: { col: 1, row: 0 }, library: { col: 2, row: 0 }, github: { col: 3, row: 0 },
+      forward: { col: 0, row: 1 }, designs: { col: 1, row: 1 },
+      games: { col: 0, row: 2 }, markets: { col: 1, row: 2 }, launches: { col: 2, row: 2 }, leaderboards: { col: 3, row: 2 },
+      resume: { col: 0, row: 8 }, readme: { col: 1, row: 8 }
+    };
+    localStorage.setItem("lab-os-icons-v2", JSON.stringify(saved));
+  });
+  await openDesktop(page);
+  const icons = page.locator(".os-icons");
+  const at = async (name: string) => {
+    const box = (await icons.getByRole("button", { name, exact: true }).boundingBox())!;
+    return { x: box.x, y: box.y };
+  };
+  const library = await at("Library");
+  expect(library.x - (await at("Sid Search")).x, "saved icons keep their places").toBe(184);
+  const games = await at("Games");
+  expect(await at("arXiv Search"), "arXiv Search takes the first free slot, below Games").toEqual({ x: games.x, y: games.y + 92 });
+  const boxes = await page.locator(".os-icons > li").evaluateAll((items) => items.map((item) => `${item.getBoundingClientRect().x},${item.getBoundingClientRect().y}`));
+  expect(new Set(boxes).size).toBe(boxes.length);
 });
 
 test("NVDocs RAG, HireMe.AI, and Financial models open their repositories in GitHub, and Reader opens from the folder", async ({ page }) => {
