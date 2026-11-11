@@ -419,6 +419,42 @@ test("Sid Search's Library fits a phone", async ({ page }) => {
   }
 });
 
+test("Sid Search's Writing section leaves no empty essay list and swipes its featured notes on phones", async ({ page }) => {
+  await page.route("https://api.github.com/**", (route) => route.abort());
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("./?view=search#writing");
+  const writing = page.locator("#writing");
+  const notes = page.getByRole("list", { name: "Featured research notes" });
+  await expect(notes.getByRole("link")).toHaveCount(3);
+  await expect(notes).not.toHaveAttribute("tabindex");
+
+  /* The essay list only renders when there are essays, so it can't leave a gap above the Insights line. */
+  const essays = await writing.locator('a[href^="/writing/"]:not(details a)').count();
+  await expect(writing.locator(".se-results--essays")).toHaveCount(essays > 0 ? 1 : 0);
+  if (essays === 0) {
+    const gap = await writing.evaluate((section) => section.querySelector(".se-insights")!.getBoundingClientRect().top - section.querySelector(".se-stories")!.getBoundingClientRect().bottom);
+    expect(gap).toBeLessThanOrEqual(25);
+  }
+
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expect(notes).toHaveAttribute("tabindex", "0");
+    const section = await writing.boundingBox();
+    const strip = await notes.boundingBox();
+    expect(strip!.x + strip!.width, `notes strip at ${width}px`).toBeLessThanOrEqual(section!.x + section!.width + 0.5);
+    const cards = await notes.getByRole("link").evaluateAll((links) => links.map((link) => link.getBoundingClientRect()).map(({ top, width }) => ({ top: Math.round(top), width })));
+    expect(new Set(cards.map((card) => card.top)).size, `notes share a row at ${width}px`).toBe(1);
+    expect(cards[0].width).toBeLessThan(section!.width - 24);
+    expect(await notes.evaluate((list) => list.scrollWidth > list.clientWidth)).toBe(true);
+    await notes.evaluate((list) => { list.scrollLeft = 0; });
+    await notes.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect.poll(() => notes.evaluate((list) => list.scrollLeft)).toBeGreaterThan(0);
+    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
+  }
+});
+
 for (const embedded of [false, true]) {
   test(`Forward pass keeps Background selected ${embedded ? "inside Lab OS" : "full page"}`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
