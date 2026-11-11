@@ -1,14 +1,15 @@
 import { useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown } from "lucide-react";
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { marketCompanies } from "../../content/journalContent";
-import { bottlenecksForLevel, type Bottleneck } from "../../content/marketInsights";
+import { bottlenecksForLevel, tightestAt, type Bottleneck } from "../../content/marketInsights";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { usePrefersReducedMotion } from "../../hooks/usePrefersReducedMotion";
 import { embeddedView, replaceHistoryState } from "../views/os/embed";
 import {
   AI_STACK_SHEET, calculatingNote, conversionNote, direction, distance, formatDay, formatMarketCap, formatPercent, formatPrice, formatRatio,
-  formatTime, groupStack, layerId, layerLabel, listing, perShareNote, useAiStack, type AiStackRow, type AiStackState, type StackLayer
+  formatTime, groupStack, layerId, layerLabel, listing, perShareNote, summarizeStack, useAiStack, type AiStackRow, type AiStackState,
+  type StackLayer, type StackSummary
 } from "./aiStack";
 import LivePageShell from "./LivePageShell";
 import MarketsInsights, { TightnessBadge } from "./MarketsInsights";
@@ -42,6 +43,22 @@ export function marketsSearch({ symbol, tab, full }: { symbol?: string; tab?: Ta
 /* One row per placement: a company at two levels has two rows. */
 const rowKey = (row: AiStackRow) => `${row.level}:${row.symbol.toUpperCase()}`;
 const sameSymbol = (a: string, b: string) => a.toUpperCase() === b.toUpperCase();
+const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+
+function toggled<T>(set: ReadonlySet<T>, item: T) {
+  const next = new Set(set);
+  if (!next.delete(item)) next.add(item);
+  return next;
+}
+
+/* Which layers the reader has closed and which levels they've opened. */
+type Disclosure = {
+  closedLayers: ReadonlySet<string>;
+  openLevels: ReadonlySet<number>;
+  toggleLayer: (id: string) => void;
+  toggleLevel: (level: number) => void;
+  showAll: (open: boolean) => void;
+};
 
 /* The stack's scroll position when a full company page opened, restored when the reader comes back. */
 let stackScroll: number | null = null;
@@ -84,8 +101,37 @@ function MarketsView() {
       ? chosenKey
       : rowKey(selected);
 
+  /* Layers start open and levels closed. They stay as the reader leaves them across tabs and full views. */
+  const [closedLayers, setClosedLayers] = useState<ReadonlySet<string>>(() => new Set());
+  const [openLevels, setOpenLevels] = useState<ReadonlySet<number>>(() => new Set());
+  const openRow = (row: AiStackRow) => {
+    const layer = layerId(row.layer);
+    setClosedLayers((closed) => (closed.has(layer) ? toggled(closed, layer) : closed));
+    setOpenLevels((open) => (open.has(row.level) ? open : toggled(open, row.level)));
+  };
+  const disclosure: Disclosure = {
+    closedLayers,
+    openLevels,
+    toggleLayer: (id) => setClosedLayers((closed) => toggled(closed, id)),
+    toggleLevel: (level) => setOpenLevels((open) => toggled(open, level)),
+    showAll: (open) => {
+      setClosedLayers(open ? new Set() : new Set(layers.map((layer) => layer.id)));
+      setOpenLevels(open ? new Set(ordered.map((row) => row.level)) : new Set());
+    }
+  };
+  /* The company in the address has its layer and level opened when it arrives, when something else on the page picks it,
+     and when its full view closes. This happens during render so the row is on the page before effects focus it. */
+  const revealKey = match && !full ? activeKey : undefined;
+  const [revealed, setRevealed] = useState<string>();
+  if (revealKey !== revealed) {
+    setRevealed(revealKey);
+    const row = ordered.find((item) => rowKey(item) === revealKey);
+    if (row) openRow(row);
+  }
+
   const select = (row: AiStackRow, state?: Record<string, unknown>) => {
     setChosenKey(rowKey(row));
+    openRow(row);
     navigate({ search: marketsSearch({ symbol: row.symbol }) }, { replace: true, state: { ...replaceHistoryState, ...state } });
   };
   const jumpToLevel = (level: number) => {
@@ -166,8 +212,10 @@ function MarketsView() {
                   activeKey={activeKey}
                   wide={wide}
                   smooth={!reducedMotion}
+                  disclosure={disclosure}
                   onChoose={(row) => setChosenKey(rowKey(row))}
                   onSelect={(row) => select(row)}
+                  onPick={(row) => select(row, { jumpLevel: row.level })}
                 />
               </>
             ) : (
@@ -229,6 +277,70 @@ const levelRange = (layer: StackLayer) => {
   return first === last ? `Level ${first}` : `Levels ${first}–${last}`;
 };
 
+const Chevron = () => <ChevronDown className="mk-chevron" aria-hidden="true" />;
+
+/* A company named in a summary, as a button that shows it in the stack. */
+function SummaryPick({ row, children, onPick }: { row?: AiStackRow; children: ReactNode; onPick: (row: AiStackRow) => void }) {
+  if (!row) return <>—</>;
+  return (
+    <button type="button" className="mk-summary__pick" title={`Show ${listing(row.symbol).name ?? row.symbol} in the stack`} onClick={() => onPick(row)}>
+      <b>{row.symbol}</b> {children}
+    </button>
+  );
+}
+
+function todayText({ up, flat, down }: StackSummary) {
+  if (!up && !flat && !down) return "—";
+  return [`${up} up`, ...(flat ? [`${flat} flat`] : []), `${down} down`].join(", ");
+}
+
+/* Figures for the whole stack or one layer, each company counted once. */
+function SummaryStats({ summary, bottleneck, onPick }: { summary: StackSummary; bottleneck?: Bottleneck; onPick: (row: AiStackRow) => void }) {
+  const { marketCap, noCap, up, flat, down, gainer, loser, largest } = summary;
+  return (
+    <dl className="mk-summary">
+      <div>
+        <dt>Market cap</dt>
+        <dd>
+          {formatMarketCap(marketCap)}
+          {marketCap !== null && noCap.length > 0 && <> <small>No value for {noCap.length > 2 ? `${noCap.length} companies` : noCap.join(" and ")}</small></>}
+        </dd>
+      </div>
+      <div><dt>Median day</dt><dd data-direction={direction(summary.medianChange)}>{formatPercent(summary.medianChange)}</dd></div>
+      <div>
+        <dt>Today</dt>
+        <dd>
+          {todayText(summary)}
+          {up + flat + down > 0 && (
+            <span className="mk-updown" aria-hidden="true">
+              {up > 0 && <i data-part="up" style={{ flexGrow: up }} />}
+              {flat > 0 && <i data-part="flat" style={{ flexGrow: flat }} />}
+              {down > 0 && <i data-part="down" style={{ flexGrow: down }} />}
+            </span>
+          )}
+        </dd>
+      </div>
+      <div><dt>Median from 52w high</dt><dd>{formatPercent(summary.medianFromHigh, 1)}</dd></div>
+      <div>
+        <dt>Top gainer</dt>
+        <dd><SummaryPick row={gainer} onPick={onPick}><span data-direction="up">{formatPercent(gainer?.change ?? null)}</span></SummaryPick></dd>
+      </div>
+      <div>
+        <dt>Top loser</dt>
+        <dd><SummaryPick row={loser} onPick={onPick}><span data-direction="down">{formatPercent(loser?.change ?? null)}</span></SummaryPick></dd>
+      </div>
+      <div>
+        <dt>Largest</dt>
+        <dd><SummaryPick row={largest} onPick={onPick}><span>{formatMarketCap(largest?.marketCap ?? null)}</span></SummaryPick></dd>
+      </div>
+      <div>
+        <dt>Tightest bottleneck</dt>
+        <dd>{bottleneck ? <span className="mk-summary__bottleneck"><TightnessBadge item={bottleneck} /> {bottleneck.name}</span> : "None ranked"}</dd>
+      </div>
+    </dl>
+  );
+}
+
 type StackPanelProps = {
   layers: StackLayer[];
   rows: AiStackRow[];
@@ -236,18 +348,28 @@ type StackPanelProps = {
   activeKey?: string;
   wide: boolean;
   smooth: boolean;
+  disclosure: Disclosure;
   onChoose: (row: AiStackRow) => void;
   onSelect: (row: AiStackRow) => void;
+  /* A company picked from a summary: select it and bring its level into view. */
+  onPick: (row: AiStackRow) => void;
 };
 
 /* The stack on the left and the selected company's preview beside it (sticky), or under its row on a phone.
-   Rows are links with one tab stop; arrow keys, Home, and End move through them and select as they go. */
-function StackPanel({ layers, rows, selected, activeKey, wide, smooth, onChoose, onSelect }: StackPanelProps) {
+   A summary of the whole stack comes first, then each layer's summary and its levels, which open and close. Rows are
+   links with one tab stop per open level; arrow keys, Home, and End move through the open rows and select as they go. */
+function StackPanel({ layers, rows, selected, activeKey, wide, smooth, disclosure, onChoose, onSelect, onPick }: StackPanelProps) {
   const location = useLocation();
   const list = useRef<HTMLDivElement>(null);
   /* Where the chosen row sat on screen, so a preview opening or closing above it doesn't move it. */
   const anchor = useRef<{ key: string; top: number }>();
   const byKey = useMemo(() => new Map(rows.map((row) => [rowKey(row), row])), [rows]);
+  const overall = useMemo(() => summarizeStack(layers.flatMap((layer) => layer.levels.flatMap((level) => level.rows))), [layers]);
+  const levelCount = layers.reduce((sum, layer) => sum + layer.levels.length, 0);
+  const allLevels = layers.flatMap((layer) => layer.levels.map((level) => level.level));
+  const { closedLayers, openLevels } = disclosure;
+  const allOpen = layers.every((layer) => !closedLayers.has(layer.id)) && allLevels.every((level) => openLevels.has(level));
+  const allClosed = layers.every((layer) => closedLayers.has(layer.id));
 
   const remember = (link: HTMLElement) => {
     anchor.current = { key: link.dataset.rowKey ?? "", top: link.getBoundingClientRect().top };
@@ -273,7 +395,7 @@ function StackPanel({ layers, rows, selected, activeKey, wide, smooth, onChoose,
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key) || event.altKey || event.ctrlKey || event.metaKey) return;
-    const links = [...(list.current?.querySelectorAll<HTMLAnchorElement>("a[data-row-key]") ?? [])];
+    const links = [...(list.current?.querySelectorAll<HTMLAnchorElement>("a[data-row-key]") ?? [])].filter((link) => !link.closest("[hidden]"));
     const index = links.indexOf(document.activeElement as HTMLAnchorElement);
     if (index === -1) return;
     event.preventDefault();
@@ -293,62 +415,123 @@ function StackPanel({ layers, rows, selected, activeKey, wide, smooth, onChoose,
   return (
     <div className="mk-split" data-layout={wide ? "wide" : "narrow"}>
       <div className="mk-list" ref={list} onKeyDown={onKeyDown} aria-describedby="mk-list-hint">
-        <p id="mk-list-hint" className="mk-list__hint">Pick a company for a quick chart. In the list, the arrow keys move between companies.</p>
-        {layers.map((layer) => (
-          <section key={layer.id} id={`mk-layer-${layer.id}`} className="mk-layer" data-layer={layer.id} aria-labelledby={`mk-layer-${layer.id}-title`}>
-            <div className="mk-layer__head">
-              <h2 id={`mk-layer-${layer.id}-title`}>{layer.label}</h2>
-              <p>{levelRange(layer)} · {layer.names} {layer.names === 1 ? "company" : "companies"}</p>
-              <dl className="mk-layer__stats">
-                <div><dt>Median day</dt><dd data-direction={direction(layer.medianChange)}>{formatPercent(layer.medianChange)}</dd></div>
-                <div><dt>Median from 52w high</dt><dd>{formatPercent(layer.medianFromHigh, 1)}</dd></div>
-                <div><dt>Today</dt><dd>{layer.up} up, {layer.down} down</dd></div>
-              </dl>
-            </div>
-            <div className="mk-cols" aria-hidden="true">
-              <span>Company</span><span>Price</span><span>Day</span><span>From high</span>
-            </div>
-            {layer.levels.map((level) => {
-              const ranked = bottlenecksForLevel(level.level);
-              return (
-                <div key={level.level} id={`mk-level-${level.level}`} className="mk-group" data-level={level.level} role="group" aria-labelledby={`mk-level-${level.level}-title`}>
-                  <h3 className="mk-group__title" id={`mk-level-${level.level}-title`}>
-                    <span className="mk-level__number">Level {level.level}</span> <span className="mk-group__name">{level.areas.join(" · ")}</span>
-                    {ranked.map((item) => (
-                      <span key={item.id} className="mk-group__badge">
-                        <span className="mk-sr">, bottleneck {item.name}: </span>
-                        <TightnessBadge item={item} />
-                      </span>
-                    ))}
-                  </h3>
-                  <ul className="mk-rows">
-                    {level.rows.map((row) => {
-                      const key = rowKey(row);
-                      const active = key === activeKey;
-                      const current = selected && sameSymbol(row.symbol, selected.symbol);
-                      return (
-                        <StackRow
-                          key={key}
-                          row={row}
-                          rowKey={key}
-                          active={active}
-                          also={Boolean(current) && !active}
-                          showArea={level.areas.length > 1}
-                          onClick={(link) => { remember(link); onChoose(row); }}
-                          after={active && !wide ? <li className="mk-row-preview">{preview(true)}</li> : null}
-                        />
-                      );
-                    })}
-                  </ul>
-                </div>
-              );
-            })}
-          </section>
-        ))}
+        <section className="mk-overview" aria-labelledby="mk-overview-title">
+          <div className="mk-overview__head">
+            <h2 id="mk-overview-title">Whole stack</h2>
+            <p>{plural(layers.length, "layer", "layers")} · {plural(levelCount, "level", "levels")} · {plural(overall.names, "company", "companies")}</p>
+          </div>
+          <SummaryStats summary={overall} bottleneck={tightestAt(allLevels)} onPick={onPick} />
+          {layers.reduce((sum, layer) => sum + layer.names, 0) > overall.names && (
+            <p className="mk-overview__note">A company in more than one layer counts once here, and in each of its layers below.</p>
+          )}
+        </section>
+        <div className="mk-list__bar">
+          <p id="mk-list-hint" className="mk-list__hint">Open a level to see its companies, then pick one for a quick chart. In the list, the arrow keys move between companies.</p>
+          <div className="mk-tools">
+            <button type="button" aria-disabled={allOpen} onClick={() => { if (!allOpen) disclosure.showAll(true); }}>Expand all</button>
+            <button type="button" aria-disabled={allClosed} onClick={() => { if (!allClosed) disclosure.showAll(false); }}>Collapse all</button>
+          </div>
+        </div>
+        {layers.map((layer) => {
+          const layerOpen = !closedLayers.has(layer.id);
+          return (
+            <section
+              key={layer.id}
+              id={`mk-layer-${layer.id}`}
+              className="mk-layer"
+              data-layer={layer.id}
+              data-open={layerOpen}
+              aria-labelledby={`mk-layer-${layer.id}-title`}
+            >
+              <div className="mk-layer__head">
+                <h2 id={`mk-layer-${layer.id}-title`}>
+                  <button
+                    type="button"
+                    className="mk-layer__toggle"
+                    aria-expanded={layerOpen}
+                    aria-controls={`mk-layer-${layer.id}-levels`}
+                    onClick={() => disclosure.toggleLayer(layer.id)}
+                  >
+                    {layer.label}<Chevron />
+                  </button>
+                </h2>
+                <p>{levelRange(layer)} · {plural(layer.names, "company", "companies")}</p>
+              </div>
+              <SummaryStats summary={layer} bottleneck={tightestAt(layer.levels.map((level) => level.level))} onPick={onPick} />
+              <div id={`mk-layer-${layer.id}-levels`} className="mk-layer__levels" hidden={!layerOpen}>
+                {layer.levels.map((level) => {
+                  const ranked = bottlenecksForLevel(level.level);
+                  const levelOpen = openLevels.has(level.level);
+                  const shown = layerOpen && levelOpen;
+                  const holdsActive = level.rows.some((row) => rowKey(row) === activeKey);
+                  return (
+                    <div
+                      key={level.level}
+                      id={`mk-level-${level.level}`}
+                      className="mk-group"
+                      data-level={level.level}
+                      data-open={levelOpen}
+                      role="group"
+                      aria-labelledby={`mk-level-${level.level}-title`}
+                    >
+                      <h3 className="mk-group__title" id={`mk-level-${level.level}-title`}>
+                        <button
+                          type="button"
+                          className="mk-group__toggle"
+                          aria-expanded={levelOpen}
+                          aria-controls={`mk-level-${level.level}-rows`}
+                          onClick={() => disclosure.toggleLevel(level.level)}
+                        >
+                          <span className="mk-level__number">Level {level.level}</span> <span className="mk-group__name">{level.areas.join(" · ")}</span>
+                          <span className="mk-group__meta">
+                            <span className="mk-group__count"><span className="mk-sr">, </span>{plural(level.rows.length, "company", "companies")}</span>
+                            {ranked.map((item) => (
+                              <span key={item.id} className="mk-group__badge">
+                                <span className="mk-sr">, bottleneck {item.name}: </span>
+                                <TightnessBadge item={item} />
+                              </span>
+                            ))}
+                            <Chevron />
+                          </span>
+                        </button>
+                      </h3>
+                      <div id={`mk-level-${level.level}-rows`} className="mk-group__body" hidden={!levelOpen}>
+                        <div className="mk-cols" aria-hidden="true">
+                          <span>Company</span><span>Price</span><span>Day</span><span>From high</span>
+                        </div>
+                        <ul className="mk-rows">
+                          {level.rows.map((row, index) => {
+                            const key = rowKey(row);
+                            const active = key === activeKey;
+                            const current = selected && sameSymbol(row.symbol, selected.symbol);
+                            return (
+                              <StackRow
+                                key={key}
+                                row={row}
+                                rowKey={key}
+                                active={active}
+                                also={Boolean(current) && !active}
+                                tabStop={active || (!holdsActive && index === 0)}
+                                showArea={level.areas.length > 1}
+                                onClick={(link) => { remember(link); onChoose(row); }}
+                                after={active && shown && !wide ? <li className="mk-row-preview">{preview(true)}</li> : null}
+                              />
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })}
         <p className="mk-note">
-          Levels and groupings follow the tracker sheet, and a company can sit at more than one level. A dash means the sheet has
-          no value (for example #N/A). Distances from the 52-week high are computed from the sheet's price and high. Bottleneck
-          badges come from my notes' 2026 ranking (see Insights).
+          Levels and groupings follow the tracker sheet, and a company can sit at more than one level. Summaries count each
+          company once, at its full market cap; the top gainer, top loser, and largest company open their rows. A dash means
+          the sheet has no value (for example #N/A). Distances from the 52-week high are computed from the sheet's price and
+          high. Bottleneck badges come from my notes' 2026 ranking (see Insights).
         </p>
       </div>
       {wide && <aside className="mk-preview-pane" aria-label="Preview">{preview(false)}</aside>}
@@ -361,12 +544,14 @@ type StackRowProps = {
   rowKey: string;
   active: boolean;
   also: boolean;
+  /* The open level's one tab stop: its chosen row, or else its first. */
+  tabStop: boolean;
   showArea: boolean;
   onClick: (link: HTMLElement) => void;
   after: ReactNode;
 };
 
-function StackRow({ row, rowKey: key, active, also, showArea, onClick, after }: StackRowProps) {
+function StackRow({ row, rowKey: key, active, also, tabStop, showArea, onClick, after }: StackRowProps) {
   const info = listing(row.symbol);
   const fromHigh = distance(row.price, row.high);
   return (
@@ -379,7 +564,7 @@ function StackRow({ row, rowKey: key, active, also, showArea, onClick, after }: 
           data-labos-history="replace"
           data-row-key={key}
           aria-current={active ? "true" : undefined}
-          tabIndex={active ? 0 : -1}
+          tabIndex={tabStop ? 0 : -1}
           onClick={(event) => onClick(event.currentTarget)}
         >
           <span className="mk-row__id">
