@@ -882,7 +882,7 @@ test("desktop icons drag without opening, persist, move with the keyboard, and c
   await icon.focus();
   await page.keyboard.press("Shift+ArrowUp");
   expect((await icon.boundingBox())!.y).toBe(before.y - 92);
-  expect((await page.locator(".os-icons .os-icon", { hasText: "Sid Search" }).boundingBox())!.y).toBe(before.y);
+  expect((await page.locator(".os-icons .os-icon", { hasText: "Projects" }).boundingBox())!.y).toBe(before.y);
   await page.keyboard.press("Shift+ArrowRight");
   await page.setViewportSize({ width: 390, height: 900 });
   await expect(page.locator(".os-home")).toBeVisible();
@@ -961,7 +961,7 @@ test("Start search and restart use the real desktop rather than a different thre
 });
 
 for (const style of ["modern", "retro"]) {
-  for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 720 }, { width: 1024, height: 768 }, { width: 800, height: 520 }]) {
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 1280, height: 720 }, { width: 1100, height: 700 }, { width: 1024, height: 768 }, { width: 800, height: 520 }]) {
     test(`desktop groups fit ${viewport.width}x${viewport.height} in ${style} style`, async ({ page }) => {
       await page.emulateMedia({ reducedMotion: "reduce" });
       await page.setViewportSize(viewport);
@@ -970,7 +970,7 @@ for (const style of ["modern", "retro"]) {
       const search = (await page.locator(searchWin).boundingBox())!;
       const desk = (await page.locator(".os-desktop").boundingBox())!;
       await page.getByRole("button", { name: "Show desktop", exact: true }).click();
-      const rows = [["Sid Search", "Projects", "arXiv Search", "Library", "GitHub"], ["Forward pass", "Other designs"], ["Games", "Markets", "Launches", "AI leaderboards"]];
+      const rows = [["Sid Search", "Library", "GitHub"], ["Projects", "arXiv Search"], ["Forward pass", "Other designs"], ["Games", "Markets", "Launches", "AI leaderboards"]];
       const labels = [...rows.flat(), "Resume.pdf", "README.txt"];
       await expect(page.locator(".os-icons .os-icon__label")).toHaveText(labels);
       const boxes = await page.locator(".os-icons > li").evaluateAll((icons) => icons.map((icon) => {
@@ -979,7 +979,11 @@ for (const style of ["modern", "retro"]) {
       }));
       const expected = [
         ...rows.flatMap((items, row) => items.map((_, col) => ({ col, row }))),
-        ...[0, 1].map((col) => ({ col, row: Math.floor((desk.height - 16) / 92) - 1 }))
+        /* A desktop too short for a free bottom row puts the documents after the last group on its row instead. */
+        ...[0, 1].map((col) => {
+          const bottom = Math.floor((desk.height - 16) / 92) - 1;
+          return bottom < rows.length ? { col: rows[bottom].length + col, row: bottom } : { col, row: bottom };
+        })
       ];
       expected.forEach(({ col, row }, index) => {
         expect(boxes[index].x, labels[index]).toBe(desk.x + 8 + col * 92);
@@ -990,7 +994,8 @@ for (const style of ["modern", "retro"]) {
         expect(boxes[index].y + boxes[index].height).toBeLessThanOrEqual(desk.y + desk.height - 8);
       });
       expect(new Set(boxes.map(({ x, y }) => `${x},${y}`)).size).toBe(labels.length);
-      if (viewport.width >= 1280) {
+      /* Four icon columns leave Sid Search room beside them from a 1044px desktop up. */
+      if (viewport.width >= 1100) {
         const iconsRight = Math.max(...boxes.map(({ x, width }) => x + width));
         expect(search.x).toBeGreaterThanOrEqual(iconsRight + 12);
         expect(search.width).toBeGreaterThanOrEqual(640);
@@ -1032,11 +1037,12 @@ for (const style of ["modern", "retro"]) {
   });
 }
 
-test("the grouped layout replaces v1 once and preserves subsequent manual positions", async ({ page }) => {
+test("the grouped layout replaces v1 and v2 once and preserves subsequent manual positions", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.addInitScript(() => {
     localStorage.setItem("lab-os-icons-v1", JSON.stringify({ search: { col: 6, row: 6 }, games: { col: 5, row: 5 } }));
+    localStorage.setItem("lab-os-icons-v2", JSON.stringify({ search: { col: 0, row: 0 }, projects: { col: 1, row: 0 }, games: { col: 0, row: 2 } }));
   });
   await page.goto("./?view=os");
   await page.getByRole("button", { name: "Show desktop", exact: true }).click();
@@ -1044,9 +1050,12 @@ test("the grouped layout replaces v1 once and preserves subsequent manual positi
   const games = page.locator(".os-icons .os-icon", { hasText: "Games" });
   expect((await search.boundingBox())!.x).toBe(8);
   expect((await search.boundingBox())!.y).toBe(8);
+  const projects = (await page.locator(".os-icons .os-icon", { hasText: "Projects" }).boundingBox())!;
+  expect(projects.x, "Projects starts row 2, not its saved v2 slot").toBe(8);
+  expect(projects.y).toBe(100);
   const before = (await games.boundingBox())!;
   expect(before.x).toBe(8);
-  expect(before.y).toBe(192);
+  expect(before.y).toBe(284);
   await games.focus();
   await page.keyboard.press("Shift+ArrowRight");
   expect((await games.boundingBox())!.x).toBe(before.x + 92);
@@ -1058,5 +1067,5 @@ test("the grouped layout replaces v1 once and preserves subsequent manual positi
   await page.getByRole("button", { name: "Show desktop", exact: true }).click();
   expect((await games.boundingBox())!.x).toBe(before.x + 92);
   expect((await games.boundingBox())!.y).toBe(before.y);
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("lab-os-icons-v2") ?? "{}").games)).toEqual({ col: 1, row: 2 });
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("lab-os-icons-v3") ?? "{}").games)).toEqual({ col: 1, row: 3 });
 });

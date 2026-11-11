@@ -8,7 +8,7 @@ export const iconAreaWidth = 8 + Math.max(desktopDocuments.length, ...desktopRow
 type Position = { col: number; row: number };
 type Positions = Partial<Record<AppId, Position>>;
 // Version the layout once; subsequent manual arrangements keep their normal persistence.
-const key = "lab-os-icons-v2";
+const key = "lab-os-icons-v3";
 
 function readPositions(): Positions {
   try {
