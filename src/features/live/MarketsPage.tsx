@@ -7,7 +7,7 @@ import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { usePrefersReducedMotion } from "../../hooks/usePrefersReducedMotion";
 import { embeddedView, replaceHistoryState } from "../views/os/embed";
 import {
-  AI_STACK_SHEET, direction, distance, formatDay, formatMarketCap, formatPercent, formatPrice, formatRatio,
+  AI_STACK_SHEET, conversionNote, direction, distance, formatDay, formatMarketCap, formatPercent, formatPrice, formatRatio,
   formatTime, groupStack, layerId, layerLabel, listing, useAiStack, type AiStackRow, type AiStackState, type StackLayer
 } from "./aiStack";
 import LivePageShell from "./LivePageShell";
@@ -48,6 +48,12 @@ let stackScroll: number | null = null;
 
 const reveal = (element: Element | null | undefined, smooth: boolean) =>
   element?.scrollIntoView({ block: "start", behavior: smooth ? "smooth" : "auto" });
+
+/* Says when the market cap is the sheet's foreign-currency figure converted to US dollars. */
+function MarketCapNote({ row }: { row: AiStackRow }) {
+  const note = conversionNote(row);
+  return note ? <small className="mk-stats__note">{note}</small> : null;
+}
 
 function MarketsView() {
   const [params] = useSearchParams();
@@ -459,7 +465,7 @@ function Preview({ row, rows, inline }: { row: AiStackRow; rows: AiStackRow[]; i
         <span>Price and volume, financials, technicals, profile, and news</span>
       </p>
       <dl className="mk-stats mk-stats--compact">
-        <div><dt>Market cap</dt><dd>{formatMarketCap(row.marketCap)}</dd></div>
+        <div><dt>Market cap</dt><dd>{formatMarketCap(row.marketCap)}<MarketCapNote row={row} /></dd></div>
         <div><dt>P/E</dt><dd>{formatRatio(row.pe)}</dd></div>
         <div><dt>Beta</dt><dd>{row.beta === null ? "—" : row.beta.toFixed(2)}</dd></div>
         <div><dt>From 52w high</dt><dd>{formatPercent(fromHigh, 1)}</dd></div>
@@ -548,7 +554,7 @@ function FullView({ row, rows, heading, onBack }: { row: AiStackRow; rows: AiSta
       </div>
 
       <dl className="mk-stats">
-        <div><dt>Market cap</dt><dd>{formatMarketCap(row.marketCap)}</dd></div>
+        <div><dt>Market cap</dt><dd>{formatMarketCap(row.marketCap)}<MarketCapNote row={row} /></dd></div>
         <div><dt>P/E</dt><dd>{formatRatio(row.pe)}</dd></div>
         <div><dt>EPS</dt><dd>{formatPrice(row.eps)}</dd></div>
         <div><dt>Beta</dt><dd>{row.beta === null ? "—" : row.beta.toFixed(2)}</dd></div>

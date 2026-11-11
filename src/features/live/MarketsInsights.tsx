@@ -4,7 +4,8 @@ import {
   tightnessLabel, tightnessScale, type Bottleneck, type Source
 } from "../../content/marketInsights";
 import {
-  direction, formatDay, formatMarketCap, formatPercent, formatTime, layerLabel, type AiStackRow, type AiStackState
+  conversionsNote, direction, formatDay, formatMarketCap, formatPercent, formatRatesDay, formatTime, layerLabel,
+  type AiStackRow, type AiStackState, type FxRates
 } from "./aiStack";
 import { beeswarm, bucketShares, levelName, pricedInPoints, pricedInReadout, splitCaps, treemap, type PricedPoint } from "./stackInsights";
 
@@ -188,7 +189,7 @@ function MarketsInsights({ stack, onJump, onPick }: Props) {
         <>
           <PricedIn rows={rows} prices={prices} />
           <CapexVsCap rows={rows} prices={prices} />
-          <Treemap rows={rows} prices={prices} onPick={onPick} />
+          <Treemap rows={rows} prices={prices} fx={stack.fx} onPick={onPick} />
         </>
       )}
     </div>
@@ -557,25 +558,26 @@ const changeColor = (change: number | null) => {
   return `color-mix(in srgb, ${change >= 0 ? "#1f8a55" : "#c23b3b"} ${mix}%, #f4f6f3)`;
 };
 
-function Treemap({ rows, prices, onPick }: { rows: AiStackRow[]; prices: string; onPick: (row: AiStackRow) => void }) {
+function Treemap({ rows, prices, fx, onPick }: { rows: AiStackRow[]; prices: string; fx: FxRates; onPick: (row: AiStackRow) => void }) {
   const [ref, width] = useWidth<HTMLDivElement>();
   const height = width < 520 ? Math.round(width * 1.25) : Math.round(Math.min(560, width * 0.55));
   const layout = useMemo(() => (width > 0 ? treemap(rows, width, height) : { groups: [], tiles: [] }), [rows, width, height]);
   const caps = useMemo(() => splitCaps(rows), [rows]);
   const byKey = useMemo(() => new Map(rows.map((row) => [`${row.level}:${row.symbol}`, row])), [rows]);
-  /* Placements with no usable cap: blank or #N/A in the sheet, or rejected by the parser as too large to be USD billions. */
+  /* Placements with no usable cap: blank or #N/A in the sheet, or set aside by the parser as not billions of US dollars. */
   const gaps = rows.filter((_, index) => caps[index] <= 0);
   const named = (rejected: boolean) => [...new Set(gaps.filter((row) => Boolean(row.marketCapRejected) === rejected).map((row) => row.symbol))];
   const missing = named(false);
   const rejected = named(true);
+  const converted = conversionsNote(rows, fx);
 
   return (
     <Insight
       id="treemap"
       title="The stack by market cap"
       intro="Every company sized by market cap inside its layer and level, colored by today's move. Pick a tile to see the company in the stack."
-      asOf={[prices]}
-      caveat={`A company at several levels has its market cap split evenly across them, so each is counted once.${missing.length ? ` No market cap in the sheet for ${missing.join(", ")}.` : ""}${rejected.length ? ` No usable market cap for ${rejected.join(", ")} (the sheet's ${rejected.length > 1 ? "values are" : "value is"} too large to be in billions of US dollars).` : ""}`}
+      asOf={converted ? [prices, `Exchange rates as of ${formatRatesDay(fx)}`] : [prices]}
+      caveat={`A company at several levels has its market cap split evenly across them, so each is counted once.${converted ? ` ${converted}` : ""}${missing.length ? ` No market cap in the sheet for ${missing.join(", ")}.` : ""}${rejected.length ? ` No usable market cap for ${rejected.join(", ")} (the sheet's ${rejected.length > 1 ? "values aren't" : "value isn't"} in billions of US dollars).` : ""}`}
       table={
         <table className="mk-data__table">
           <caption className="mk-sr">Market cap and day change for every company placement in the stack</caption>

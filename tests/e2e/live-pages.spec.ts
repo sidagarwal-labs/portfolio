@@ -1,13 +1,13 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { MAX_PLAUSIBLE_MARKET_CAP_B, parseAiStack } from "../../src/content/aiStackSheet.mjs";
+import { FALLBACK_FX, MAX_PLAUSIBLE_MARKET_CAP_B, parseAiStack, type FxRates } from "../../src/content/aiStackSheet.mjs";
 
 const upcomingApi = "https://ll.thespacedevs.com/2.3.0/launches/upcoming/**";
 const previousApi = "https://ll.thespacedevs.com/2.3.0/launches/previous/**";
 const stackCsv = "https://docs.google.com/spreadsheets/**";
 const hour = 60 * 60 * 1000;
 
-const stackSnapshot = JSON.parse(readFileSync(new URL("../../src/content/generated/ai-stack.json", import.meta.url), "utf8")) as { rows: unknown[] };
+const stackSnapshot = JSON.parse(readFileSync(new URL("../../src/content/generated/ai-stack.json", import.meta.url), "utf8")) as { rows: unknown[]; fx: FxRates };
 
 /* A slice of the AI / LLM Stack Tracker in its published CSV form: quoted thousands and commas, #N/A cells, a ticker
    at two levels, and the sheet's trailing blank columns and rows. */
@@ -23,8 +23,13 @@ const stackSheet = [
   ",,,,,,,,,,,,,,,,,"
 ].join("\r\n");
 
-/* SK hynix as the sheet once listed it: its market cap in billions of won (about $600B), not billions of dollars. */
+/* SK hynix as the sheet lists it: its market cap in billions of won (about $650B), not billions of dollars. */
 const skhyInWon = 'SKHY,Memory - HBM,Chips,5,$129.66,"$874,399",-3.51%,$17.00,7.63,#N/A,$199.87,$122.50,-$70.21,-35.13%,$7.16,105.84%,,';
+/* TSMC and ASE as the sheet lists them: market caps in billions of Taiwan dollars (about $1.8T and $82B). */
+const tsmInTwd = 'TSM,Foundry,Chips,6,$396.48,"$60,552",2.02%,$14.99,26.44,1.42,$487.47,$266.82,-$90.99,-19%,$129.66,149%,,';
+const asxInTwd = 'ASX,Packaging,Chips,4,$35.48,"$2,702",3.26%,$1.04,34.04,1.73,$47.93,$13.35,-$12.45,-26%,$22.13,266%,,';
+/* The same won figure under a symbol the parser doesn't know, so it can't be converted. */
+const unknownInWon = skhyInWon.replace(/^SKHY,/, "HYNIX,");
 
 const csvResponse = (body: string, contentType = "text/csv") => ({ body, contentType, headers: { "access-control-allow-origin": "*" } });
 
@@ -367,12 +372,12 @@ test("the AI stack parser treats a market cap too large to be billions of dollar
   expect(MAX_PLAUSIBLE_MARKET_CAP_B).toBe(20_000);
   const cap = (symbol: string, value: string) =>
     `${symbol},Designing,Chips,1,$10.00,"${value}",1.00%,$1.00,10.00,1.00,$12.00,$8.00,-$2.00,-16.67%,$2.00,125.00%,,`;
-  const rows = parseAiStack([stackSheet, skhyInWon, cap("CEIL", "$20,000"), cap("OVER", "$20,000.50")].join("\r\n"));
+  const rows = parseAiStack([stackSheet, unknownInWon, cap("CEIL", "$20,000"), cap("OVER", "$20,000.50")].join("\r\n"));
   const row = (symbol: string) => rows.find((item) => item.symbol === symbol);
 
   /* The won figure becomes missing and is flagged; the rest of the row is kept. */
-  expect(row("SKHY")).toEqual({
-    symbol: "SKHY", area: "Memory - HBM", layer: "Chips", level: 5, price: 129.66, marketCap: null, marketCapRejected: true,
+  expect(row("HYNIX")).toEqual({
+    symbol: "HYNIX", area: "Memory - HBM", layer: "Chips", level: 5, price: 129.66, marketCap: null, marketCapRejected: true,
     change: -3.51, eps: 17, pe: 7.63, beta: null, high: 199.87, low: 122.5
   });
   expect(row("OVER")).toMatchObject({ price: 10, marketCap: null, marketCapRejected: true });
@@ -381,6 +386,41 @@ test("the AI stack parser treats a market cap too large to be billions of dollar
   expect(row("NVDA")).toMatchObject({ marketCap: 3650 });
   expect(row("SAMSUNG")).toMatchObject({ marketCap: null });
   for (const symbol of ["CEIL", "NVDA", "SAMSUNG"]) expect(row(symbol)).not.toHaveProperty("marketCapRejected");
+});
+
+test("the AI stack parser converts known foreign listings' market caps to US dollars, but never twice", () => {
+  const fx: FxRates = { asOf: "2026-11-10", source: "test", perUsd: { TWD: 32, KRW: 1400 } };
+  const [header] = stackSheet.split("\r\n");
+  const parse = (line: string, rates?: FxRates) => parseAiStack([header, line].join("\r\n"), rates)[0];
+  const withCap = (line: string, billions: number) => line.replace(/"\$[\d,]+"/, `"$${billions.toLocaleString("en-US")}"`);
+
+  /* A home-currency figure is converted and flagged; the rest of the row is untouched. ASX's would otherwise pass as
+     $2.7T, under the ceiling. */
+  expect(parse(skhyInWon, fx)).toEqual({
+    symbol: "SKHY", area: "Memory - HBM", layer: "Chips", level: 5, price: 129.66, marketCap: 624.57, marketCapCurrency: "KRW",
+    change: -3.51, eps: 17, pe: 7.63, beta: null, high: 199.87, low: 122.5
+  });
+  expect(parse(tsmInTwd, fx)).toMatchObject({ marketCap: 1892.25, marketCapCurrency: "TWD" });
+  expect(parse(asxInTwd, fx)).toMatchObject({ marketCap: 84.44, marketCapCurrency: "TWD" });
+
+  /* A figure already in dollars, as once the sheet converts it itself, is left alone. */
+  for (const [line, billions] of [[skhyInWon, 674], [tsmInTwd, 1843], [asxInTwd, 82]] as const) {
+    const row = parse(withCap(line, billions), fx);
+    expect(row.marketCap).toBe(billions);
+    expect(row).not.toHaveProperty("marketCapCurrency");
+    expect(row).not.toHaveProperty("marketCapRejected");
+  }
+
+  /* Without a price the 52-week range stands in for it; without either, the figure's currency can't be told. */
+  const noPrice = skhyInWon.replace("$129.66", "#N/A");
+  expect(parse(noPrice, fx)).toMatchObject({ price: null, marketCap: 624.57, marketCapCurrency: "KRW" });
+  const noRange = parse(noPrice.replace("$199.87,$122.50", "#N/A,#N/A"), fx);
+  expect(noRange).toMatchObject({ marketCap: null, marketCapRejected: true });
+  expect(noRange).not.toHaveProperty("marketCapCurrency");
+
+  /* Without rates the parser uses its built-in ones, and listings it doesn't know are never converted. */
+  expect(parse(tsmInTwd)).toMatchObject({ marketCap: Math.round((60_552 / FALLBACK_FX.perUsd.TWD) * 100) / 100, marketCapCurrency: "TWD" });
+  expect(parseAiStack(stackSheet, fx).filter((row) => row.marketCapCurrency || row.marketCapRejected)).toEqual([]);
 });
 
 test("the Markets Insights tab shows the research notes' seven views, each with its data and sources", async ({ page }) => {
@@ -660,29 +700,71 @@ test("the priced-in bubbles fit their labels and keep apart at every width", asy
 
 test("Markets Insights leaves out a market cap too large to be billions of dollars and names the company", async ({ page }) => {
   await page.unroute(stackCsv);
-  await page.route(stackCsv, (route) => route.fulfill(csvResponse([stackSheet, skhyInWon].join("\r\n"))));
+  await page.route(stackCsv, (route) => route.fulfill(csvResponse([stackSheet, unknownInWon].join("\r\n"))));
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("./markets");
   await expect(page.locator(".mk-status")).toHaveAttribute("data-source", "live");
   /* The stack still shows the rest of the row; only the market cap is set aside. */
-  await expect(page.locator('a[data-row-key="5:SKHY"] .mk-row__num')).toHaveText([/\$129\.66$/, /-3\.51%$/, /-35\.1%$/]);
+  await expect(page.locator('a[data-row-key="5:HYNIX"] .mk-row__num')).toHaveText([/\$129\.66$/, /-3\.51%$/, /-35\.1%$/]);
 
   await page.getByRole("tab", { name: "Insights" }).click();
   const treemap = page.locator("#mk-insight-treemap");
   await expect(treemap.locator(".mk-treemap__tile")).toHaveCount(6);
-  await expect(treemap.locator('.mk-treemap__tile[data-symbol="SKHY"]')).toHaveCount(0);
+  await expect(treemap.locator('.mk-treemap__tile[data-symbol="HYNIX"]')).toHaveCount(0);
   await expect(treemap.locator(".mk-caveat")).toHaveText(
-    "A company at several levels has its market cap split evenly across them, so each is counted once. No market cap in the sheet for SAMSUNG. No usable market cap for SKHY (the sheet's value is too large to be in billions of US dollars)."
+    "A company at several levels has its market cap split evenly across them, so each is counted once. No market cap in the sheet for SAMSUNG. No usable market cap for HYNIX (the sheet's value isn't in billions of US dollars)."
   );
   await treemap.locator("summary", { hasText: "Data table" }).click();
-  await expect(treemap.getByRole("table").locator("tbody tr", { hasText: "SKHY" }).locator("td").nth(2)).toHaveText("—");
+  await expect(treemap.getByRole("table").locator("tbody tr", { hasText: "HYNIX" }).locator("td").nth(2)).toHaveText("—");
 
-  /* The won figure doesn't swamp the market-cap shares: they match the sheet without SKHY. */
+  /* The won figure doesn't swamp the market-cap shares: they match the sheet without HYNIX. */
   const shares = page.locator("#mk-insight-capex-vs-cap");
   await shares.locator("summary", { hasText: "Data table" }).click();
-  await expect(shares.getByRole("table").locator("tbody td:nth-child(3)")).  toHaveText(["71.7%", "0.0%", "0.0%", "0.6%", "27.7%"]);
-  });
+  await expect(shares.getByRole("table").locator("tbody td:nth-child(3)")).toHaveText(["71.7%", "0.0%", "0.0%", "0.6%", "27.7%"]);
+});
+
+test("Markets converts a known foreign listing's market cap to US dollars and says so", async ({ page }) => {
+  await page.unroute(stackCsv);
+  await page.route(stackCsv, (route) => route.fulfill(csvResponse([stackSheet, skhyInWon, tsmInTwd].join("\r\n"))));
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  /* A live read converts at the rates the build-time snapshot was made with. */
+  const { fx } = stackSnapshot;
+  const skhy = `$${Math.round(874_399 / fx.perUsd.KRW)}B`;
+  const tsm = `$${(60_552 / fx.perUsd.TWD / 1000).toFixed(2)}T`;
+  const ratesDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })
+    .format(new Date(`${fx.asOf}T12:00:00Z`));
+
+  await page.goto("./markets?symbol=SKHY");
+  await expect(page.locator(".mk-status")).toHaveAttribute("data-source", "live");
+  const preview = page.getByRole("complementary", { name: "Preview" }).locator(".mk-preview");
+  const previewCap = preview.locator(".mk-stats div", { hasText: "Market cap" }).locator("dd");
+  await expect(previewCap).toContainText(skhy);
+  await expect(previewCap.locator(".mk-stats__note")).toHaveText("converted from South Korean won");
+
+  await page.getByRole("tab", { name: "Insights" }).click();
+  const treemap = page.locator("#mk-insight-treemap");
+  await expect(treemap.locator(".mk-treemap__tile")).toHaveCount(8);
+  for (const symbol of ["SKHY", "TSM"]) await expect(treemap.locator(`.mk-treemap__tile[data-symbol="${symbol}"]`)).toHaveCount(1);
+  await expect(treemap.locator(".mk-caveat")).toHaveText(
+    `A company at several levels has its market cap split evenly across them, so each is counted once. Market caps converted to US dollars at ${ratesDay} exchange rates: SKHY from South Korean won, TSM from Taiwan dollars. No market cap in the sheet for SAMSUNG.`
+  );
+  await expect(treemap.locator(".mk-asof")).toContainText(`Exchange rates as of ${ratesDay}`);
+  await treemap.locator("summary", { hasText: "Data table" }).click();
+  const capOf = (symbol: string) => treemap.getByRole("table").locator("tbody tr", { hasText: symbol }).locator("td").nth(2);
+  await expect(capOf("SKHY")).toHaveText(skhy);
+  await expect(capOf("TSM")).toHaveText(tsm);
+
+  /* The full company view marks the converted figure; a company the sheet gives in dollars has no mark. */
+  await page.goto("./markets?symbol=TSM&full=1");
+  const detailCap = page.locator(".mk-detail .mk-stats div", { hasText: "Market cap" }).locator("dd");
+  await expect(detailCap).toContainText(tsm);
+  await expect(detailCap.locator(".mk-stats__note")).toHaveText("converted from Taiwan dollars");
+  await page.goto("./markets?symbol=NVDA&full=1");
+  await expect(page.locator(".mk-detail .mk-stats div", { hasText: "Market cap" }).locator("dd")).toHaveText("$3.65T");
+  await expect(page.locator(".mk-detail .mk-stats__note")).toHaveCount(0);
+});
 
 test("Insights segments, levels, and tiles open their companies in the Stack tab", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
