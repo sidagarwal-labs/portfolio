@@ -16,6 +16,7 @@ import {
 import MatchPlayer from "../../robotics/MatchPlayer";
 import { describeSource } from "./searchIndex";
 import Source from "./Source";
+import { useScrollsX } from "./useScrollsX";
 
 const photos = [leadPhoto, ...galleryPhotos];
 const [firstYear, lastYear] = roboticsTeam.years.split("-").map(Number);
@@ -71,6 +72,8 @@ function VideoResult({ match }: { match: FeaturedMatch }) {
 }
 
 function RoboticsSection() {
+  const [imagesRef, imagesScroll] = useScrollsX<HTMLUListElement>();
+
   return (
     <section className="se-section se-robotics" id="robotics" aria-labelledby="se-robotics-heading">
       <h2 id="se-robotics-heading">Robotics</h2>
@@ -125,7 +128,7 @@ function RoboticsSection() {
       </p>
 
       <h3 className="se-subhead">Images</h3>
-      <ul className="se-images">
+      <ul className="se-images" ref={imagesRef} aria-label="Robotics photos" tabIndex={imagesScroll ? 0 : undefined}>
         {photos.map((photo) => <ImageResult key={photo.src} photo={photo} />)}
       </ul>
 

@@ -479,8 +479,12 @@ html.se-booting { overflow: hidden; }
   .se-team__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .se-season { grid-template-columns: 40px minmax(0, 1fr); gap: 10px; }
   .se-season__year { font-size: 13px; }
-  .se-images { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .se-images li:first-child { grid-column: 1 / -1; }
+  /* Phones swipe through the photos sideways; the next photo peeks in at the edge. */
+  .se-images { display: flex; gap: 12px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .se-images::-webkit-scrollbar { display: none; }
+  .se-images > li { flex: 0 0 min(78%, 280px); scroll-snap-align: start; }
+  /* The strip clips anything outside it, so focus rings are drawn inside the links. */
+  .se-images a:focus-visible { outline-offset: -2px; }
   /* The thumbnail sits beside the title and channel; the empty 1fr row absorbs any extra thumbnail height. */
   .se-video { grid-template: "player title" auto "player meta" auto "player ." 1fr "text text" auto "record record" auto / 140px minmax(0, 1fr); gap: 0 12px; }
   .se-video.is-playing { grid-template: "player" "title" "meta" "text" "record" / minmax(0, 1fr); }

@@ -224,6 +224,10 @@ test("Sid Search keeps Pitt Pirates links on its Robotics section and plays matc
 
   const images = robotics.locator(".se-image");
   await expect(images).toHaveCount(3);
+  /* Desktop keeps the photos in one row of three, so the list isn't a scroll strip or a tab stop. */
+  const photoTops = await images.evaluateAll((figures) => figures.map((figure) => Math.round(figure.getBoundingClientRect().top)));
+  expect(new Set(photoTops).size).toBe(1);
+  await expect(robotics.getByRole("list", { name: "Robotics photos" })).not.toHaveAttribute("tabindex");
   await images.last().scrollIntoViewIfNeeded();
   await expect(images.getByText("Photo unavailable")).toHaveCount(3);
   await expect(images.first().getByRole("link", { name: /^Original photo: Gemini/ })).toHaveAttribute("href", /pittpiratesrobotics\.com\/wp-content\/uploads\//);
@@ -265,7 +269,7 @@ test("Sid Search's Robotics section fits a phone", async ({ page }) => {
     await page.goto("./?view=search#robotics");
     await expect(page.locator("#robotics")).toBeInViewport();
     const section = await page.locator("#robotics").boundingBox();
-    for (const box of [".se-team", ".se-video__player", ".se-image__thumb", ".se-links a"]) {
+    for (const box of [".se-team", ".se-video__player", ".se-images", ".se-links a"]) {
       for (const element of await page.locator(`#robotics ${box}`).all()) {
         const rect = await element.boundingBox();
         expect(rect!.x + rect!.width, `${box} at ${width}px`).toBeLessThanOrEqual(section!.x + section!.width + 0.5);
@@ -277,8 +281,19 @@ test("Sid Search's Robotics section fits a phone", async ({ page }) => {
     expect(video!.width).toBeLessThan(160);
     expect(title!.x).toBeGreaterThan(video!.x + video!.width);
     expect(Math.abs(title!.y - video!.y)).toBeLessThan(4);
-    const lead = await page.locator("#robotics .se-image__thumb").first().boundingBox();
-    expect(lead!.width).toBeGreaterThan(section!.width - 1);
+
+    /* The photos become a swipe strip that scrolls inside itself and can be scrolled from the keyboard. */
+    const strip = page.getByRole("list", { name: "Robotics photos" });
+    await expect(strip).toHaveAttribute("tabindex", "0");
+    const thumbs = await page.locator("#robotics .se-image__thumb").evaluateAll((links) => links.map((link) => link.getBoundingClientRect()).map(({ top, width }) => ({ top: Math.round(top), width })));
+    expect(new Set(thumbs.map((thumb) => thumb.top)).size, `photos share a row at ${width}px`).toBe(1);
+    expect(thumbs[0].width).toBeGreaterThan(section!.width * 0.6);
+    expect(thumbs[0].width).toBeLessThan(section!.width - 24);
+    expect(await strip.evaluate((list) => list.scrollWidth > list.clientWidth)).toBe(true);
+    const scrolled = await strip.evaluate((list) => list.scrollLeft);
+    await strip.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect.poll(() => strip.evaluate((list) => list.scrollLeft)).toBeGreaterThan(scrolled);
     expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
   }
 
