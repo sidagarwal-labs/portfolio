@@ -6,7 +6,7 @@ import {
 import {
   direction, formatDay, formatMarketCap, formatPercent, formatTime, layerLabel, type AiStackRow, type AiStackState
 } from "./aiStack";
-import { bucketShares, levelName, pricedInPoints, pricedInReadout, splitCaps, treemap, type PricedPoint } from "./stackInsights";
+import { beeswarm, bucketShares, levelName, pricedInPoints, pricedInReadout, splitCaps, treemap, type PricedPoint } from "./stackInsights";
 
 const noteDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 const notesAsOf = `Notes as of ${noteDay.format(new Date(`${NOTES_AS_OF}T12:00:00Z`))}`;
@@ -322,24 +322,24 @@ function PricedIn({ rows, prices }: { rows: AiStackRow[]; prices: string }) {
   const plotted = points.filter((point) => point.medianFromHigh !== null);
   const W = Math.max(280, width);
   const H = W < 520 ? 300 : 340;
-  const margin = { left: 46, right: 14, top: 18, bottom: W < 520 ? 52 : 40 };
+  const margin = { left: W < 520 ? 38 : 46, right: 14, top: 18, bottom: W < 520 ? 52 : 40 };
   const lowest = Math.min(-10, ...plotted.map((point) => point.medianFromHigh!));
   const floor = Math.floor(lowest / 10) * 10;
-  const x = (score: number) => margin.left + ((score - 1) / 4) * (W - margin.left - margin.right);
+  /* Each tightness step gets an equal column, labelled in the middle, that its bubbles can spread across. */
+  const column = (W - margin.left - margin.right) / tightnessScale.length;
+  const x = (score: number) => margin.left + (score - 0.5) * column;
   const y = (value: number) => margin.top + (value / floor) * (H - margin.top - margin.bottom);
   const maxCap = Math.max(1, ...plotted.map((point) => point.marketCap));
-  const radius = (cap: number) => 5 + (W < 520 ? 14 : 20) * Math.sqrt(Math.max(0, cap) / maxCap);
+  /* The smallest bubble still fits the longest label ("L10"), so every label sits inside its bubble and sizes keep
+     their market-cap order. */
+  const smallest = 2.9 * Math.max(2, ...plotted.map((point) => `L${point.level}`.length)) + 3;
+  const radius = (cap: number) => smallest + (W < 520 ? 12 : 18) * Math.sqrt(Math.max(0, cap) / maxCap);
   const ticks = Array.from({ length: Math.round(-floor / 10) + 1 }, (_, index) => -index * 10).filter((tick, index, all) => all.length <= 7 || index % 2 === 0);
-  const spread = W < 520 ? 22 : 34;
-  const dots = tightnessScale.flatMap((step) => {
-    const same = plotted.filter((point) => point.score === step.score).sort((a, b) => a.level - b.level);
-    return same.map((point, index) => ({
-      ...point,
-      cx: Math.min(W - margin.right - 4, Math.max(margin.left + 4, x(point.score) + (index - (same.length - 1) / 2) * spread)),
-      cy: y(point.medianFromHigh!),
-      r: radius(point.marketCap)
-    }));
-  });
+  const dots = beeswarm(
+    plotted.map((point) => ({ ...point, x: x(point.score), y: y(point.medianFromHigh!), r: radius(point.marketCap) })),
+    column / 2,
+    [margin.left, W - 2]
+  );
   const active = dots.find((dot) => dot.level === (hovered ?? picked)) ?? null;
   const activeLevel = active?.level ?? null;
   const close = () => {
@@ -456,11 +456,11 @@ function PricedIn({ rows, prices }: { rows: AiStackRow[]; prices: string }) {
                 onFocus={() => setPicked(dot.level)}
                 onBlur={() => setPicked((level) => (level === dot.level ? null : level))}
               >
-                <circle cx={dot.cx} cy={dot.cy} r={dot.r} />
-                <text x={dot.cx} y={dot.cy} dy="0.35em" textAnchor="middle">L{dot.level}</text>
+                <circle cx={dot.cx} cy={dot.y} r={dot.r} />
+                <text x={dot.cx} y={dot.y} dy="0.35em" textAnchor="middle">L{dot.level}</text>
               </g>
             ))}
-            {active && <circle className="mk-scatter__ring" data-layer={active.layerId} cx={active.cx} cy={active.cy} r={active.r + 4} aria-hidden="true" />}
+            {active && <circle className="mk-scatter__ring" data-layer={active.layerId} cx={active.cx} cy={active.y} r={active.r + 4} aria-hidden="true" />}
           </svg>
         )}
         {active && (

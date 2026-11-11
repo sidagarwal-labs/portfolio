@@ -92,6 +92,38 @@ export function pricedInReadout(points: PricedPoint[]) {
     : `${lead} The tightest layers have fallen further from their highs, so on this measure the bottlenecks don't look priced in.`;
 }
 
+export type Bubble = { x: number; y: number; r: number };
+
+/* Lays out a bubble chart's bubbles, biggest first: each keeps its y and moves sideways, at most `spread` from its own
+   x and inside [left, right], to the nearest spot that doesn't overlap a bubble already placed (or, where there is
+   none, the spot that overlaps least). Bubbles at the same x with close y values end up side by side. */
+export function beeswarm<T extends Bubble>(items: T[], spread: number, [left, right]: [number, number], gap = 2): (T & { cx: number })[] {
+  const placed: { cx: number; y: number; r: number }[] = [];
+  const xs = new Map<number, number>();
+  const order = items.map((item, index) => ({ item, index })).sort((a, b) => b.item.r - a.item.r || a.index - b.index);
+  for (const { item, index } of order) {
+    const lo = Math.max(item.x - spread, left + item.r);
+    const hi = Math.max(lo, Math.min(item.x + spread, right - item.r));
+    const home = Math.min(hi, Math.max(lo, item.x));
+    const overlap = (cx: number) =>
+      placed.reduce((sum, other) => sum + Math.max(0, item.r + other.r + gap - Math.hypot(cx - other.cx, item.y - other.y)), 0);
+    let best = home;
+    let least = overlap(home);
+    for (let step = 1; least > 0 && step <= hi - lo; step += 1) {
+      for (const cx of [home - step, home + step]) {
+        if (cx < lo || cx > hi) continue;
+        const amount = overlap(cx);
+        /* Ties (to rounding) go to the left, so mirror-image spots don't flip with floating-point noise. */
+        if (amount < least - 1e-6) [best, least] = [cx, amount];
+        if (least === 0) break;
+      }
+    }
+    placed.push({ cx: best, y: item.y, r: item.r });
+    xs.set(index, best);
+  }
+  return items.map((item, index) => ({ ...item, cx: xs.get(index)! }));
+}
+
 /* ---------- Treemap ---------- */
 
 export type Rect = { x: number; y: number; w: number; h: number };
