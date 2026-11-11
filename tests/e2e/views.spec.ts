@@ -240,6 +240,9 @@ test("Sid Search keeps Pitt Pirates links on its Robotics section and plays matc
     "2017 Raleigh District, Final 3 · YouTube · Team2059Archive"
   ]);
   await expect(robotics.getByRole("link", { name: "Gemini at the World Championship" })).toHaveAttribute("href", "https://www.youtube.com/watch?v=23Ge6Ods51A");
+  /* Each match record link ends its video's snippet rather than taking a line of its own. */
+  await expect(robotics.locator(".se-video .se-result__snippet").getByRole("link", { name: "Match record on The Blue Alliance" })).toHaveCount(2);
+  await expect(robotics.locator(".se-video").first().getByRole("link", { name: "Match record on The Blue Alliance" })).toHaveAttribute("href", "https://www.thebluealliance.com/match/2017roe_qm14");
   await robotics.getByRole("button", { name: "Play 2017 Houston Championship, Roebling Qualification 14" }).click();
   const player = robotics.locator(".se-video").first().locator("iframe");
   await expect(player).toHaveAttribute("src", "https://www.youtube-nocookie.com/embed/23Ge6Ods51A?autoplay=1&rel=0");

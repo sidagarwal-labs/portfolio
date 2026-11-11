@@ -275,7 +275,7 @@ html.se-booting { overflow: hidden; }
 .se-subhead { margin: 28px 0 12px; font-size: 18px; font-weight: 500; line-height: 1.35; }
 
 /* Robotics */
-.se-team { padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.se-team { padding: 18px 20px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
 
 .se-team__head { display: flex; align-items: center; gap: 16px; }
 
@@ -285,9 +285,9 @@ html.se-booting { overflow: hidden; }
 
 .se-team__head p { margin-top: 2px; color: var(--muted); font-size: 14.5px; line-height: 1.4; }
 
-.se-team__about { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--se-body); font-size: 15px; line-height: 1.6; }
+.se-team__about { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--se-body); font-size: 15px; line-height: 1.6; }
 
-.se-team__stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 14px 0 0; padding: 0; list-style: none; }
+.se-team__stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
 
 .se-team__stats li { display: grid; align-content: start; gap: 1px; min-width: 0; padding: 8px 12px; border-radius: 10px; background: #f6f8fb; }
 
@@ -295,16 +295,16 @@ html.se-booting { overflow: hidden; }
 
 .se-team__stats span { color: var(--muted); font-size: 12.5px; line-height: 1.35; }
 
-.se-team .se-panel__actions { margin-top: 14px; }
+.se-team .se-panel__actions { margin-top: 12px; }
 
 /* One row per season under a single shared source line; robot, result, and chips flow together. */
 .se-results--seasons { gap: 0; margin-top: 10px; border-top: 1px solid var(--line); }
 
-.se-season { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.se-season { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); }
 
-.se-season__year { color: var(--muted); font-family: var(--se-mono); font-size: 14px; font-weight: 600; line-height: 24px; }
+.se-season__year { color: var(--muted); font-family: var(--se-mono); font-size: 14px; font-weight: 600; line-height: 22px; }
 
-.se-season__body { min-width: 0; color: var(--se-body); font-size: 14.5px; line-height: 24px; }
+.se-season__body { min-width: 0; color: var(--se-body); font-size: 14.5px; line-height: 22px; }
 
 .se-season h4, .se-season__result { display: inline; margin: 0; }
 
@@ -363,7 +363,7 @@ html.se-booting { overflow: hidden; }
 
 .se-video .se-result__snippet { margin-top: 4px; font-size: 14.5px; }
 
-.se-video__record { display: inline-block; margin-top: 6px; font-size: 14px; }
+.se-video__record { white-space: nowrap; }
 
 .se-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 32px; margin: 0; padding: 0; list-style: none; }
 
@@ -478,8 +478,10 @@ html.se-booting { overflow: hidden; }
   .se-chrome { gap: 8px; padding: 0 140px 0 10px; }
   .se-chrome__dots { display: none; }
   .se-chrome__address { padding: 0 10px; font-size: 12px; }
-  .se-team { padding: 16px; }
+  .se-team { padding: 14px 16px; }
   .se-team__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .se-team__stats li { padding: 6px 10px; }
+  .se-team__stats strong { font-size: 18px; }
   .se-season { grid-template-columns: 40px minmax(0, 1fr); gap: 10px; }
   .se-season__year { font-size: 13px; }
   /* Phones swipe through the photos and featured notes sideways; the next card peeks in at the edge. */
@@ -490,15 +492,14 @@ html.se-booting { overflow: hidden; }
   /* The strip clips anything outside it, so focus rings are drawn inside the links. */
   .se-images a:focus-visible, .se-stories a:focus-visible { outline-offset: -2px; }
   /* The thumbnail sits beside the title and channel; the empty 1fr row absorbs any extra thumbnail height. */
-  .se-video { grid-template: "player title" auto "player meta" auto "player ." 1fr "text text" auto "record record" auto / 140px minmax(0, 1fr); gap: 0 12px; }
-  .se-video.is-playing { grid-template: "player" "title" "meta" "text" "record" / minmax(0, 1fr); }
+  .se-video { grid-template: "player title" auto "player meta" auto "player ." 1fr "text text" auto / 140px minmax(0, 1fr); gap: 0 12px; }
+  .se-video.is-playing { grid-template: "player" "title" "meta" "text" / minmax(0, 1fr); }
   .se-video__body { display: contents; }
   .se-video__player { grid-area: player; border-radius: 10px; }
   .se-video.is-playing .se-video__player { margin-bottom: 10px; }
   .se-video h4 { grid-area: title; font-size: 16px; }
   .se-video__meta { grid-area: meta; font-size: 13px; }
   .se-video .se-result__snippet { grid-area: text; margin-top: 8px; }
-  .se-video__record { grid-area: record; }
   .se-video__player__icon { width: 40px; height: 28px; border-radius: 8px; }
   .se-video__player__icon svg { width: 20px; height: 20px; }
   .se-links { grid-template-columns: minmax(0, 1fr); gap: 12px; }

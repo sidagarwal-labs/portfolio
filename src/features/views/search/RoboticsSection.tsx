@@ -64,8 +64,10 @@ function VideoResult({ match }: { match: FeaturedMatch }) {
       <div className="se-video__body">
         <h4><a className="se-result__title" href={youtubeWatchUrl(match.id)}>{match.title}</a></h4>
         <p className="se-video__meta">{match.event} · YouTube · {match.publisher}</p>
-        <p className="se-result__snippet"><span className="se-kind">{match.result}</span> {match.description}</p>
-        <a className="se-video__record" href={match.record}>Match record on The Blue Alliance</a>
+        <p className="se-result__snippet">
+          <span className="se-kind">{match.result}</span> {match.description}{" "}
+          <a className="se-video__record" href={match.record}>Match record on The Blue Alliance</a>
+        </p>
       </div>
     </li>
   );
