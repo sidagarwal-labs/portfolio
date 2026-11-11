@@ -887,6 +887,29 @@ test("Markets converts Samsung's won figures and fills in what the sheet is stil
   await expect(page.locator(".mk-detail .mk-stats__note")).toHaveCount(0);
 });
 
+test("the Markets status line names three companies still calculating and counts the rest", async ({ page }) => {
+  /* The sheet as published while it recalculates prices for the given companies. */
+  const pricesCalculating = (symbols: string) =>
+    stackSheet.replace(new RegExp(`^(${symbols})(,.*?,\\d+),\\$[\\d.]+,`, "gm"), "$1$2,Loading...,");
+  const status = page.locator(".mk-status");
+
+  /* MSFT is at two levels but is one company. */
+  await page.unroute(stackCsv);
+  await page.route(stackCsv, (route) => route.fulfill(csvResponse(pricesCalculating("NVDA|AMD|VRT|MSFT|SNOW"))));
+  await page.goto("./markets");
+  await expect(status).toHaveAttribute("data-source", "live");
+  await expect(status).toContainText(
+    "The sheet was still calculating some figures for NVDA, AMD, VRT and 2 more companies; the saved snapshot's values stand in where it has them."
+  );
+
+  /* "and 1 more" would be no shorter than the name, so four are all named. */
+  await page.unroute(stackCsv);
+  await page.route(stackCsv, (route) => route.fulfill(csvResponse(pricesCalculating("NVDA|AMD|VRT|MSFT"))));
+  await page.reload();
+  await expect(status).toHaveAttribute("data-source", "live");
+  await expect(status).toContainText("The sheet was still calculating some figures for NVDA, AMD, VRT and MSFT;");
+});
+
 test("Insights segments, levels, and tiles open their companies in the Stack tab", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.setViewportSize({ width: 1440, height: 900 });
