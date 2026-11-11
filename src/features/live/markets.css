@@ -173,14 +173,34 @@
 .mk-explainer__source { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; }
 
 /* Charts */
-.mk-chart { width: 100%; min-width: 0; }
+.mk-chart { position: relative; width: 100%; min-width: 0; }
 .mk-readout { max-width: 780px; margin: 0 0 12px !important; padding: 10px 14px; border-left: 3px solid var(--ink); background: var(--live-soft); font-size: 14px; }
 .mk-scatter { display: block; max-width: 100%; overflow: visible; font-family: var(--live-sans); }
 .mk-axis line { stroke: color-mix(in srgb, var(--line) 80%, transparent); }
 .mk-axis text, .mk-axis__x { fill: var(--muted); font-size: 11px; }
 .mk-axis__title { fill: var(--muted); font-size: 12px; font-weight: 600; }
+.mk-dot { cursor: default; outline: none; transition: opacity .15s; }
 .mk-dot circle { fill: color-mix(in srgb, var(--layer) 28%, #fff); fill-opacity: .9; stroke: var(--layer); stroke-width: 1.5; }
 .mk-dot text { fill: var(--ink); font-size: 10px; font-weight: 700; pointer-events: none; }
+.mk-scatter[data-active] .mk-dot:not([data-active]) { opacity: .4; }
+.mk-dot[data-active] circle { fill: color-mix(in srgb, var(--layer) 45%, #fff); fill-opacity: 1; stroke-width: 2.5; }
+.mk-dot:focus-visible circle { stroke: var(--ink); stroke-width: 3; }
+.mk-scatter__ring { fill: none; stroke: var(--layer); stroke-opacity: .45; stroke-width: 2; pointer-events: none; }
+
+/* The priced-in chart's details: an overlay kept inside the chart, which never takes the pointer. */
+.mk-tip { position: absolute; z-index: 2; width: min(264px, 100%); padding: 10px 12px; border: 1px solid var(--line); border-top: 3px solid var(--layer); border-radius: 10px; color: var(--ink); background: var(--paper); box-shadow: 0 6px 20px color-mix(in srgb, var(--ink) 16%, transparent); font-size: 12px; line-height: 1.4; pointer-events: none; }
+.mk-tip p { margin: 0 !important; }
+.mk-tip__title { font-size: 14px; font-weight: 700; }
+.mk-tip__layer { color: var(--muted); }
+.mk-tip__notes { display: grid; gap: 3px; margin: 7px 0 0; padding: 0; list-style: none; }
+.mk-tip__notes li { display: flex; align-items: baseline; gap: 6px; }
+.mk-tip__notes .mk-badge { flex: none; }
+.mk-tip__stats { display: grid; gap: 2px; margin: 8px 0 0; padding-top: 7px; border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.mk-tip__stats div { display: flex; justify-content: space-between; gap: 10px; }
+.mk-tip__stats dt { color: var(--muted); }
+.mk-tip__stats dd { min-width: 0; margin: 0; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.mk-tip__stats [data-stat="companies"] { display: grid; gap: 0; }
+.mk-tip__stats [data-stat="companies"] dd { font-weight: 500; text-align: left; }
 
 .mk-pairs { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
 .mk-pairs li { display: grid; grid-template-columns: minmax(110px, 180px) minmax(0, 1fr); gap: 2px 14px; align-items: center; }
@@ -223,6 +243,10 @@
   .mk-pairs li { grid-template-columns: minmax(0, 1fr); }
   .mk-pairs__text { grid-column: 1; }
   .mk-treemap__layers { margin-left: 0; }
+  .mk-tip { padding: 8px 10px; font-size: 11.5px; line-height: 1.35; }
+  .mk-tip__title { font-size: 13px; }
+  .mk-tip__notes { margin-top: 5px; }
+  .mk-tip__stats { margin-top: 6px; padding-top: 5px; }
   .mk-preview { padding: 12px; }
   .mk-preview__head { flex-wrap: wrap; align-items: flex-start; }
   .mk-preview__price { justify-items: start; }
@@ -237,5 +261,5 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mk-capex__seg { transition: none; }
+  .mk-capex__seg, .mk-dot { transition: none; }
 }

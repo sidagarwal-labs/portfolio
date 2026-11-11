@@ -92,6 +92,66 @@ export function pricedInReadout(points: PricedPoint[]) {
     : `${lead} The tightest layers have fallen further from their highs, so on this measure the bottlenecks don't look priced in.`;
 }
 
+export type Bubble = { x: number; y: number; r: number };
+
+/* Lays out a bubble chart's bubbles. Each keeps its y and moves sideways, at most `spread` from its own x and inside
+   [left, right]. Biggest first, each goes to the nearest spot that doesn't overlap a bubble already placed (or, where
+   there is none, the spot that overlaps least); then any bubbles still overlapping push each other apart, within
+   their ranges, until they clear. Bubbles at the same x with close y values end up side by side. */
+export function beeswarm<T extends Bubble>(items: T[], spread: number, [left, right]: [number, number], gap = 2): (T & { cx: number })[] {
+  const lo = items.map((item) => Math.max(item.x - spread, left + item.r));
+  const hi = items.map((item, index) => Math.max(lo[index], Math.min(item.x + spread, right - item.r)));
+  const cx: number[] = [];
+  const placed: number[] = [];
+  const order = items.map((_, index) => index).sort((a, b) => items[b].r - items[a].r || a - b);
+  for (const index of order) {
+    const item = items[index];
+    const home = Math.min(hi[index], Math.max(lo[index], item.x));
+    const overlap = (x: number) =>
+      placed.reduce((sum, other) => sum + Math.max(0, item.r + items[other].r + gap - Math.hypot(x - cx[other], item.y - items[other].y)), 0);
+    let best = home;
+    let least = overlap(home);
+    for (let step = 1; least > 0 && step <= hi[index] - lo[index]; step += 1) {
+      for (const x of [home - step, home + step]) {
+        if (x < lo[index] || x > hi[index]) continue;
+        const amount = overlap(x);
+        /* Ties (to rounding) go to the left, so mirror-image spots don't flip with floating-point noise. */
+        if (amount < least - 1e-6) [best, least] = [x, amount];
+        if (least === 0) break;
+      }
+    }
+    cx[index] = best;
+    placed.push(index);
+  }
+  /* A bubble placed early can block one placed later; nudging both sideways usually makes room for each. */
+  const move = (index: number, by: number) => {
+    const next = Math.min(hi[index], Math.max(lo[index], cx[index] + by));
+    const moved = Math.abs(next - cx[index]);
+    cx[index] = next;
+    return moved;
+  };
+  for (let round = 0, moved = true; moved && round < 200; round += 1) {
+    moved = false;
+    for (let a = 0; a < items.length; a += 1) {
+      for (let b = a + 1; b < items.length; b += 1) {
+        const need = items[a].r + items[b].r + gap;
+        const dy = Math.abs(items[a].y - items[b].y);
+        if (dy >= need) continue;
+        const dx = cx[b] - cx[a];
+        const short = Math.sqrt(need * need - dy * dy) - Math.abs(dx);
+        if (short <= 1e-6) continue;
+        const side = dx < 0 ? -1 : 1;
+        /* Each moves half the way; where one is at the end of its range, the other makes up the rest. */
+        const first = move(a, -side * short / 2);
+        const second = move(b, side * (short - first));
+        const third = move(a, -side * (short - first - second));
+        if (first + second + third > 1e-6) moved = true;
+      }
+    }
+  }
+  return items.map((item, index) => ({ ...item, cx: cx[index] }));
+}
+
 /* ---------- Treemap ---------- */
 
 export type Rect = { x: number; y: number; w: number; h: number };

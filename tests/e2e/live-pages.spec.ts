@@ -471,7 +471,7 @@ test("the Markets Insights tab shows the research notes' seven views, each with 
   await expect(pricedIn.getByTestId("priced-in-readout")).toHaveText(
     "The very-high bottleneck levels sit a median 10.0% below their 52-week highs, against 37.5% for the other ranked levels. The tightest layers are trading closer to their highs, which fits the market pricing in the bottlenecks."
   );
-  await expect(pricedIn.getByRole("img", { name: /^Bottleneck tightness against median distance from the 52-week high/ })).toBeVisible();
+  await expect(pricedIn.getByRole("group", { name: /^Bottleneck tightness against median distance from the 52-week high/ })).toBeVisible();
   await expect(pricedIn.locator(".mk-caveat")).toContainText("not a causal claim");
   await pricedIn.locator("summary", { hasText: "Data table" }).click();
   const pricedTable = pricedIn.getByRole("table");
@@ -504,6 +504,160 @@ test("the Markets Insights tab shows the research notes' seven views, each with 
   expect(await historyLength(page)).toBe(entries);
 });
 
+/* The priced-in chart's bubbles, and the details box that shows a level's notes, prices, and companies. */
+function pricedInChart(page: Page) {
+  const chart = page.locator("#mk-insight-priced-in .mk-chart");
+  const tip = chart.getByTestId("priced-in-tip");
+  return {
+    chart,
+    tip,
+    bubble: (level: number) => chart.locator(`.mk-dot[data-level="${level}"]`),
+    expectDetails: async (title: string, layer: string, notes: string[], stats: string[]) => {
+      await expect(tip).toBeVisible();
+      await expect(tip.locator(".mk-tip__title")).toHaveText(title);
+      await expect(tip.locator(".mk-tip__layer")).toHaveText(layer);
+      await expect(tip.locator(".mk-tip__notes li")).toHaveText(notes);
+      await expect(tip.locator(".mk-tip__stats dt")).toHaveText(["Median from 52-week high", "Combined market cap", "Companies"]);
+      await expect(tip.locator(".mk-tip__stats dd")).toHaveText(stats);
+    },
+    /* The details box sits wholly inside the chart, and off the bubble it describes. */
+    expectInsideChart: async (level: number) => {
+      const [outer, inner, dot] = await Promise.all([
+        chart.boundingBox(),
+        tip.boundingBox(),
+        chart.locator(`.mk-dot[data-level="${level}"] circle`).boundingBox()
+      ]);
+      expect(inner!.x).toBeGreaterThanOrEqual(outer!.x - 0.5);
+      expect(inner!.y).toBeGreaterThanOrEqual(outer!.y - 0.5);
+      expect(inner!.x + inner!.width).toBeLessThanOrEqual(outer!.x + outer!.width + 0.5);
+      expect(inner!.y + inner!.height).toBeLessThanOrEqual(outer!.y + outer!.height + 0.5);
+      const overlapX = Math.min(inner!.x + inner!.width, dot!.x + dot!.width) - Math.max(inner!.x, dot!.x);
+      const overlapY = Math.min(inner!.y + inner!.height, dot!.y + dot!.height) - Math.max(inner!.y, dot!.y);
+      expect(overlapX <= 0 || overlapY <= 0, `the details for L${level} cover its bubble`).toBe(true);
+    }
+  };
+}
+
+test("hovering over or focusing a priced-in bubble shows that level's details, and Escape puts them away", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("./markets?tab=insights");
+  await expect(page.locator(".mk-status")).toHaveAttribute("data-source", "live");
+  const { chart, tip, bubble, expectDetails, expectInsideChart } = pricedInChart(page);
+  /* L5 has no prices in the sample sheet, so only L1 and L8 are plotted. */
+  await expect(chart.locator(".mk-dot")).toHaveCount(2);
+  await expect(tip).toHaveCount(0);
+  for (const level of [1, 8]) await expect(bubble(level)).toHaveAttribute("tabindex", "0");
+  await expect(chart.getByRole("img", { name: /^L8 Cooling/ })).toHaveAccessibleName(
+    "L8 Cooling, Data center layer. Tightness: Very high (Deployable accelerator systems). Median -10.0% from the 52-week high. " +
+    "Combined market cap $34B. Companies: VRT."
+  );
+
+  /* Hovering over a bubble shows its level's details beside it, and highlights it against the others. */
+  await bubble(8).hover();
+  await expectDetails("L8 · Cooling", "Data center layer", ["Very high Deployable accelerator systems"], ["-10.0%", "$34B", "VRT"]);
+  await expect(tip.locator(".mk-badge")).toHaveText(["Very high"]);
+  await expect(bubble(8)).toHaveAttribute("data-active", "true");
+  await expect(bubble(1)).not.toHaveAttribute("data-active");
+  await expect(bubble(1)).toHaveCSS("opacity", "0.4");
+  await expect(bubble(8)).toHaveCSS("opacity", "1");
+  await expectInsideChart(8);
+  await page.mouse.move(4, 4);
+  await expect(tip).toHaveCount(0);
+  await expect(bubble(1)).toHaveCSS("opacity", "1");
+
+  /* Moving from one bubble to another swaps the details. */
+  await bubble(1).hover();
+  await expect(tip.locator(".mk-tip__title")).toHaveText("L1 · Designing");
+  await bubble(8).hover();
+  await expect(tip.locator(".mk-tip__title")).toHaveText("L8 · Cooling");
+  await page.mouse.move(4, 4);
+  await expect(tip).toHaveCount(0);
+
+  /* From the keyboard: focus shows the details, Escape hides them without moving focus, and Tab moves on. */
+  await bubble(1).focus();
+  await expectDetails("L1 · Designing", "Chips layer", ["High GPU arithmetic"], ["-37.5%", "$3.85T", "NVDA, AMD"]);
+  await expect(bubble(1)).toHaveAttribute("data-active", "true");
+  await expectInsideChart(1);
+  await page.keyboard.press("Escape");
+  await expect(tip).toHaveCount(0);
+  await expect(bubble(1)).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(bubble(8)).toBeFocused();
+  await expect(tip.locator(".mk-tip__title")).toHaveText("L8 · Cooling");
+  await page.keyboard.press("Shift+Tab");
+  await expect(bubble(1)).toBeFocused();
+  await expect(tip.locator(".mk-tip__title")).toHaveText("L1 · Designing");
+  await bubble(1).blur();
+  await expect(tip).toHaveCount(0);
+});
+
+test.describe("on a touch screen", () => {
+  test.use({ hasTouch: true });
+
+  test("tapping a priced-in bubble shows its details inside a phone-width chart, and another tap puts them away", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width: 320, height: 720 });
+    await page.goto("./markets?tab=insights");
+    await expect(page.locator(".mk-status")).toHaveAttribute("data-source", "live");
+    const { tip, bubble, expectDetails, expectInsideChart } = pricedInChart(page);
+    await bubble(1).scrollIntoViewIfNeeded();
+
+    await bubble(1).tap();
+    await expectDetails("L1 · Designing", "Chips layer", ["High GPU arithmetic"], ["-37.5%", "$3.85T", "NVDA, AMD"]);
+    await expectInsideChart(1);
+    expect(await horizontalOverflow(page)).toBe(0);
+    await bubble(8).tap();
+    await expectDetails("L8 · Cooling", "Data center layer", ["Very high Deployable accelerator systems"], ["-10.0%", "$34B", "VRT"]);
+    await expectInsideChart(8);
+    expect(await horizontalOverflow(page)).toBe(0);
+
+    /* A second tap on the same bubble, or a tap anywhere else, puts the details away. */
+    await bubble(8).tap();
+    await expect(tip).toHaveCount(0);
+    await bubble(1).tap();
+    await expect(tip).toBeVisible();
+    await page.getByTestId("priced-in-readout").tap();
+    await expect(tip).toHaveCount(0);
+  });
+});
+
+test("the priced-in bubbles fit their labels and keep apart at every width", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  /* The saved snapshot has eight ranked levels with prices, four of them very high. */
+  await page.unroute(stackCsv);
+  await page.route(stackCsv, (route) => route.abort());
+  const { chart, bubble, expectInsideChart } = pricedInChart(page);
+  for (const width of [320, 390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("./markets?tab=insights");
+    await expect(page.locator(".mk-status")).toHaveAttribute("data-source", "snapshot");
+    await expect(chart.locator(".mk-dot")).toHaveCount(8);
+    const dots = await chart.locator(".mk-dot").evaluateAll((groups) => groups.map((group) => {
+      const circle = group.querySelector("circle")!;
+      const label = group.querySelector("text")!;
+      return {
+        level: group.getAttribute("data-level"),
+        x: circle.cx.baseVal.value,
+        y: circle.cy.baseVal.value,
+        r: circle.r.baseVal.value,
+        label: label.getBBox().width
+      };
+    }));
+    for (const [index, dot] of dots.entries()) {
+      expect(dot.label, `L${dot.level}'s label at ${width}px`).toBeLessThanOrEqual(2 * dot.r - 4);
+      for (const other of dots.slice(index + 1)) {
+        expect(Math.hypot(dot.x - other.x, dot.y - other.y), `L${dot.level} and L${other.level} at ${width}px`).toBeGreaterThanOrEqual(dot.r + other.r);
+      }
+    }
+    for (const level of [10, 9]) {
+      await bubble(level).focus();
+      await expectInsideChart(level);
+    }
+    expect(await horizontalOverflow(page), `${width}px`).toBe(0);
+  }
+});
+
 test("Markets Insights leaves out a market cap too large to be billions of dollars and names the company", async ({ page }) => {
   await page.unroute(stackCsv);
   await page.route(stackCsv, (route) => route.fulfill(csvResponse([stackSheet, skhyInWon].join("\r\n"))));
@@ -527,8 +681,8 @@ test("Markets Insights leaves out a market cap too large to be billions of dolla
   /* The won figure doesn't swamp the market-cap shares: they match the sheet without SKHY. */
   const shares = page.locator("#mk-insight-capex-vs-cap");
   await shares.locator("summary", { hasText: "Data table" }).click();
-  await expect(shares.getByRole("table").locator("tbody td:nth-child(3)")).toHaveText(["71.7%", "0.0%", "0.0%", "0.6%", "27.7%"]);
-});
+  await expect(shares.getByRole("table").locator("tbody td:nth-child(3)")).  toHaveText(["71.7%", "0.0%", "0.0%", "0.6%", "27.7%"]);
+  });
 
 test("Insights segments, levels, and tiles open their companies in the Stack tab", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
