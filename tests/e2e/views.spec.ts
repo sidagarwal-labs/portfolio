@@ -192,23 +192,57 @@ test("Sid Search keeps Pitt Pirates links on its Robotics section and plays matc
 
   const team = robotics.getByRole("article", { name: "Pitt Pirates" });
   await expect(team).toContainText("FRC Team 2642");
-  await expect(team).toContainText("2013-2018");
-  await expect(team).toContainText("Team captain in 2017");
-  await expect(team).toContainText("5 official events");
-  await expect(team).toContainText("2014, 2016, 2017, 2018");
+  await expect(team.getByRole("list", { name: "Team highlights" }).getByRole("listitem")).toHaveText([
+    "6 seasons, 2013-2018", "5 official event wins", "4 FIRST Championships", "2017 captain, and a mentor"
+  ]);
+  /* Robot names and Championship years live in the season timeline, not the card. */
+  await expect(team).not.toContainText("Ashley Whippet");
+  await expect(team).not.toContainText("2014, 2016");
   await expect(team.getByRole("link", { name: "The Blue Alliance" })).toHaveAttribute("href", "https://www.thebluealliance.com/team/2642/history");
 
-  const seasons = robotics.locator(".se-results--seasons .se-result__title");
-  await expect(seasons).toHaveText(["2013 season: Ashley Whippet", "2014 season: JoJo", "2016 season: Excalibot", "2017 season: Gemini", "2018 season: Riptide"]);
-  await expect(seasons.nth(3)).toHaveAttribute("href", "https://www.thebluealliance.com/team/2642/2017");
+  /* The seasons are a compact timeline: one row each, under one shared The Blue Alliance source line. */
+  const seasons = robotics.locator(".se-results--seasons > li");
+  await expect(seasons).toHaveCount(5);
+  await expect(seasons.locator(".se-season__year")).toHaveText(["2013", "2014", "2016", "2017", "2018"]);
+  await expect(seasons.getByRole("link")).toHaveText(["2013 season: Ashley Whippet", "2014 season: JoJo", "2016 season: Excalibot", "2017 season: Gemini", "2018 season: Riptide"]);
+  await expect(seasons.nth(3).getByRole("link")).toHaveAttribute("href", "https://www.thebluealliance.com/team/2642/2017");
+  await expect(seasons.nth(0).getByRole("heading", { level: 4 })).toHaveText("2013 season: Ashley Whippet");
+  await expect(seasons.nth(3).locator(".se-season__result")).toHaveText(
+    "Pitt County and Raleigh district wins, the North Carolina State Championship Chairman's Award, and Raleigh's Industrial Design Award. Third in the district points standings."
+  );
+  await expect(seasons.nth(3).getByRole("list", { name: "2017 highlights" }).getByRole("listitem")).toHaveText(["2 event wins", "FIRST Championship", "My captain season"]);
+  const shared = robotics.locator(".se-source", { hasText: "The Blue Alliance" });
+  await expect(shared).toHaveCount(1);
+  await expect(shared.locator(".se-source__url")).toHaveText("thebluealliance.com › team › 2642");
+  const rows = await seasons.evaluateAll((items) => items.map((item) => {
+    const [year, title] = [item.querySelector(".se-season__year")!, item.querySelector("a")!].map((element) => element.getBoundingClientRect());
+    return { height: item.getBoundingClientRect().height, sameLine: Math.abs(year.top - title.top) < 4 && year.right < title.left };
+  }));
+  expect(rows.every((row) => row.sameLine), "year and robot share a line").toBe(true);
+  expect(rows[0].height, "a one-line result fits one row").toBeLessThan(50);
+  await expect(robotics.locator(".se-links")).toContainText("The Pickup Line (2015)");
 
   const images = robotics.locator(".se-image");
   await expect(images).toHaveCount(3);
+  /* Desktop keeps the photos in one row of three, so the list isn't a scroll strip or a tab stop. */
+  const photoTops = await images.evaluateAll((figures) => figures.map((figure) => Math.round(figure.getBoundingClientRect().top)));
+  expect(new Set(photoTops).size).toBe(1);
+  await expect(robotics.getByRole("list", { name: "Robotics photos" })).not.toHaveAttribute("tabindex");
   await images.last().scrollIntoViewIfNeeded();
   await expect(images.getByText("Photo unavailable")).toHaveCount(3);
   await expect(images.first().getByRole("link", { name: /^Original photo: Gemini/ })).toHaveAttribute("href", /pittpiratesrobotics\.com\/wp-content\/uploads\//);
 
   await expect(robotics.locator(".se-video iframe")).toHaveCount(0);
+  /* The channel is part of each video's meta line; the shared The Blue Alliance line is the section's only source block. */
+  await expect(robotics.locator(".se-source")).toHaveCount(1);
+  await expect(robotics.locator(".se-video__meta")).toHaveText([
+    "2017 Houston Championship, Roebling Qualification 14 · YouTube · Felix Giffard",
+    "2017 Raleigh District, Final 3 · YouTube · Team2059Archive"
+  ]);
+  await expect(robotics.getByRole("link", { name: "Gemini at the World Championship" })).toHaveAttribute("href", "https://www.youtube.com/watch?v=23Ge6Ods51A");
+  /* Each match record link ends its video's snippet rather than taking a line of its own. */
+  await expect(robotics.locator(".se-video .se-result__snippet").getByRole("link", { name: "Match record on The Blue Alliance" })).toHaveCount(2);
+  await expect(robotics.locator(".se-video").first().getByRole("link", { name: "Match record on The Blue Alliance" })).toHaveAttribute("href", "https://www.thebluealliance.com/match/2017roe_qm14");
   await robotics.getByRole("button", { name: "Play 2017 Houston Championship, Roebling Qualification 14" }).click();
   const player = robotics.locator(".se-video").first().locator("iframe");
   await expect(player).toHaveAttribute("src", "https://www.youtube-nocookie.com/embed/23Ge6Ods51A?autoplay=1&rel=0");
@@ -230,6 +264,7 @@ test("Sid Search keeps Pitt Pirates links on its Robotics section and plays matc
 });
 
 test("Sid Search's Robotics section fits a phone", async ({ page }) => {
+  await page.route("https://www.youtube-nocookie.com/embed/**", (route) => route.fulfill({ contentType: "text/html", body: "<p>Player</p>" }));
   await page.route(/^https:\/\/(i\.ytimg\.com|www\.pittpiratesrobotics\.com)\//, (route) => route.abort());
   await page.emulateMedia({ reducedMotion: "reduce" });
   for (const width of [390, 320]) {
@@ -237,17 +272,43 @@ test("Sid Search's Robotics section fits a phone", async ({ page }) => {
     await page.goto("./?view=search#robotics");
     await expect(page.locator("#robotics")).toBeInViewport();
     const section = await page.locator("#robotics").boundingBox();
-    for (const box of [".se-team", ".se-video__player", ".se-image__thumb", ".se-links a"]) {
+    for (const box of [".se-team", ".se-video__player", ".se-images", ".se-links a"]) {
       for (const element of await page.locator(`#robotics ${box}`).all()) {
         const rect = await element.boundingBox();
         expect(rect!.x + rect!.width, `${box} at ${width}px`).toBeLessThanOrEqual(section!.x + section!.width + 0.5);
       }
     }
-    /* Videos stack above their details, and the lead photo spans the image grid. */
+    /* Phones put each video's thumbnail beside its title instead of stacking it full width. */
     const video = await page.locator("#robotics .se-video__player").first().boundingBox();
-    expect(video!.width).toBeGreaterThan(section!.width - 1);
-    const lead = await page.locator("#robotics .se-image__thumb").first().boundingBox();
-    expect(lead!.width).toBeGreaterThan(section!.width - 1);
+    const title = await page.locator("#robotics .se-video h4").first().boundingBox();
+    expect(video!.width).toBeLessThan(160);
+    expect(title!.x).toBeGreaterThan(video!.x + video!.width);
+    expect(Math.abs(title!.y - video!.y)).toBeLessThan(4);
+
+    /* The photos become a swipe strip that scrolls inside itself and can be scrolled from the keyboard. */
+    const strip = page.getByRole("list", { name: "Robotics photos" });
+    await expect(strip).toHaveAttribute("tabindex", "0");
+    const thumbs = await page.locator("#robotics .se-image__thumb").evaluateAll((links) => links.map((link) => link.getBoundingClientRect()).map(({ top, width }) => ({ top: Math.round(top), width })));
+    expect(new Set(thumbs.map((thumb) => thumb.top)).size, `photos share a row at ${width}px`).toBe(1);
+    expect(thumbs[0].width).toBeGreaterThan(section!.width * 0.6);
+    expect(thumbs[0].width).toBeLessThan(section!.width - 24);
+    expect(await strip.evaluate((list) => list.scrollWidth > list.clientWidth)).toBe(true);
+    const scrolled = await strip.evaluate((list) => list.scrollLeft);
+    await strip.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect.poll(() => strip.evaluate((list) => list.scrollLeft)).toBeGreaterThan(scrolled);
+    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
+  }
+
+  /* A playing match still widens to the full column. */
+  const second = page.locator("#robotics .se-video").nth(1);
+  await second.getByRole("button", { name: "Play 2017 Raleigh District, Final 3" }).click();
+  await expect(second.locator("iframe")).toHaveAttribute("src", "https://www.youtube-nocookie.com/embed/VzhwTXsN2io?autoplay=1&rel=0");
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    const section = await page.locator("#robotics").boundingBox();
+    const player = await second.locator(".se-video__player").boundingBox();
+    expect(player!.width, `playing video at ${width}px`).toBeGreaterThan(section!.width - 1);
     expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
   }
 });
@@ -274,6 +335,9 @@ test("Sid Search's Library mixes books and podcasts and filters them by topic in
   await expect(items).toHaveCount(27);
   await expect(library.locator(".se-badge", { hasText: "Book" })).toHaveCount(11);
   await expect(library.locator(".se-badge", { hasText: "Podcast" })).toHaveCount(16);
+  const shelfTops = await items.evaluateAll((cards) => cards.slice(0, 6).map((card) => Math.round(card.getBoundingClientRect().top)));
+  expect(new Set(shelfTops.slice(0, 5)).size, "five covers per row on desktop").toBe(1);
+  expect(shelfTops[5]).toBeGreaterThan(shelfTops[0]);
 
   const nvidia = items.filter({ hasText: "The Nvidia Way" });
   await expect(nvidia.getByRole("link")).toHaveAttribute("href", /^https:\/\/www\.amazon\.com\//);
@@ -282,6 +346,13 @@ test("Sid Search's Library mixes books and podcasts and filters them by topic in
   await expect(acquired.getByRole("link")).toHaveAttribute("href", "https://open.spotify.com/show/7Fj0XEuUQLUqoMZQdsLXqp");
   await expect(acquired.locator(".se-badge")).toHaveText("Podcast");
   await expect(acquired).toContainText("Ben Gilbert & David Rosenthal");
+  /* The kind badge sits on the cover's corner, so the title follows the cover directly. */
+  const [art, badge, title] = await Promise.all([".se-art", ".se-badge", ".se-shelf__title"].map((selector) => acquired.locator(selector).boundingBox()));
+  expect(badge!.x).toBeGreaterThanOrEqual(art!.x);
+  expect(badge!.y).toBeGreaterThanOrEqual(art!.y);
+  expect(badge!.x + badge!.width).toBeLessThanOrEqual(art!.x + art!.width);
+  expect(badge!.y + badge!.height).toBeLessThanOrEqual(art!.y + art!.height / 3);
+  expect(title!.y - (art!.y + art!.height)).toBeLessThan(12);
 
   const ai = library.getByRole("button", { name: /^AI, search & chips/ });
   await ai.click();
@@ -331,15 +402,65 @@ test("Sid Search's Library fits a phone", async ({ page }) => {
     await page.goto("./?view=search#library");
     await expect(page.locator("#library")).toBeInViewport();
     const section = await page.locator("#library").boundingBox();
-    for (const box of [".se-filters button", ".se-shelf > li", ".se-section__head .se-button"]) {
+    for (const box of [".se-filters", ".se-shelf > li", ".se-section__head .se-button"]) {
       for (const element of await page.locator(`#library ${box}`).all()) {
         const rect = await element.boundingBox();
         expect(rect!.x + rect!.width, `${box} at ${width}px`).toBeLessThanOrEqual(section!.x + section!.width + 0.5);
       }
     }
-    const tops = await page.locator("#library .se-shelf > li").evaluateAll((cards) => cards.slice(0, 3).map((card) => Math.round(card.getBoundingClientRect().top)));
-    expect(tops[0], `two covers per row at ${width}px`).toBe(tops[1]);
-    expect(tops[2]).toBeGreaterThan(tops[0]);
+    const tops = await page.locator("#library .se-shelf > li").evaluateAll((cards) => cards.slice(0, 4).map((card) => Math.round(card.getBoundingClientRect().top)));
+    expect(new Set(tops.slice(0, 3)).size, `three covers per row at ${width}px`).toBe(1);
+    expect(tops[3]).toBeGreaterThan(tops[0]);
+
+    /* The topic chips stay on one row and scroll inside it; picking a chip still filters. */
+    const filters = page.getByRole("group", { name: "Library topics" });
+    const chips = filters.getByRole("button");
+    const chipTops = await chips.evaluateAll((buttons) => buttons.map((button) => Math.round(button.getBoundingClientRect().top)));
+    expect(new Set(chipTops).size, `chips share a row at ${width}px`).toBe(1);
+    expect(await filters.evaluate((group) => group.scrollWidth > group.clientWidth)).toBe(true);
+    const science = filters.getByRole("button", { name: /^Science & how to think/ });
+    await science.click();
+    await expect(science).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("#library .se-shelf > li")).toHaveCount(5);
+    await expect(science).toBeInViewport({ ratio: 0.9 });
+    expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
+    await chips.first().click();
+    await expect(page.locator("#library .se-shelf > li")).toHaveCount(27);
+  }
+});
+
+test("Sid Search's Writing section leaves no empty essay list and swipes its featured notes on phones", async ({ page }) => {
+  await page.route("https://api.github.com/**", (route) => route.abort());
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("./?view=search#writing");
+  const writing = page.locator("#writing");
+  const notes = page.getByRole("list", { name: "Featured research notes" });
+  await expect(notes.getByRole("link")).toHaveCount(3);
+  await expect(notes).not.toHaveAttribute("tabindex");
+
+  /* The essay list only renders when there are essays, so it can't leave a gap above the Insights line. */
+  const essays = await writing.locator('a[href^="/writing/"]:not(details a)').count();
+  await expect(writing.locator(".se-results--essays")).toHaveCount(essays > 0 ? 1 : 0);
+  if (essays === 0) {
+    const gap = await writing.evaluate((section) => section.querySelector(".se-insights")!.getBoundingClientRect().top - section.querySelector(".se-stories")!.getBoundingClientRect().bottom);
+    expect(gap).toBeLessThanOrEqual(25);
+  }
+
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expect(notes).toHaveAttribute("tabindex", "0");
+    const section = await writing.boundingBox();
+    const strip = await notes.boundingBox();
+    expect(strip!.x + strip!.width, `notes strip at ${width}px`).toBeLessThanOrEqual(section!.x + section!.width + 0.5);
+    const cards = await notes.getByRole("link").evaluateAll((links) => links.map((link) => link.getBoundingClientRect()).map(({ top, width }) => ({ top: Math.round(top), width })));
+    expect(new Set(cards.map((card) => card.top)).size, `notes share a row at ${width}px`).toBe(1);
+    expect(cards[0].width).toBeLessThan(section!.width - 24);
+    expect(await notes.evaluate((list) => list.scrollWidth > list.clientWidth)).toBe(true);
+    await notes.evaluate((list) => { list.scrollLeft = 0; });
+    await notes.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect.poll(() => notes.evaluate((list) => list.scrollLeft)).toBeGreaterThan(0);
     expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
   }
 });

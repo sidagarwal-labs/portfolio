@@ -8,6 +8,7 @@ import {
   type AiStackRow, type AiStackState, type FxRates
 } from "./aiStack";
 import { beeswarm, bucketShares, levelName, pricedInPoints, pricedInReadout, splitCaps, treemap, type PricedPoint } from "./stackInsights";
+import { placeTip, useWidth, type TipPlace } from "./chart";
 
 const noteDay = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 const notesAsOf = `Notes as of ${noteDay.format(new Date(`${NOTES_AS_OF}T12:00:00Z`))}`;
@@ -22,21 +23,6 @@ function pricesAsOf({ source, asOf, loading }: AiStackState) {
   if (loading) return `Prices: saved snapshot from ${formatDay(asOf)} while the live sheet loads`;
   if (source === "live") return `Prices: live tracker sheet, read ${formatDay(asOf)} at ${formatTime(asOf)}`;
   return `Prices: saved snapshot from ${formatDay(asOf)} (the live sheet couldn't be reached)`;
-}
-
-function useWidth<T extends HTMLElement>() {
-  const ref = useRef<T>(null);
-  const [width, setWidth] = useState(0);
-  useLayoutEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-    setWidth(element.clientWidth);
-    if (!("ResizeObserver" in window)) return;
-    const observer = new ResizeObserver(([entry]) => setWidth(Math.round(entry.contentRect.width)));
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-  return [ref, width] as const;
 }
 
 type InsightProps = {
@@ -289,26 +275,6 @@ const pricedSummary = (point: PricedPoint) =>
   `Tightness: ${point.bottlenecks.map((item) => `${tightnessLabel(item.tightness)} (${item.name})`).join("; ")}. ` +
   `Median ${formatPercent(point.medianFromHigh, 1)} from the 52-week high. Combined market cap ${formatMarketCap(point.marketCap)}. ` +
   `Companies: ${point.symbols.join(", ")}.`;
-
-type Box = { left: number; top: number; right: number; bottom: number };
-type TipPlace = { side: "above" | "below" | "right" | "left"; left: number; top: number };
-
-/* Puts a tooltip of the given size beside a bubble (both relative to the chart): above, below, right, or left, the
-   first that fits inside the chart; otherwise above or below, whichever has more room, kept inside the chart. */
-function placeTip(dot: Box, width: number, height: number, chartWidth: number, chartHeight: number, gap = 8): TipPlace {
-  const clamp = (value: number, max: number) => Math.min(Math.max(0, value), Math.max(0, max));
-  const left = clamp((dot.left + dot.right) / 2 - width / 2, chartWidth - width);
-  const top = clamp((dot.top + dot.bottom) / 2 - height / 2, chartHeight - height);
-  const above = dot.top - gap - height;
-  const below = dot.bottom + gap;
-  if (above >= 0) return { side: "above", left, top: above };
-  if (below + height <= chartHeight) return { side: "below", left, top: below };
-  if (dot.right + gap + width <= chartWidth) return { side: "right", left: dot.right + gap, top };
-  if (dot.left - gap - width >= 0) return { side: "left", left: dot.left - gap - width, top };
-  return dot.top >= chartHeight - dot.bottom
-    ? { side: "above", left, top: clamp(above, chartHeight - height) }
-    : { side: "below", left, top: clamp(below, chartHeight - height) };
-}
 
 function PricedIn({ rows, prices }: { rows: AiStackRow[]; prices: string }) {
   const points = useMemo(() => pricedInPoints(rows), [rows]);

@@ -4,14 +4,18 @@ import snapshot from "../../content/generated/leaderboards.json";
 export type ArenaRow = { rank: number; model: string; org: string; license: string; score: number; lower: number; upper: number; votes: number };
 export type BenchmarkRow = { model: string; org: string; score: number; error?: number; low?: number; high?: number; date: string; detail?: string };
 export type Benchmark = { id: string; name: string; blurb: string; unit: "percent" | "index" | "minutes"; href: string; rows: BenchmarkRow[] };
+/* One ECI-scored release; low and high bound Epoch's credible interval when it has one. */
+export type LabRelease = { model: string; date: string; eci: number; low?: number; high?: number };
+export type Lab = { org: string; models: LabRelease[] };
 type Snapshot = {
   generatedAt: string;
   arena: { publishedAt: string; boards: Record<string, ArenaRow[]> };
-  epoch: { fetchedAt: string; benchmarks: Benchmark[] };
+  epoch: { fetchedAt: string; benchmarks: Benchmark[]; labs?: Lab[] };
 };
 
 /* Written by scripts/update-leaderboards.mjs (refreshed by the daily deploy). */
 export const leaderboards = snapshot as Snapshot;
+export const labs = leaderboards.epoch.labs ?? [];
 
 export const arenaBoards = [
   { id: "text_style_control", label: "Text", name: "Text Arena", path: "text", blurb: "Chat and reasoning prompts, with style control so longer or more heavily formatted answers do not win on presentation alone." },

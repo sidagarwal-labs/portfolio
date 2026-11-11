@@ -2,7 +2,8 @@
 /*
  * Refreshes src/content/generated/leaderboards.json from two public sources:
  *   - LMArena's leaderboard dataset on Hugging Face (also fetched live in the browser; this is the fallback snapshot)
- *   - Epoch AI's benchmark hub export (CC BY 4.0; no CORS, so it can only be fetched at build time)
+ *   - Epoch AI's benchmark hub export (CC BY 4.0; no CORS, so it can only be fetched at build time): the top rows per
+ *     benchmark, plus every ECI-scored release grouped by lab for the Labs chart
  * A source that fails keeps its previous snapshot, and the script still exits 0 so a deploy never breaks.
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -14,6 +15,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outFile = resolve(root, "src/content/generated/leaderboards.json");
 const epochZip = "https://epoch.ai/data/benchmark_data.zip";
 const arenaRows = "https://datasets-server.huggingface.co/rows?dataset=lmarena-ai/leaderboard-dataset&split=latest&offset=0&length=100&config=";
+const eciFile = "epoch_capabilities_index/eci_scores.csv";
 const topN = 10;
 const arenaTopN = 20;
 
@@ -21,7 +23,7 @@ export const arenaBoards = ["text_style_control", "webdev", "vision_style_contro
 
 const benchmarks = [
   {
-    id: "eci", name: "Epoch Capabilities Index", file: "epoch_capabilities_index/eci_scores.csv", kind: "eci", unit: "index",
+    id: "eci", name: "Epoch Capabilities Index", file: eciFile, kind: "eci", unit: "index",
     blurb: "Epoch's composite score that stitches dozens of benchmarks onto one scale, so models tested on different suites can be compared.",
     href: "https://epoch.ai/benchmarks/eci"
   },
@@ -171,6 +173,72 @@ function collectBenchmark(def, files, models) {
   };
 }
 
+export const minLabReleases = 3;
+
+/* Lower-cased Epoch organization names mapped onto one name per lab. */
+const labAliases = new Map([
+  ["google", "Google DeepMind"], ["google deepmind", "Google DeepMind"], ["deepmind", "Google DeepMind"],
+  ["google research", "Google DeepMind"], ["google brain", "Google DeepMind"],
+  ["meta", "Meta"], ["meta ai", "Meta"], ["facebook", "Meta"], ["facebook ai", "Meta"], ["facebook ai research", "Meta"], ["fair", "Meta"],
+  ["alibaba", "Alibaba"], ["alibaba cloud", "Alibaba"], ["qwen", "Alibaba"], ["qwen team", "Alibaba"],
+  ["mistral", "Mistral"], ["mistral ai", "Mistral"],
+  ["moonshot", "Moonshot AI"], ["moonshot ai", "Moonshot AI"],
+  ["z.ai", "Z.ai"], ["z.ai (zhipu ai)", "Z.ai"], ["zhipu", "Z.ai"], ["zhipu ai", "Z.ai"],
+  ["microsoft", "Microsoft"], ["microsoft research", "Microsoft"], ["nvidia", "NVIDIA"],
+  ["technology innovation institute", "TII"], ["xai", "xAI"], ["openai", "OpenAI"], ["anthropic", "Anthropic"], ["deepseek", "DeepSeek"]
+]);
+
+/* A few Epoch rows have no organization; these model families have only ever come from one lab. */
+const familyLabs = [
+  [/^(gpt|chatgpt|o\d+\b)/i, "OpenAI"], [/^claude/i, "Anthropic"], [/^(gemini|gemma|palm\b)/i, "Google DeepMind"],
+  [/^llama/i, "Meta"], [/^grok/i, "xAI"], [/^deepseek/i, "DeepSeek"], [/^(qwen|codeqwen|qwq)/i, "Alibaba"],
+  [/^(mistral|mixtral|ministral|codestral|devstral|magistral)/i, "Mistral"], [/^kimi/i, "Moonshot AI"]
+];
+
+/* Joint releases list several organizations ("Google DeepMind,Google"); the first is the lead lab. */
+export function labName(organization, model = "") {
+  const lead = (organization ?? "").split(",").map((part) => part.trim()).find(Boolean);
+  if (lead) return labAliases.get(lead.toLowerCase()) ?? lead;
+  return familyLabs.find(([pattern]) => pattern.test(model.trim()))?.[1] ?? "";
+}
+
+/* Every ECI-scored release grouped by lab, oldest first; labs with fewer than `minReleases` releases are dropped and
+   the rest are ordered by their best score. `metadata` maps model_group to model_metadata.csv rows, which fill in a
+   missing organization or release date. */
+export function groupLabs(rows, metadata = new Map(), minReleases = minLabReleases) {
+  const labs = new Map();
+  for (const row of rows) {
+    const eci = num(row.eci);
+    const model = row["Display name"] || row.Model;
+    const meta = metadata.get(row.Model) ?? metadata.get(model);
+    const date = row.date || meta?.date || "";
+    const org = labName(row.Organization || meta?.organization, model);
+    if (eci === undefined || !model || !org || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    const release = Object.fromEntries(Object.entries({
+      model, date, eci: round(eci, 1), low: round(num(row.eci_ci_low), 1), high: round(num(row.eci_ci_high), 1)
+    }).filter(([, value]) => value !== undefined));
+    const releases = labs.get(org) ?? new Map();
+    const seen = releases.get(model);
+    if (!seen || release.eci > seen.eci) releases.set(model, release);
+    labs.set(org, releases);
+  }
+  return [...labs]
+    .map(([org, releases]) => ({
+      org,
+      models: [...releases.values()].sort((a, b) => a.date.localeCompare(b.date) || a.eci - b.eci || a.model.localeCompare(b.model))
+    }))
+    .filter((lab) => lab.models.length >= minReleases)
+    .sort((a, b) => Math.max(...b.models.map((item) => item.eci)) - Math.max(...a.models.map((item) => item.eci)) || a.org.localeCompare(b.org));
+}
+
+/* Pretty-printed like the rest of the snapshot, but with each lab release on one line to keep the file small. */
+export function formatSnapshot(snapshot) {
+  const marker = "\u0000";
+  const line = (item) => `{ ${Object.entries(item).map(([key, value]) => `${JSON.stringify(key)}: ${JSON.stringify(value)}`).join(", ")} }`;
+  const text = JSON.stringify(snapshot, (key, value) => key === "models" && Array.isArray(value) ? value.map((item) => marker + line(item)) : value, 2);
+  return `${text.replace(/"\\u0000((?:[^"\\]|\\.)*)"/g, (_, inner) => JSON.parse(`"${inner}"`))}\n`;
+}
+
 async function fetchWithTimeout(url, ms = 30_000) {
   const response = await fetch(url, { signal: AbortSignal.timeout(ms), headers: { "User-Agent": "agarwal-labs.com leaderboard refresh" } });
   if (!response.ok) throw new Error(`${url} -> HTTP ${response.status}`);
@@ -180,7 +248,8 @@ async function fetchWithTimeout(url, ms = 30_000) {
 async function refreshEpoch(previous) {
   try {
     const files = readZip(Buffer.from(await (await fetchWithTimeout(epochZip, 60_000)).arrayBuffer()));
-    const models = new Map(parseCsv(files.get("model_metadata.csv")?.() ?? "").filter((row) => row.model_version).map((row) => [row.model_version, row]));
+    const metadata = parseCsv(files.get("model_metadata.csv")?.() ?? "");
+    const models = new Map(metadata.filter((row) => row.model_version).map((row) => [row.model_version, row]));
     const result = [];
     for (const def of benchmarks) {
       try {
@@ -192,7 +261,20 @@ async function refreshEpoch(previous) {
       }
     }
     for (const item of result) console.log(`epoch: ${item.id} #1 ${item.rows[0].model} ${item.rows[0].score}`);
-    return { fetchedAt: new Date().toISOString(), benchmarks: result };
+    let labs;
+    try {
+      const eci = files.get(eciFile);
+      if (!eci) throw new Error(`Missing ${eciFile}`);
+      const groups = new Map();
+      for (const row of metadata) if (row.model_group && !groups.has(row.model_group)) groups.set(row.model_group, row);
+      labs = groupLabs(parseCsv(eci()), groups);
+      if (!labs.length) throw new Error("no labs");
+      console.log(`epoch: ${labs.length} labs, ${labs.reduce((sum, lab) => sum + lab.models.length, 0)} ECI releases`);
+    } catch (error) {
+      labs = previous?.labs;
+      console.warn(`epoch: labs kept previous snapshot (${error.message})`);
+    }
+    return { fetchedAt: new Date().toISOString(), benchmarks: result, ...(labs ? { labs } : {}) };
   } catch (error) {
     console.warn(`epoch: kept previous snapshot (${error.message})`);
     return previous;
@@ -242,7 +324,7 @@ async function main() {
   const [arena, epoch] = await Promise.all([refreshArena(previous.arena), refreshEpoch(previous.epoch)]);
   const next = { generatedAt: new Date().toISOString(), arena, epoch };
   await mkdir(dirname(outFile), { recursive: true });
-  await writeFile(outFile, `${JSON.stringify(next, null, 2)}\n`);
+  await writeFile(outFile, formatSnapshot(next));
   console.log(`wrote ${outFile}`);
 }
 

@@ -215,6 +215,69 @@
 .lb-more { margin-top: 12px !important; font-size: 14px; }
 .lb-more a { display: inline-flex; align-items: center; gap: 6px; }
 
+/* Labs: ECI release by release */
+.lb-labs__bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
+.lb-labs__hint { margin: 0 !important; color: var(--muted); font-size: 13px; }
+.lb-labs__hint[hidden], .lb-labs__view[hidden] { display: none; }
+.lb-toggle { flex: none; margin-left: auto; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); background: #fff; cursor: pointer; font: inherit; font-size: 13px; }
+.lb-toggle:hover:not(:disabled) { border-color: var(--muted); }
+.lb-toggle[aria-pressed="true"] { border-color: var(--ink); color: var(--paper); background: var(--ink); }
+.lb-toggle:disabled { color: var(--muted); cursor: default; opacity: .6; }
+.lb-chart { position: relative; width: 100%; min-width: 0; }
+.lb-chart__svg { display: block; max-width: 100%; overflow: visible; font-family: var(--live-sans); touch-action: manipulation; }
+.lb-axis line { stroke: color-mix(in srgb, var(--line) 80%, transparent); }
+.lb-axis .lb-axis__tick { stroke: var(--line); }
+.lb-axis text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.lb-axis text[data-year] { fill: var(--ink); font-weight: 600; }
+.lb-axis .lb-axis__title { fill: var(--muted); font-size: 12px; font-weight: 600; }
+.lb-frontier { fill: none; stroke: var(--ink); stroke-opacity: .55; stroke-width: 1.5; stroke-dasharray: 5 4; pointer-events: none; }
+.lb-series, .lb-points { transition: opacity .15s; }
+.lb-series[data-dim], .lb-points[data-dim] { opacity: .16; }
+.lb-whisker { stroke: var(--lab); stroke-opacity: .2; stroke-width: 2; stroke-linecap: round; }
+.lb-series:not([data-dim]) .lb-whisker { stroke-opacity: .26; }
+.lb-line { fill: none; stroke: var(--lab); stroke-width: 2.25; stroke-linejoin: round; stroke-linecap: round; }
+.lb-point { fill: #fff; stroke: var(--lab); stroke-width: 1.5; cursor: pointer; outline: none; }
+.lb-point[data-record] { fill: var(--lab); }
+.lb-point:focus-visible { stroke: var(--ink); stroke-width: 2.5; }
+.lb-ring { fill: none; stroke: var(--lab); stroke-opacity: .5; stroke-width: 2; pointer-events: none; }
+
+/* A release's details: an overlay kept inside the chart, which only takes the pointer once pinned. */
+.lb-tip { position: absolute; z-index: 2; width: min(250px, 100%); padding: 10px 12px; border: 1px solid var(--line); border-top: 3px solid var(--lab); border-radius: 10px; color: var(--ink); background: var(--paper); box-shadow: 0 6px 20px color-mix(in srgb, var(--ink) 16%, transparent); font-size: 12px; line-height: 1.4; pointer-events: none; }
+.lb-tip[data-pinned] { pointer-events: auto; }
+.lb-tip p { margin: 0 !important; }
+.lb-tip__title { font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+.lb-tip__lab { color: var(--muted); }
+.lb-tip__stats { display: grid; gap: 2px; margin: 7px 0 0; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.lb-tip__stats div { display: flex; justify-content: space-between; gap: 10px; }
+.lb-tip__stats dt { color: var(--muted); }
+.lb-tip__stats dd { margin: 0; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.lb-tip .lb-tip__note { margin-top: 6px !important; font-weight: 600; }
+.lb-tip__link { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 12px; }
+
+.lb-swatch { display: inline-block; flex: none; width: 10px; height: 10px; margin-right: 6px; border-radius: 50%; background: var(--lab); }
+.lb-legend { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 0; padding: 0; list-style: none; }
+.lb-legend li { display: inline-flex; align-items: center; min-width: 0; padding: 0 0 0 8px; border: 1px solid var(--line); border-radius: 999px; background: #fff; }
+.lb-legend li[data-lit] { border-color: var(--lab); box-shadow: inset 0 0 0 1px var(--lab); }
+.lb-legend input, .lb-legend__frontier input { width: 15px; height: 15px; margin: 0; accent-color: var(--lab, var(--ink)); cursor: pointer; }
+.lb-legend button { display: inline-flex; align-items: center; min-width: 0; padding: 5px 12px 5px 7px; border: 0; border-radius: 999px; color: var(--ink); background: none; cursor: pointer; font: inherit; font-size: 13px; }
+.lb-legend button[aria-pressed="true"] { text-decoration: underline; text-decoration-color: var(--lab); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.lb-legend li:not([data-on]) button { color: var(--muted); }
+.lb-legend li:not([data-on]) .lb-swatch { opacity: .35; }
+.lb-legend__extra { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 10px; }
+.lb-legend__frontier { display: inline-flex; align-items: center; gap: 7px; margin-right: auto; color: var(--muted); font-size: 13px; cursor: pointer; }
+.lb-legend__dash { width: 22px; border-top: 2px dashed color-mix(in srgb, var(--ink) 60%, transparent); }
+.lb-legend__extra .lb-toggle { margin-left: 0; }
+.lb-labs__scroll { max-height: min(560px, 75vh); overflow: auto; border: 1px solid var(--line); border-radius: 10px; overscroll-behavior: contain; }
+.lb-labs__scroll:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.lb-labs__table thead th { position: sticky; top: 0; z-index: 1; background: #fff; box-shadow: inset 0 -1px 0 var(--line); }
+.lb-labs__table .lb-model span { overflow-wrap: anywhere; }
+.lb-labs__group th { padding-top: 16px; border-top: 0; font-size: 15px; font-weight: 700; }
+.lb-labs__group .lb-swatch { vertical-align: 0; }
+.lb-labs__group small { margin-left: 6px; color: var(--muted); font-size: 12px; font-weight: 400; }
+.lb-labs__eci { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.lb-labs__eci strong { display: block; font-weight: 600; }
+.lb-labs__eci small { color: var(--muted); font-size: 12px; }
+
 @media (max-width: 960px) {
   .mk-grid { grid-template-columns: 1fr; }
   .lt-hero__grid { grid-template-columns: 1fr; }
@@ -241,6 +304,12 @@
   .lb-source { text-align: left; }
   .lb-optional { display: none; }
   .lb-score { width: 45%; min-width: 0; }
+  .lb-labs__bar { flex-wrap: wrap; }
+  .lb-tip { padding: 8px 10px; font-size: 11.5px; line-height: 1.35; }
+  .lb-tip__title { font-size: 13px; }
+  .lb-legend button { padding: 4px 10px 4px 6px; font-size: 12.5px; }
+  .lb-labs__table th, .lb-labs__table td { padding: 8px 6px; }
+  .lb-labs__eci { white-space: normal; }
 }
 
 @media (max-width: 480px) {

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-09T21:46:58.885Z",
+  "generatedAt": "2026-11-11T04:08:56.019Z",
   "arena": {
     "publishedAt": "2026-11-08",
     "boards": {
@@ -1016,7 +1016,7 @@
     }
   },
   "epoch": {
-    "fetchedAt": "2026-11-09T21:46:58.870Z",
+    "fetchedAt": "2026-11-11T04:08:56.017Z",
     "benchmarks": [
       {
         "id": "eci",
@@ -1026,84 +1026,84 @@
         "href": "https://epoch.ai/benchmarks/eci",
         "rows": [
           {
+            "model": "Claude Fable 5.2",
+            "org": "Anthropic",
+            "score": 174.2,
+            "low": 170.1,
+            "high": 178.8,
+            "date": "2026-11-09"
+          },
+          {
             "model": "GPT-6 Astra",
             "org": "OpenAI",
-            "score": 169.1,
+            "score": 169.2,
             "low": 166.2,
-            "high": 172.3,
+            "high": 172.5,
             "date": "2026-09-03"
           },
           {
             "model": "GPT-6.1 Sol",
             "org": "OpenAI",
             "score": 168.9,
-            "low": 166,
+            "low": 165.9,
             "high": 172.2,
             "date": "2026-09-29"
           },
           {
             "model": "Claude Opus 5.5",
             "org": "Anthropic",
-            "score": 168.4,
-            "low": 165.5,
-            "high": 171.5,
+            "score": 168.7,
+            "low": 165.8,
+            "high": 171.9,
             "date": "2026-09-22"
           },
           {
             "model": "GPT-6.1 Terra",
             "org": "OpenAI",
-            "score": 167.8,
-            "low": 164.9,
-            "high": 171.2,
+            "score": 168.1,
+            "low": 165.1,
+            "high": 171.5,
             "date": "2026-10-26"
           },
           {
             "model": "Claude Fable 5.1",
             "org": "Anthropic",
-            "score": 166.9,
+            "score": 167,
             "low": 164.3,
-            "high": 169.8,
+            "high": 170.2,
             "date": "2026-09-01"
           },
           {
             "model": "Gemini 4 Argon",
             "org": "Google DeepMind",
-            "score": 166.4,
-            "low": 163.8,
-            "high": 169.4,
+            "score": 166.5,
+            "low": 163.9,
+            "high": 169.5,
             "date": "2026-09-30"
           },
           {
             "model": "Claude Sonnet 5.5",
             "org": "Anthropic",
-            "score": 166.2,
-            "low": 163.5,
-            "high": 169.2,
+            "score": 166.3,
+            "low": 163.7,
+            "high": 169.3,
             "date": "2026-09-28"
           },
           {
             "model": "Claude Opus 5",
             "org": "Anthropic",
-            "score": 164.4,
+            "score": 164.5,
             "low": 162,
-            "high": 167.2,
+            "high": 167.3,
             "date": "2026-07-24"
           },
           {
             "model": "Claude Fable 5",
             "org": "Anthropic",
-            "score": 164.2,
+            "score": 164.3,
             "low": 161.8,
-            "high": 166.9,
+            "high": 167,
             "date": "2026-06-09"
-          },
-          {
-            "model": "GPT-6 Sol",
-            "org": "OpenAI",
-            "score": 164.1,
-            "low": 161.6,
-            "high": 166.8,
-            "date": "2026-09-22"
           }
         ]
       },
@@ -1114,6 +1114,14 @@
         "unit": "percent",
         "href": "https://epoch.ai/benchmarks/gpqa-diamond",
         "rows": [
+          {
+            "model": "Gemini 4 Carbon",
+            "org": "Google DeepMind",
+            "score": 96.5,
+            "error": 1.2,
+            "date": "2026-10-28",
+            "detail": "high"
+          },
           {
             "model": "Gemini 4 Argon",
             "org": "Google DeepMind",
@@ -1184,14 +1192,6 @@
             "error": 1.5,
             "date": "2026-10-26",
             "detail": "max"
-          },
-          {
-            "model": "GPT-6 Sol",
-            "org": "OpenAI",
-            "score": 94.3,
-            "error": 1.5,
-            "date": "2026-09-22",
-            "detail": "max"
           }
         ]
       },
@@ -1243,6 +1243,14 @@
             "detail": "max"
           },
           {
+            "model": "Gemini 4 Carbon",
+            "org": "Google DeepMind",
+            "score": 90.5,
+            "error": 1.7,
+            "date": "2026-10-28",
+            "detail": "high"
+          },
+          {
             "model": "Claude Fable 5.1",
             "org": "Anthropic",
             "score": 90.2,
@@ -1273,14 +1281,6 @@
             "error": 1.9,
             "date": "2026-09-28",
             "detail": "max"
-          },
-          {
-            "model": "GPT-5.5 Pro",
-            "org": "OpenAI",
-            "score": 87.7,
-            "error": 1.9,
-            "date": "2026-04-23",
-            "detail": "xhigh"
           }
         ]
       },
@@ -1713,6 +1713,305 @@
             "date": "2025-12-17",
             "detail": "Junie CLI"
           }
+        ]
+      }
+    ],
+    "labs": [
+      {
+        "org": "Anthropic",
+        "models": [
+          { "model": "Claude 2", "date": "2023-07-11", "eci": 117.2, "low": 112.8, "high": 121.1 },
+          { "model": "Claude Instant", "date": "2023-08-09", "eci": 114.3, "low": 107.6, "high": 120.4 },
+          { "model": "Claude 3 Sonnet", "date": "2024-02-29", "eci": 119.5, "low": 115.4, "high": 123.3 },
+          { "model": "Claude 3 Opus", "date": "2024-02-29", "eci": 125.6, "low": 122.6, "high": 128.3 },
+          { "model": "Claude 3 Haiku", "date": "2024-03-07", "eci": 117.7, "low": 113.5, "high": 121.7 },
+          { "model": "Claude 3.5 Sonnet", "date": "2024-06-20", "eci": 130 },
+          { "model": "Claude 3.5 Haiku", "date": "2024-10-22", "eci": 125, "low": 121.7, "high": 128.1 },
+          { "model": "Claude 3.5 Sonnet (October 2024)", "date": "2024-10-22", "eci": 133.5, "low": 131.2, "high": 135.7 },
+          { "model": "Claude 3.7 Sonnet", "date": "2025-02-24", "eci": 141, "low": 139.4, "high": 142.5 },
+          { "model": "Claude Sonnet 4", "date": "2025-05-22", "eci": 141.8, "low": 140.3, "high": 143.3 },
+          { "model": "Claude Opus 4", "date": "2025-05-22", "eci": 142.9, "low": 141.3, "high": 144.5 },
+          { "model": "Claude Opus 4.1", "date": "2025-08-05", "eci": 144.8, "low": 143, "high": 146.5 },
+          { "model": "Claude Sonnet 4.5", "date": "2025-09-29", "eci": 147.6, "low": 146.2, "high": 149.1 },
+          { "model": "Claude Haiku 4.5", "date": "2025-10-15", "eci": 142.9, "low": 141.2, "high": 144.5 },
+          { "model": "Claude Opus 4.5", "date": "2025-11-24", "eci": 151.8, "low": 150.3, "high": 153.5 },
+          { "model": "Claude Opus 4.6", "date": "2026-02-05", "eci": 156.3, "low": 154.6, "high": 158.2 },
+          { "model": "Claude Sonnet 4.6", "date": "2026-02-17", "eci": 152.8, "low": 151.2, "high": 154.6 },
+          { "model": "Claude Opus 4.7", "date": "2026-04-16", "eci": 157.6, "low": 155.7, "high": 159.6 },
+          { "model": "Claude Opus 4.8", "date": "2026-05-28", "eci": 159.9, "low": 157.8, "high": 162.3 },
+          { "model": "Claude Fable 5", "date": "2026-06-09", "eci": 164.3, "low": 161.8, "high": 167 },
+          { "model": "Claude Sonnet 5", "date": "2026-06-30", "eci": 156.7, "low": 154.7, "high": 158.9 },
+          { "model": "Claude Opus 5", "date": "2026-07-24", "eci": 164.5, "low": 162, "high": 167.3 },
+          { "model": "Claude Fable 5.1", "date": "2026-09-01", "eci": 167, "low": 164.3, "high": 170.2 },
+          { "model": "Claude Opus 5.5", "date": "2026-09-22", "eci": 168.7, "low": 165.8, "high": 171.9 },
+          { "model": "Claude Sonnet 5.5", "date": "2026-09-28", "eci": 166.3, "low": 163.7, "high": 169.3 },
+          { "model": "Claude Haiku 5.5", "date": "2026-10-07", "eci": 160.3, "low": 158, "high": 162.7 },
+          { "model": "Claude Fable 5.2", "date": "2026-11-09", "eci": 174.2, "low": 170.1, "high": 178.8 }
+        ]
+      },
+      {
+        "org": "OpenAI",
+        "models": [
+          { "model": "GPT-4 (Mar 2023)", "date": "2023-03-14", "eci": 121.9, "low": 118.1, "high": 125.3 },
+          { "model": "GPT-3.5 Turbo (Jun 2023)", "date": "2023-06-13", "eci": 106.4, "low": 98.1, "high": 113.8 },
+          { "model": "GPT-4 (Jun 2023)", "date": "2023-06-13", "eci": 120.2, "low": 116.5, "high": 123.6 },
+          { "model": "GPT-3.5 Turbo (Nov 2023)", "date": "2023-11-06", "eci": 113, "low": 107.8, "high": 117.8 },
+          { "model": "GPT-3.5 Turbo (Jan 2024)", "date": "2024-01-25", "eci": 113.2, "low": 108.2, "high": 117.8 },
+          { "model": "GPT-4 Turbo (Nov 2023)", "date": "2024-01-25", "eci": 124.8, "low": 121.5, "high": 127.8 },
+          { "model": "GPT-4 Turbo (Apr 2024)", "date": "2024-04-09", "eci": 125.9, "low": 122.7, "high": 128.8 },
+          { "model": "GPT-4o (May 2024)", "date": "2024-05-13", "eci": 128.2, "low": 125.4, "high": 130.9 },
+          { "model": "GPT-4o mini", "date": "2024-07-18", "eci": 124, "low": 120.7, "high": 127 },
+          { "model": "GPT-4o (Aug 2024)", "date": "2024-08-06", "eci": 127.1, "low": 124.1, "high": 129.9 },
+          { "model": "o1-preview", "date": "2024-09-12", "eci": 133.9, "low": 131.4, "high": 136.2 },
+          { "model": "o1-mini", "date": "2024-09-12", "eci": 135.4, "low": 133.2, "high": 137.5 },
+          { "model": "GPT-4o (Nov 2024)", "date": "2024-11-20", "eci": 128.9, "low": 126.2, "high": 131.4 },
+          { "model": "o1", "date": "2024-12-17", "eci": 141.2, "low": 139.5, "high": 142.8 },
+          { "model": "o3-mini", "date": "2025-01-31", "eci": 140.7, "low": 138.9, "high": 142.3 },
+          { "model": "GPT-4.5", "date": "2025-02-27", "eci": 136.5, "low": 134.4, "high": 138.5 },
+          { "model": "GPT-4.1 nano", "date": "2025-04-14", "eci": 126.9, "low": 123.8, "high": 129.6 },
+          { "model": "GPT-4.1 mini", "date": "2025-04-14", "eci": 134.3, "low": 132.1, "high": 136.3 },
+          { "model": "GPT-4.1", "date": "2025-04-14", "eci": 136.2, "low": 134.2, "high": 138 },
+          { "model": "o4-mini", "date": "2025-04-16", "eci": 145.2, "low": 143.8, "high": 146.7 },
+          { "model": "o3", "date": "2025-04-16", "eci": 147, "low": 145.5, "high": 148.5 },
+          { "model": "o3-pro", "date": "2025-06-10", "eci": 147.4, "low": 145.6, "high": 149.3 },
+          { "model": "gpt-oss-20b", "date": "2025-08-05", "eci": 135, "low": 132.3, "high": 137.5 },
+          { "model": "gpt-oss-120b", "date": "2025-08-05", "eci": 140.2, "low": 138.3, "high": 142 },
+          { "model": "GPT-5 nano", "date": "2025-08-07", "eci": 139.2, "low": 137.2, "high": 141 },
+          { "model": "GPT-5 mini", "date": "2025-08-07", "eci": 146.1, "low": 144.5, "high": 147.6 },
+          { "model": "GPT-5", "date": "2025-08-07", "eci": 150 },
+          { "model": "GPT-5 Pro", "date": "2025-10-07", "eci": 151.2, "low": 149.3, "high": 153.2 },
+          { "model": "GPT-5.1", "date": "2025-11-13", "eci": 150.9, "low": 149.4, "high": 152.5 },
+          { "model": "GPT-5.2", "date": "2025-12-11", "eci": 154.4, "low": 152.8, "high": 156.2 },
+          { "model": "GPT-5.2 Pro", "date": "2025-12-11", "eci": 157.2, "low": 154.9, "high": 159.8 },
+          { "model": "GPT-5.4", "date": "2026-03-05", "eci": 157.8, "low": 155.9, "high": 160 },
+          { "model": "GPT-5.4 Pro", "date": "2026-03-05", "eci": 160.2, "low": 157.7, "high": 162.9 },
+          { "model": "GPT-5.4 Nano", "date": "2026-03-17", "eci": 146.4, "low": 144.7, "high": 148 },
+          { "model": "GPT-5.4 Mini", "date": "2026-03-17", "eci": 149.3, "low": 147.7, "high": 151.1 },
+          { "model": "GPT-5.5", "date": "2026-04-23", "eci": 160.1, "low": 158, "high": 162.4 },
+          { "model": "GPT-5.5 Pro", "date": "2026-04-23", "eci": 162.8, "low": 160, "high": 165.8 },
+          { "model": "GPT-5.6 Luna", "date": "2026-07-09", "eci": 156.8, "low": 154.9, "high": 158.8 },
+          { "model": "GPT-5.6 Terra", "date": "2026-07-09", "eci": 160.9, "low": 158.6, "high": 163.3 },
+          { "model": "GPT-5.6 Sol", "date": "2026-07-09", "eci": 163, "low": 160.7, "high": 165.6 },
+          { "model": "GPT-6 Astra", "date": "2026-09-03", "eci": 169.2, "low": 166.2, "high": 172.5 },
+          { "model": "GPT-6 Luna", "date": "2026-09-22", "eci": 156.5, "low": 154.6, "high": 158.6 },
+          { "model": "GPT-6 Sol", "date": "2026-09-22", "eci": 164, "low": 161.5, "high": 166.8 },
+          { "model": "GPT-6.1 Sol", "date": "2026-09-29", "eci": 168.9, "low": 165.9, "high": 172.2 },
+          { "model": "GPT-6.1 Terra", "date": "2026-10-26", "eci": 168.1, "low": 165.1, "high": 171.5 }
+        ]
+      },
+      {
+        "org": "Google DeepMind",
+        "models": [
+          { "model": "PaLM 2-S", "date": "2023-05-17", "eci": 94.6, "low": 81, "high": 106.4 },
+          { "model": "PaLM 2-M", "date": "2023-05-17", "eci": 98.7, "low": 86, "high": 110.2 },
+          { "model": "PaLM 2-L", "date": "2023-05-17", "eci": 114.1, "low": 100, "high": 129.4 },
+          { "model": "Gemma 2B", "date": "2024-02-21", "eci": 76.8, "low": 62.5, "high": 88.9 },
+          { "model": "Gemma 7B", "date": "2024-02-21", "eci": 103.6, "low": 95.9, "high": 110.3 },
+          { "model": "Gemini 1.5 Pro (May 2024)", "date": "2024-05-14", "eci": 125.4, "low": 122.1, "high": 128.5 },
+          { "model": "Gemini 1.5 Flash (May 2024)", "date": "2024-05-23", "eci": 120.5, "low": 116.5, "high": 124.2 },
+          { "model": "Gemma 2 9B", "date": "2024-06-24", "eci": 112.9, "low": 107, "high": 118 },
+          { "model": "Gemma 2 27B", "date": "2024-06-24", "eci": 118.7, "low": 114.4, "high": 122.5 },
+          { "model": "Gemini 1.5 Flash (Sep 2024)", "date": "2024-09-24", "eci": 127.2, "low": 124, "high": 130 },
+          { "model": "Gemini 1.5 Pro (Sept 2024)", "date": "2024-09-24", "eci": 130.4, "low": 127.7, "high": 132.9 },
+          { "model": "Gemini 2.0 Flash Thinking (Jan 2025)", "date": "2025-01-21", "eci": 133.7, "low": 130.7, "high": 136.5 },
+          { "model": "Gemini 2.0 Flash (Feb 2025)", "date": "2025-02-05", "eci": 134.1, "low": 131.7, "high": 136.2 },
+          { "model": "Gemini 2.0 Pro", "date": "2025-02-05", "eci": 135.3, "low": 132.4, "high": 137.9 },
+          { "model": "Gemma 3 27B", "date": "2025-03-12", "eci": 127.7, "low": 124.6, "high": 130.5 },
+          { "model": "Gemini 2.5 Pro (Mar 2025)", "date": "2025-03-31", "eci": 143.9, "low": 142, "high": 145.9 },
+          { "model": "Gemini 2.5 Flash (Apr 2025)", "date": "2025-04-17", "eci": 140.7, "low": 138.3, "high": 143 },
+          { "model": "Gemini 2.5 Pro (May 2025)", "date": "2025-05-06", "eci": 140.9, "low": 138.6, "high": 143.3 },
+          { "model": "Gemini 2.5 Flash (May 2025)", "date": "2025-05-20", "eci": 141.6, "low": 139.4, "high": 143.7 },
+          { "model": "Gemini 2.5 Pro (Jun 2025)", "date": "2025-06-05", "eci": 144.8, "low": 143.4, "high": 146.2 },
+          { "model": "Gemini 2.5 Flash-Lite (Jun 2025)", "date": "2025-06-17", "eci": 133.2, "low": 129.4, "high": 136.7 },
+          { "model": "Gemini 2.5 Flash (Jun 2025)", "date": "2025-06-17", "eci": 140.8, "low": 138.4, "high": 143.1 },
+          { "model": "Gemini 2.5 Flash (Sep 2025)", "date": "2025-09-25", "eci": 141.9, "low": 139.3, "high": 144.5 },
+          { "model": "Gemini 3 Pro", "date": "2025-11-18", "eci": 152.9, "low": 151.3, "high": 154.6 },
+          { "model": "Gemini 3 Flash", "date": "2025-12-17", "eci": 152.3, "low": 150.7, "high": 154 },
+          { "model": "Gemini 3.1 Pro", "date": "2026-02-19", "eci": 156.3, "low": 154.5, "high": 158.1 },
+          { "model": "Gemini 3.1 Flash-Lite", "date": "2026-03-03", "eci": 144.9, "low": 142.7, "high": 147.1 },
+          { "model": "Gemma 4 26B A4B", "date": "2026-04-02", "eci": 141.7, "low": 139.2, "high": 144.2 },
+          { "model": "Gemma 4 31B IT", "date": "2026-04-02", "eci": 144.2, "low": 141.8, "high": 146.8 },
+          { "model": "Gemini 3.5 Flash", "date": "2026-05-19", "eci": 155.2, "low": 153.4, "high": 157.2 },
+          { "model": "Gemini 3.5 Flash-Lite", "date": "2026-07-21", "eci": 145.6, "low": 144, "high": 147.2 },
+          { "model": "Gemini 3.6 Flash", "date": "2026-07-21", "eci": 155.2, "low": 153.3, "high": 157.2 },
+          { "model": "Gemini 3.7 Flash", "date": "2026-08-13", "eci": 158.4, "low": 156.4, "high": 160.6 },
+          { "model": "Gemini 3.8 Flash", "date": "2026-09-02", "eci": 158.7, "low": 156.6, "high": 160.9 },
+          { "model": "Gemini 4 Argon", "date": "2026-09-30", "eci": 166.5, "low": 163.9, "high": 169.5 }
+        ]
+      },
+      {
+        "org": "Meta",
+        "models": [
+          { "model": "LLaMA-7B", "date": "2023-02-24", "eci": 78.3, "low": 64.6, "high": 90.2 },
+          { "model": "LLaMA-13B", "date": "2023-02-24", "eci": 86.1, "low": 74.2, "high": 96.2 },
+          { "model": "LLaMA-33B", "date": "2023-02-24", "eci": 97.2, "low": 88, "high": 105 },
+          { "model": "LLaMA-65B", "date": "2023-02-24", "eci": 102.1, "low": 93.9, "high": 109.5 },
+          { "model": "Llama 2-7B", "date": "2023-07-18", "eci": 84.1, "low": 71.6, "high": 94.6 },
+          { "model": "Llama 2-34B", "date": "2023-07-18", "eci": 94.6, "low": 84.7, "high": 103.2 },
+          { "model": "Llama 2-13B", "date": "2023-07-18", "eci": 97.1, "low": 88, "high": 104.8 },
+          { "model": "Llama 2-70B", "date": "2023-07-18", "eci": 106, "low": 100, "high": 111.5 },
+          { "model": "Llama 3-8B", "date": "2024-04-18", "eci": 109.6, "low": 104.1, "high": 114.5 },
+          { "model": "Llama 3-70B", "date": "2024-04-18", "eci": 121.3, "low": 117.5, "high": 124.8 },
+          { "model": "Llama 3.1-8B", "date": "2024-07-23", "eci": 111.2, "low": 105.3, "high": 116.3 },
+          { "model": "Llama 3.1-70B", "date": "2024-07-23", "eci": 124.7, "low": 121.4, "high": 127.6 },
+          { "model": "Llama 3.1-405B", "date": "2024-07-23", "eci": 127.9, "low": 125, "high": 130.6 },
+          { "model": "Llama 3.2 90B", "date": "2024-09-24", "eci": 123, "low": 119.1, "high": 126.5 },
+          { "model": "Llama 3.3 70B", "date": "2024-12-06", "eci": 126.2, "low": 123.2, "high": 128.9 },
+          { "model": "Llama 4 Scout", "date": "2025-04-05", "eci": 127.7, "low": 124.8, "high": 130.4 },
+          { "model": "Llama 4 Maverick", "date": "2025-04-06", "eci": 132.1, "low": 129.8, "high": 134.3 },
+          { "model": "Muse Spark", "date": "2026-04-08", "eci": 153.1, "low": 151, "high": 155.4 },
+          { "model": "Muse Spark 1.1", "date": "2026-07-09", "eci": 154.8, "low": 152.3, "high": 157.6 },
+          { "model": "Muse Spark 1.2", "date": "2026-08-05", "eci": 155, "low": 152.7, "high": 157.5 },
+          { "model": "Muse Spark 1.3", "date": "2026-09-02", "eci": 158, "low": 155.9, "high": 160.3 },
+          { "model": "Muse Wonder", "date": "2026-10-12", "eci": 162, "low": 159.6, "high": 164.7 },
+          { "model": "Muse Spark Open", "date": "2026-10-15", "eci": 155.4, "low": 153.4, "high": 157.7 }
+        ]
+      },
+      {
+        "org": "Moonshot AI",
+        "models": [
+          { "model": "Kimi K2 (Jul 2025)", "date": "2025-07-12", "eci": 141.3, "low": 138.4, "high": 144 },
+          { "model": "Kimi K2 Thinking", "date": "2025-11-06", "eci": 145.5, "low": 143.7, "high": 147.4 },
+          { "model": "Kimi K2.5", "date": "2026-01-27", "eci": 148.8, "low": 147.3, "high": 150.3 },
+          { "model": "Kimi K2.6", "date": "2026-04-20", "eci": 151.5, "low": 149.8, "high": 153.4 },
+          { "model": "Kimi K2.7 Code", "date": "2026-06-12", "eci": 151.1, "low": 149.1, "high": 153.2 },
+          { "model": "Kimi K3", "date": "2026-07-16", "eci": 158.5, "low": 156.5, "high": 160.7 },
+          { "model": "Kimi K3.1 Pro", "date": "2026-10-23", "eci": 162, "low": 159.4, "high": 164.9 }
+        ]
+      },
+      {
+        "org": "DeepSeek",
+        "models": [
+          { "model": "DeepSeek Coder 6.7B", "date": "2023-11-02", "eci": 68.8, "low": 50.6, "high": 83.8 },
+          { "model": "DeepSeek Coder 33B", "date": "2023-11-02", "eci": 77.4, "low": 61.4, "high": 90.4 },
+          { "model": "DeepSeek-V2 (MoE-236B, May 2024)", "date": "2024-05-07", "eci": 120.8, "low": 114.1, "high": 127.5 },
+          { "model": "DeepSeek-Coder-V2-Lite-Base", "date": "2024-06-13", "eci": 100.1, "low": 89.8, "high": 109.1 },
+          { "model": "DeepSeek-V3", "date": "2024-12-26", "eci": 131.7, "low": 129.2, "high": 134.1 },
+          { "model": "DeepSeek-R1", "date": "2025-01-20", "eci": 138.7, "low": 136.7, "high": 140.4 },
+          { "model": "DeepSeek-V3 (Mar 2025)", "date": "2025-03-24", "eci": 135.2, "low": 133, "high": 137.3 },
+          { "model": "DeepSeek-R1 (May 2025)", "date": "2025-05-28", "eci": 140.8, "low": 139, "high": 142.5 },
+          { "model": "DeepSeek-V3.1", "date": "2025-08-21", "eci": 140.8, "low": 137.7, "high": 144 },
+          { "model": "DeepSeek-V3.2-Exp", "date": "2025-09-29", "eci": 144.4, "low": 142.1, "high": 146.7 },
+          { "model": "DeepSeek-V3.2", "date": "2025-12-01", "eci": 146.2, "low": 144.8, "high": 147.7 },
+          { "model": "DeepSeek-V4-Flash", "date": "2026-04-24", "eci": 146.9, "low": 143.6, "high": 150.2 },
+          { "model": "DeepSeek-V4-Pro", "date": "2026-04-24", "eci": 150.1, "low": 148.4, "high": 151.9 },
+          { "model": "DeepSeek V4 Flash 0731", "date": "2026-07-31", "eci": 154.4, "low": 152.5, "high": 156.4 },
+          { "model": "DeepSeek V4 Pro 0813", "date": "2026-08-13", "eci": 155.9, "low": 154, "high": 158 },
+          { "model": "DeepSeek V4.1 Flash", "date": "2026-09-09", "eci": 156.4, "low": 154.6, "high": 158.6 },
+          { "model": "DeepSeek V4.1 Flash 1017", "date": "2026-10-17", "eci": 159.3, "low": 157.1, "high": 161.9 }
+        ]
+      },
+      {
+        "org": "xAI",
+        "models": [
+          { "model": "Grok-2 (Dec 2024)", "date": "2024-12-12", "eci": 129.8, "low": 127, "high": 132.3 },
+          { "model": "Grok 3", "date": "2025-04-09", "eci": 137.5, "low": 135.6, "high": 139.3 },
+          { "model": "Grok-3 mini", "date": "2025-06-24", "eci": 139.9, "low": 138, "high": 141.7 },
+          { "model": "Grok 4", "date": "2025-07-09", "eci": 146.9, "low": 145.5, "high": 148.4 },
+          { "model": "Grok 4 Fast", "date": "2025-09-19", "eci": 144.3, "low": 142.2, "high": 146.3 },
+          { "model": "Grok 4.20", "date": "2026-02-17", "eci": 152.3, "low": 150.6, "high": 154.1 },
+          { "model": "Grok 4.3 Beta", "date": "2026-04-17", "eci": 150, "low": 148, "high": 152 },
+          { "model": "Grok 4.5", "date": "2026-07-08", "eci": 155.1, "low": 153.3, "high": 157.1 },
+          { "model": "Grok 4.6", "date": "2026-08-12", "eci": 157.9, "low": 155.9, "high": 160.1 },
+          { "model": "Grok 4.7", "date": "2026-09-21", "eci": 156.1, "low": 154.2, "high": 158.1 }
+        ]
+      },
+      {
+        "org": "Alibaba",
+        "models": [
+          { "model": "Qwen-14B", "date": "2023-09-24", "eci": 102.2, "low": 93.5, "high": 109.8 },
+          { "model": "Qwen-7B", "date": "2023-09-28", "eci": 89.9, "low": 78.5, "high": 99.4 },
+          { "model": "Qwen-1_8B", "date": "2023-11-30", "eci": 61.1, "low": 42.7, "high": 77.2 },
+          { "model": "CodeQwen1.5-7B", "date": "2024-04-15", "eci": 76.3, "low": 60.2, "high": 90 },
+          { "model": "Qwen2-72B", "date": "2024-06-07", "eci": 122.3, "low": 118.7, "high": 125.7 },
+          { "model": "Qwen2.5-Coder-0.5B", "date": "2024-09-18", "eci": 69.3, "low": 50.6, "high": 85.1 },
+          { "model": "Qwen2.5-Coder (1.5B)", "date": "2024-09-18", "eci": 90, "low": 77.3, "high": 100.8 },
+          { "model": "Qwen2.5-Coder-3B", "date": "2024-09-18", "eci": 97.5, "low": 84.3, "high": 109.2 },
+          { "model": "Qwen2.5-Coder (7B)", "date": "2024-09-18", "eci": 108, "low": 98.7, "high": 116.4 },
+          { "model": "Qwen2.5-Coder-14B", "date": "2024-09-18", "eci": 114, "low": 105.5, "high": 122.5 },
+          { "model": "Qwen2.5-Coder-32B", "date": "2024-09-18", "eci": 118.8, "low": 110.2, "high": 127.3 },
+          { "model": "Qwen2.5-72B", "date": "2024-09-19", "eci": 127.3, "low": 124.5, "high": 129.8 },
+          { "model": "Qwen2.5-Max", "date": "2025-01-25", "eci": 131.2, "low": 128.6, "high": 133.7 },
+          { "model": "QwQ-32B", "date": "2025-03-05", "eci": 136.5, "low": 133.6, "high": 139.3 },
+          { "model": "Qwen3-8B", "date": "2025-04-28", "eci": 132.2, "low": 129.1, "high": 135.1 },
+          { "model": "Qwen3-235B-A22B", "date": "2025-04-28", "eci": 138.4, "low": 136, "high": 140.8 },
+          { "model": "Qwen3-30B-A3B", "date": "2025-04-29", "eci": 134.2, "low": 131.3, "high": 136.9 },
+          { "model": "Qwen3-14B", "date": "2025-04-29", "eci": 136.2, "low": 133.5, "high": 138.7 },
+          { "model": "Qwen3-32B", "date": "2025-04-29", "eci": 137, "low": 134.5, "high": 139.3 },
+          { "model": "Qwen3-235B-A22B-Instruct (Jul 2025)", "date": "2025-07-25", "eci": 138.1, "low": 135.9, "high": 140.2 },
+          { "model": "Qwen3-235B-A22B-Thinking (Jul 2025)", "date": "2025-07-25", "eci": 143.2, "low": 141.3, "high": 145.1 },
+          { "model": "Qwen3-30B-A3B-Instruct (Jul 2025)", "date": "2025-07-29", "eci": 135.2, "low": 132.3, "high": 138 },
+          { "model": "Qwen3-30B-A3B-Thinking (Jul 2025)", "date": "2025-07-30", "eci": 138.4, "low": 135.7, "high": 140.9 },
+          { "model": "Qwen3-Max", "date": "2025-09-24", "eci": 142.6, "low": 140.5, "high": 144.7 },
+          { "model": "Qwen3.5 397B-A17B", "date": "2026-02-13", "eci": 147.9, "low": 145.8, "high": 150.2 },
+          { "model": "Qwen 3.5 Plus (hosted 397B-A17B)", "date": "2026-02-16", "eci": 147.3, "low": 145.5, "high": 149.1 },
+          { "model": "Qwen3.5-9B", "date": "2026-02-24", "eci": 139.3, "low": 137.1, "high": 141.5 },
+          { "model": "Qwen3.5-35B-A3B", "date": "2026-02-24", "eci": 144, "low": 141.5, "high": 146.6 },
+          { "model": "Qwen 3.5 Flash (hosted 35B-A3B)", "date": "2026-02-25", "eci": 143.8, "low": 141.8, "high": 145.8 },
+          { "model": "Qwen 3.6 Plus", "date": "2026-03-31", "eci": 148.9, "low": 146.9, "high": 150.9 },
+          { "model": "Qwen 3.6 35B-A3B", "date": "2026-04-14", "eci": 144.1, "low": 142.1, "high": 145.9 },
+          { "model": "Qwen 3.6 Max (Preview)", "date": "2026-04-20", "eci": 149.8, "low": 147.8, "high": 151.9 },
+          { "model": "Qwen3.6 27B", "date": "2026-04-22", "eci": 146.7, "low": 144.6, "high": 148.9 },
+          { "model": "Qwen 3.6 Flash", "date": "2026-04-27", "eci": 143.7, "low": 141.8, "high": 145.6 },
+          { "model": "Qwen3.7-Max", "date": "2026-05-19", "eci": 154.5, "low": 152.4, "high": 156.6 },
+          { "model": "Qwen3.7-Plus", "date": "2026-06-02", "eci": 147.9, "low": 145.9, "high": 150 },
+          { "model": "Qwen 3.8 Max", "date": "2026-08-02", "eci": 157.4, "low": 155.3, "high": 159.7 },
+          { "model": "Qwen 3.8 27B", "date": "2026-08-14", "eci": 152.7, "low": 150.7, "high": 154.9 },
+          { "model": "Qwen3.8 Max (0902)", "date": "2026-09-01", "eci": 155.8, "low": 153.6, "high": 158.2 }
+        ]
+      },
+      {
+        "org": "Z.ai",
+        "models": [
+          { "model": "GLM-4.7", "date": "2025-12-22", "eci": 143.3, "low": 141.2, "high": 145.2 },
+          { "model": "GLM-5", "date": "2026-02-11", "eci": 146.5, "low": 144.9, "high": 148 },
+          { "model": "GLM-5.1", "date": "2026-04-07", "eci": 150.7, "low": 148.7, "high": 152.8 },
+          { "model": "GLM-5.2", "date": "2026-06-16", "eci": 153, "low": 151.3, "high": 154.9 },
+          { "model": "GLM-5.3", "date": "2026-08-14", "eci": 156.9, "low": 154.8, "high": 159.2 },
+          { "model": "GLM-5.3-Flash", "date": "2026-08-20", "eci": 153.6, "low": 151.8, "high": 155.6 }
+        ]
+      },
+      {
+        "org": "Mistral",
+        "models": [
+          { "model": "Mistral 7B v0.1", "date": "2023-09-27", "eci": 103.3, "low": 95.7, "high": 109.8 },
+          { "model": "Mixtral 8x7B", "date": "2023-12-11", "eci": 113.4, "low": 108.5, "high": 117.8 },
+          { "model": "Mistral Large", "date": "2024-02-26", "eci": 119.9, "low": 115.8, "high": 123.5 },
+          { "model": "Mixtral 8x22B", "date": "2024-04-17", "eci": 118.8, "low": 114.5, "high": 122.6 },
+          { "model": "Mistral NeMo", "date": "2024-07-18", "eci": 114, "low": 108.8, "high": 118.7 },
+          { "model": "Mistral Large 2 (Jul 2024)", "date": "2024-07-24", "eci": 126.3, "low": 123.1, "high": 129.3 },
+          { "model": "Mistral Medium 3", "date": "2025-05-07", "eci": 132.9, "low": 130.1, "high": 135.4 },
+          { "model": "Mistral Medium 3.5", "date": "2026-04-28", "eci": 141.6, "low": 138.3, "high": 144.7 },
+          { "model": "Mistral Large 4 Preview", "date": "2026-10-06", "eci": 152.6, "low": 150.7, "high": 154.5 },
+          { "model": "Mistral Large 4", "date": "2026-10-29", "eci": 154.6, "low": 151.8, "high": 157.5 }
+        ]
+      },
+      {
+        "org": "Microsoft",
+        "models": [
+          { "model": "Phi-1.5", "date": "2023-09-11", "eci": 69.7, "low": 51.9, "high": 84.3 },
+          { "model": "Phi-2", "date": "2023-12-12", "eci": 96.8, "low": 87.4, "high": 105 },
+          { "model": "phi-3-mini 3.8B", "date": "2024-04-23", "eci": 110.8, "low": 104.3, "high": 116.6 },
+          { "model": "phi-3-medium 14B", "date": "2024-04-23", "eci": 114.5, "low": 109.7, "high": 118.8 },
+          { "model": "phi-3-small 7.4B", "date": "2024-04-23", "eci": 116.5, "low": 110.7, "high": 121.9 },
+          { "model": "Phi-4", "date": "2024-12-12", "eci": 129.1, "low": 126.1, "high": 131.9 }
+        ]
+      },
+      {
+        "org": "TII",
+        "models": [
+          { "model": "Falcon-7B", "date": "2023-04-24", "eci": 74.3, "low": 59.3, "high": 86.6 },
+          { "model": "Falcon-40B", "date": "2023-05-25", "eci": 91.4, "low": 80.5, "high": 100.5 },
+          { "model": "Falcon-180B", "date": "2023-09-06", "eci": 107.4, "low": 98.6, "high": 115.4 },
+          { "model": "Falcon 2 11B", "date": "2024-05-09", "eci": 99.8, "low": 88.6, "high": 109.5 }
+        ]
+      },
+      {
+        "org": "Hugging Face",
+        "models": [
+          { "model": "StarCoder 2 7B", "date": "2024-02-20", "eci": 73.7, "low": 57.1, "high": 87.4 },
+          { "model": "StarCoder 2 15B", "date": "2024-02-20", "eci": 96.7, "low": 85.5, "high": 106.3 },
+          { "model": "StarCoder 2 3B", "date": "2024-02-22", "eci": 68, "low": 49.6, "high": 83.3 }
         ]
       }
     ]

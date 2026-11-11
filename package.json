@@ -17,6 +17,7 @@
     "test:e2e:headed": "npm run test:e2e -- --headed",
     "test:models": "npm run build -- --mode test && playwright test --config playwright.models.config.ts",
     "test:worker": "node --test workers/github-proxy/test/*.test.mjs",
+    "test:scripts": "node --test scripts/test/*.test.mjs",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
