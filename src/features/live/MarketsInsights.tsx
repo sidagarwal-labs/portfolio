@@ -321,7 +321,8 @@ function PricedIn({ rows, prices }: { rows: AiStackRow[]; prices: string }) {
   const press = useRef({ touch: false, open: false });
   const plotted = points.filter((point) => point.medianFromHigh !== null);
   const W = Math.max(280, width);
-  const H = W < 520 ? 300 : 340;
+  /* Narrow charts are taller, so bubbles in the same column have room to clear each other. */
+  const H = W < 520 ? 360 : 340;
   const margin = { left: W < 520 ? 38 : 46, right: 14, top: 18, bottom: W < 520 ? 52 : 40 };
   const lowest = Math.min(-10, ...plotted.map((point) => point.medianFromHigh!));
   const floor = Math.floor(lowest / 10) * 10;
