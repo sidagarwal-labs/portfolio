@@ -986,7 +986,7 @@ for (const style of ["modern", "retro"]) {
       const desk = (await page.locator(".os-desktop").boundingBox())!;
       await page.getByRole("button", { name: "Show desktop", exact: true }).click();
       const rows = [["Sid Search", "Library", "GitHub"], ["Projects", "arXiv Search"], ["Forward pass", "Other designs"], ["Games", "Markets", "Launches", "AI leaderboards"]];
-      const labels = [...rows.flat(), "Resume.pdf", "README.txt"];
+      const labels = [...rows.flat(), "Resume.pdf", "README.txt", "Recycle Bin"];
       await expect(page.locator(".os-icons .os-icon__label")).toHaveText(labels);
       const boxes = await page.locator(".os-icons > li").evaluateAll((icons) => icons.map((icon) => {
         const { x, y, width, height } = icon.getBoundingClientRect();
@@ -995,7 +995,7 @@ for (const style of ["modern", "retro"]) {
       const expected = [
         ...rows.flatMap((items, row) => items.map((_, col) => ({ col, row }))),
         /* A desktop too short for a free bottom row puts the documents after the last group on its row instead. */
-        ...[0, 1].map((col) => {
+        ...[0, 1, 2].map((col) => {
           const bottom = Math.floor((desk.height - 16) / 92) - 1;
           return bottom < rows.length ? { col: rows[bottom].length + col, row: bottom } : { col, row: bottom };
         })
