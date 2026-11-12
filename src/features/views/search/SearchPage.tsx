@@ -33,6 +33,39 @@ const tabs = [
 ];
 /* Contact sits below Library but has no tab, so the spy stops at Library. */
 const spyIds = tabs.map((tab) => tab.id);
+
+type Fact = [label: string, value: ReactNode];
+const backgroundFacts: Fact[] = [
+  ["Previously", "Product manager intern at Amazon (2020)"],
+  ["Education", "UNC Charlotte, business and operations, minor in economics"],
+  ["Studying", "M.S. in Data Science and Business Analytics"],
+  ["Robotics", <>Captained and mentored <a href="#robotics">the Pitt Pirates, FRC Team 2642</a></>]
+];
+const panelFacts: Fact[] = [
+  ["Works at", "Microsoft, AI search & retrieval"],
+  ["Career", "Microsoft since 2021: PM intern to Senior PM"],
+  ...backgroundFacts
+];
+/* The narrow-width profile card sits right above the intro, so it skips the facts the intro already states. */
+const cardFacts: Fact[] = [["Based in", "Charlotte, North Carolina"], ...backgroundFacts];
+
+function Facts({ facts, className }: { facts: Fact[]; className: string }) {
+  return (
+    <dl className={className}>
+      {facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+    </dl>
+  );
+}
+
+function ProfileActions({ className }: { className: string }) {
+  return (
+    <div className={className}>
+      <a className="se-button se-button--primary" href={profileContent.resumeHref}>Resume</a>
+      {contactLinks.map((social) => <a key={social.label} className="se-button" href={social.href}>{social.label}</a>)}
+    </div>
+  );
+}
+
 function DocLink({ doc, className, children }: { doc: SearchDoc; className?: string; children: ReactNode }) {
   if (doc.route) return <Link className={className} to={doc.href}>{children}</Link>;
   /* Research notes live on GitHub and open in a new tab, as in the notes list. */
@@ -234,10 +267,15 @@ function SearchPage() {
                 </section>
               )}
 
+              {/* Below 1080px this result also carries the photo, actions, and quick facts, and the side panel is hidden, so the profile appears once. */}
               <div className="se-intro" id="intro">
                 <article className="se-hero" aria-labelledby="se-intro-heading">
                   <Source href="#intro" />
-                  <h1 id="se-intro-heading">{profileContent.shortName} <span>· Senior PM, AI search &amp; retrieval</span></h1>
+                  <div className="se-hero__head">
+                    <img className="se-hero__avatar" src={profileContent.avatarUrl} alt="Sid Agarwal's GitHub avatar" width="76" height="76" />
+                    <h1 id="se-intro-heading">{profileContent.shortName} <span><span className="se-hero__sep">· </span>Senior PM, AI search &amp; retrieval</span></h1>
+                  </div>
+                  <ProfileActions className="se-panel__actions se-hero__actions" />
                   <div className="se-hero__snippet"><IntroCopy /></div>
                   {!searching && (
                     <p className="se-hero__try">
@@ -253,9 +291,10 @@ function SearchPage() {
                     <li><a href="#impact">About</a><span>Microsoft, Amazon, education</span></li>
                     <li><a href="#robotics">Robotics</a><span>Pitt Pirates, FRC Team 2642</span></li>
                     <li><a href="#library">Library</a><span>Books and podcasts I recommend</span></li>
-                    <li><a href={profileContent.resumeHref}>Resume</a><span>PDF</span></li>
-                    {emailLink && <li><a href={emailLink.href}>Email</a><span>{emailLink.href.replace("mailto:", "")}</span></li>}
+                    <li className="se-sitelinks__contact"><a href={profileContent.resumeHref}>Resume</a><span>PDF</span></li>
+                    {emailLink && <li className="se-sitelinks__contact"><a href={emailLink.href}>Email</a><span>{emailLink.href.replace("mailto:", "")}</span></li>}
                   </ul>
+                  <Facts facts={cardFacts} className="se-facts se-hero__facts" />
                 </article>
               </div>
             </div>
@@ -268,22 +307,12 @@ function SearchPage() {
                   <p>Senior Product Manager at Microsoft</p>
                 </div>
               </div>
-              <div className="se-panel__actions">
-                <a className="se-button se-button--primary" href={profileContent.resumeHref}>Resume</a>
-                {contactLinks.map((social) => <a key={social.label} className="se-button" href={social.href}>{social.label}</a>)}
-              </div>
+              <ProfileActions className="se-panel__actions" />
               <p className="se-panel__about">
                 Product manager working on search and retrieval quality for Microsoft 365 Copilot.
                 Based in Charlotte, North Carolina.
               </p>
-              <dl className="se-facts">
-                <div><dt>Works at</dt><dd>Microsoft, AI search &amp; retrieval</dd></div>
-                <div><dt>Career</dt><dd>Microsoft since 2021: PM intern to Senior PM</dd></div>
-                <div><dt>Previously</dt><dd>Product manager intern at Amazon (2020)</dd></div>
-                <div><dt>Education</dt><dd>UNC Charlotte, business and operations, minor in economics</dd></div>
-                <div><dt>Studying</dt><dd>M.S. in Data Science and Business Analytics</dd></div>
-                <div><dt>Robotics</dt><dd>Captained and mentored <a href="#robotics">the Pitt Pirates, FRC Team 2642</a></dd></div>
-              </dl>
+              <Facts facts={panelFacts} className="se-facts" />
             </aside>
 
             <div className="se-rest">

@@ -53,7 +53,7 @@ test("Pitt Pirates links stay in Sid Search and its match videos play in the win
   const address = page.locator(`${searchWin} .os-address__text`);
   const windows = await page.locator(".os-win").count();
 
-  await frame.locator(".se-panel").getByRole("link", { name: "the Pitt Pirates, FRC Team 2642", exact: true }).click();
+  await frame.locator("#intro").getByRole("link", { name: "the Pitt Pirates, FRC Team 2642", exact: true }).click();
   await expect(address).toHaveText(/#robotics$/);
   await expect(frame.getByRole("heading", { name: "Robotics", exact: true, level: 2 })).toBeInViewport();
   await expect(frame.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Robotics", exact: true })).toHaveAttribute("aria-current", "location");

@@ -159,7 +159,7 @@ test("the search box ranks portfolio content with BM25 and explains the ranking"
 test("the search tabs jump to each section and highlight it on desktop and phones", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   const tabs = [["Projects", "lab"], ["Writing", "writing"], ["About", "impact"], ["Robotics", "robotics"], ["Library", "library"], ["All", "intro"]];
-  for (const width of [1440, 390]) {
+  for (const width of [1440, 900, 390]) {
     await page.setViewportSize({ width, height: 800 });
     await page.goto("./?view=search");
     const nav = page.getByRole("navigation", { name: "Primary" });
@@ -174,6 +174,90 @@ test("the search tabs jump to each section and highlight it on desktop and phone
   }
   await expect(page.locator("#impact")).toContainText("UNC Charlotte");
   await expect(page.locator("#impact")).toContainText("People also ask");
+});
+
+test("Sid Search merges its profile into one card below 1080px, under any search matches", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const main = page.getByRole("main");
+  const card = page.locator("#intro");
+  for (const width of [1079, 900, 760, 600, 390, 320]) {
+    const at = `at ${width}px`;
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("./?view=search");
+    await expect(page.locator(".se-panel"), at).toBeHidden();
+    await expect(card, at).toBeInViewport();
+
+    /* One heading names Sid and carries the title; the photo shows once. */
+    await expect(main.getByRole("heading", { level: 1 }), at).toHaveCount(1);
+    await expect(main.getByRole("heading", { name: /Sid Agarwal/ }), at).toHaveCount(1);
+    await expect(card.getByRole("heading", { level: 1 }), at).toHaveAccessibleName("Sid Agarwal Senior PM, AI search & retrieval");
+    await expect(main.getByRole("img", { name: "Sid Agarwal's GitHub avatar" }), at).toHaveCount(1);
+    await expect(card.getByRole("img", { name: "Sid Agarwal's GitHub avatar" }), at).toBeVisible();
+
+    /* Each contact action shows once in the profile, as a card button rather than a sitelink. */
+    for (const name of ["Resume", "Email", "LinkedIn", "GitHub"]) {
+      await expect(page.locator("#intro, .se-panel").getByRole("link", { name, exact: true }), `${name} ${at}`).toHaveCount(1);
+      await expect(card.locator(".se-button").getByText(name, { exact: true }), `${name} ${at}`).toBeVisible();
+    }
+    await expect(card.locator(".se-sitelinks").getByRole("link"), at).toHaveText(["Projects", "Writing", "About", "Robotics", "Library"]);
+    await expect(card.getByRole("button", { name: "RAG", exact: true }), at).toBeVisible();
+
+    /* The intro is the only summary: the panel's Copilot sentence and career facts would repeat it. */
+    await expect(main.getByText(/Senior Product Manager at Microsoft/).filter({ visible: true }), at).toHaveCount(1);
+    await expect(main.getByText("Product manager working on search and retrieval quality").filter({ visible: true }), at).toHaveCount(0);
+    await expect(card.locator(".se-facts dt"), at).toHaveText(["Based in", "Previously", "Education", "Studying", "Robotics"]);
+    await expect(main.locator(".se-facts").filter({ visible: true }), at).toHaveCount(1);
+    expect(await horizontalOverflow(page), at).toBeLessThanOrEqual(0);
+  }
+
+  /* A search puts its matches first, then the card. */
+  for (const width of [900, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("./?view=search");
+    await page.getByLabel("Search Sid's work").fill("robotics");
+    const matches = page.locator(".se-matches");
+    await expect(matches.locator(".se-result").first()).toBeVisible();
+    const [matchesBox, cardBox] = await Promise.all([matches.boundingBox(), card.boundingBox()]);
+    expect(matchesBox!.y + matchesBox!.height, `at ${width}px`).toBeLessThanOrEqual(cardBox!.y);
+    await expect(main.getByRole("heading", { name: /Sid Agarwal/ })).toHaveCount(1);
+  }
+
+  /* The card's deep link and its links into the page keep working. */
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.goto("./?view=search#intro");
+  await expect(card.getByRole("heading", { level: 1 })).toBeInViewport();
+  for (const id of ["lab", "writing", "impact", "robotics", "library"]) {
+    await card.locator(`.se-sitelinks a[href="#${id}"]`).click();
+    await expect(page).toHaveURL(new RegExp(`\\?view=search#${id}$`));
+    await expect(page.locator(`#${id}`)).toBeInViewport();
+  }
+  await card.getByRole("link", { name: "the Pitt Pirates, FRC Team 2642", exact: true }).click();
+  await expect(page).toHaveURL(/\?view=search#robotics$/);
+  await expect(page.getByRole("heading", { name: "Robotics", exact: true, level: 2 })).toBeInViewport();
+});
+
+test("Sid Search keeps the side panel beside the top result from 1080px", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  for (const width of [1080, 1440]) {
+    const at = `at ${width}px`;
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("./?view=search");
+    const hero = page.locator(".se-hero");
+    const panel = page.getByRole("complementary", { name: "About Sid Agarwal" });
+    await expect(panel, at).toBeVisible();
+    expect(await panel.evaluate((element) => getComputedStyle(element).position), at).toBe("sticky");
+    const [heroBox, panelBox] = await Promise.all([hero.boundingBox(), panel.boundingBox()]);
+    expect(panelBox!.x, at).toBeGreaterThan(heroBox!.x + heroBox!.width);
+    expect(Math.abs(panelBox!.y - heroBox!.y), at).toBeLessThan(12);
+
+    await expect(page.getByRole("heading", { level: 1 }), at).toHaveAccessibleName("Sid Agarwal · Senior PM, AI search & retrieval");
+    await expect(hero.locator(".se-source"), at).toBeVisible();
+    await expect(hero.locator(".se-hero__avatar, .se-hero__actions, .se-hero__facts").filter({ visible: true }), at).toHaveCount(0);
+    await expect(hero.locator(".se-sitelinks").getByRole("link"), at).toHaveText(["Projects", "Writing", "About", "Robotics", "Library", "Resume", "Email"]);
+    await expect(panel.locator(".se-button"), at).toHaveText(["Resume", "Email", "LinkedIn", "GitHub"]);
+    await expect(panel.getByText("Product manager working on search and retrieval quality for Microsoft 365 Copilot."), at).toBeVisible();
+    await expect(panel.locator("dt"), at).toHaveText(["Works at", "Career", "Previously", "Education", "Studying", "Robotics"]);
+  }
 });
 
 test("Sid Search keeps Pitt Pirates links on its Robotics section and plays matches inline", async ({ page }) => {
@@ -652,6 +736,31 @@ test("Lab OS deep links open Sid Search at the linked section", async ({ page })
   await expect(page.locator(`${searchWin} .os-address__text`)).toHaveText(/#writing$/);
   await expect(page.frameLocator(`${searchWin} iframe`).locator("#writing")).toBeInViewport();
 });
+
+for (const style of ["modern", "retro"]) {
+  test(`Lab OS ${style} shows Sid Search's profile once in a narrow window and beside the results when maximized`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`./?view=os&style=${style}`);
+    const frame = page.frameLocator(`${searchWin} iframe`);
+    const profileResume = frame.locator("#intro, .se-panel").getByRole("link", { name: "Resume", exact: true });
+    await expect(frame.locator("#se-query")).toHaveValue("Sid Agarwal");
+    expect((await page.locator(`${searchWin} iframe`).boundingBox())!.width).toBeLessThan(1080);
+    await expect(frame.locator(".se-panel")).toBeHidden();
+    await expect(frame.getByRole("heading", { name: /Sid Agarwal/ })).toHaveCount(1);
+    await expect(profileResume).toHaveCount(1);
+    await expect(frame.locator("#intro").getByRole("link", { name: "LinkedIn", exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "Maximize Sid Search" }).click();
+    await expect(frame.getByRole("complementary", { name: "About Sid Agarwal" })).toBeVisible();
+    await expect(frame.locator("#intro").getByRole("link", { name: "LinkedIn", exact: true })).toHaveCount(0);
+    await expect(profileResume).toHaveCount(2);
+
+    await page.getByRole("button", { name: "Restore Sid Search" }).click();
+    await expect(frame.locator(".se-panel")).toBeHidden();
+    await expect(profileResume).toHaveCount(1);
+  });
+}
 
 test("Lab OS windows open, focus, minimize, maximize, and close", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
