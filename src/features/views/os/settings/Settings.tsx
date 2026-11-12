@@ -115,7 +115,7 @@ export default function Settings({ actions }: { target?: OsTarget; actions: OsAc
                 Show welcome note
               </label>
             </div>
-            <p className="os-set__hint">Your edits to the note stay in this browser. Reset all brings back the original text.</p>
+            <p className="os-set__hint">Your note text and desktop size stay in this browser. Drag its left or bottom edge to resize, or focus its corner and use arrow keys. Reset all restores the original text and size.</p>
           </fieldset>
         </section>
 

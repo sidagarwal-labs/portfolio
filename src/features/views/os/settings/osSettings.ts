@@ -6,6 +6,7 @@ export const settingsKey = "lab-os-settings-v1";
 export const styleKey = "lab-os-style-v1";
 /* The visitor's own welcome note text; absent until they edit it. */
 export const noteKey = "lab-os-note-v1";
+export const noteSizeKey = "lab-os-note-size-v1";
 const iconLayoutKey = /^lab-os-icons-v\d+$/;
 const folderOrganizationKey = "lab-os-folders-v1";
 const ownKey = /^lab-os-/;
@@ -114,7 +115,7 @@ export function writeSettings(settings: OsSettings) {
 export function clearSavedSettings() {
   try {
     const keys = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index) ?? "");
-    for (const key of keys) if (key === settingsKey || key === styleKey || key === folderOrganizationKey || key === noteKey || iconLayoutKey.test(key)) localStorage.removeItem(key);
+    for (const key of keys) if (key === settingsKey || key === styleKey || key === folderOrganizationKey || key === noteKey || key === noteSizeKey || iconLayoutKey.test(key)) localStorage.removeItem(key);
     return true;
   } catch (error) {
     console.warn("Saved Lab OS settings could not be cleared.", error);

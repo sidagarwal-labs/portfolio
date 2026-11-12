@@ -5,7 +5,7 @@ import { defaultDesktopGroups, type EntryId, type FolderOrganization } from "./f
 import { useFolderDrag } from "./FolderDrag";
 import type { DeskSize } from "./types";
 import { clamp } from "./OsWindow";
-import { noteBox } from "./WelcomeNote";
+import { noteBox, type NoteSize } from "./WelcomeNote";
 import { FolderMenuButton, FolderNameEditor } from "./FolderActions";
 
 export const iconCell = 92;
@@ -34,12 +34,12 @@ function readPositions(): Positions {
 }
 
 /* Grid cells the welcome note covers in the top-right corner of the desktop. The icon list is inset 8px from the desktop. */
-function noteCells(desk: DeskSize, columns: number, rows: number) {
+function noteCells(desk: DeskSize, columns: number, rows: number, note: NoteSize) {
   const cells = new Set<string>();
   const right = desk.w - noteBox.right - 8;
-  const left = right - noteBox.width;
+  const left = right - note.width;
   const top = noteBox.top - 8;
-  const bottom = top + noteBox.height;
+  const bottom = top + note.height;
   for (let col = 0; col < columns; col += 1) {
     if (col * iconCell >= right || (col + 1) * iconCell <= left) continue;
     for (let row = 0; row < rows; row += 1) if (row * iconCell < bottom && (row + 1) * iconCell > top) cells.add(cellKey({ col, row }));
@@ -130,7 +130,7 @@ function layoutIcons(saved: Positions, columns: number, rows: number, root: Entr
 
 type Box = { left: number; top: number; width: number; height: number };
 
-function DesktopIcons({ desk, open, reset, organization, note }: { desk: DeskSize; open: (id: EntryId) => void; reset: number; organization: FolderOrganization; note: boolean }) {
+function DesktopIcons({ desk, open, reset, organization, note }: { desk: DeskSize; open: (id: EntryId) => void; reset: number; organization: FolderOrganization; note?: NoteSize }) {
   const { startDrag, consumeClick, clipboard, handleKeys, registerDesktopMove } = useFolderDrag();
   const [saved, setSaved] = useState(readPositions);
   const [notice, setNotice] = useState("");
@@ -142,7 +142,7 @@ function DesktopIcons({ desk, open, reset, organization, note }: { desk: DeskSiz
   const lastReset = useRef(reset);
   const columns = Math.max(1, Math.floor((desk.w - 16) / iconCell));
   const rows = Math.max(1, Math.floor((desk.h - 16) / iconCell));
-  const blocked = useMemo(() => (note ? noteCells(desk, columns, rows) : new Set<string>()), [note, desk, columns, rows]);
+  const blocked = useMemo(() => (note ? noteCells(desk, columns, rows, note) : new Set<string>()), [note, desk, columns, rows]);
   const positions = useMemo(() => layoutIcons(saved, columns, rows, organization.root, blocked), [saved, rows, columns, organization.root, blocked]);
 
   useEffect(() => {
