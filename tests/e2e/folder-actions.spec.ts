@@ -6,6 +6,30 @@ const folderWindow = (page: Page, id: string) => page.locator(`.os-win[data-fold
 const bin = (page: Page) => page.locator('.os-win[data-app="recyclebin"]');
 const saved = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem("lab-os-folders-v1") ?? "null"));
 
+async function center(locator: Locator) {
+  const box = (await locator.boundingBox())!;
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+async function startDrag(page: Page, source: Locator, target: Locator) {
+  const from = await center(source);
+  const to = await center(target);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 8, from.y + 8);
+  await expect(page.locator(".os-entry-drag")).toBeVisible();
+  await page.mouse.move(to.x, to.y, { steps: 10 });
+}
+
+async function placeWindow(page: Page, window: Locator, x: number, y: number) {
+  const box = (await window.boundingBox())!;
+  await page.mouse.move(box.x + 120, box.y + 18);
+  await page.mouse.down();
+  await page.mouse.move(x + 120, y + 18, { steps: 6 });
+  await page.mouse.up();
+  await expect.poll(async () => Math.round((await window.boundingBox())!.x)).toBe(x);
+}
+
 async function create(page: Page, name: string, parent?: Locator) {
   if (parent) await parent.locator(".os-folder-toolbar").getByRole("button", { name: "New folder", exact: true }).click();
   else await page.locator(".os-icons").press("Control+Shift+n");
@@ -145,24 +169,148 @@ test("restoring uses the original parent, or Desktop with a unique name when tha
   expect((await saved(page)).folders[parentId].items).toEqual([]);
 });
 
-test("built-in folders cannot be deleted, and the Recycle Bin cannot be hidden inside a folder", async ({ page }) => {
+test("built-in apps and folders recycle and restore to their old slots, while the Recycle Bin stays on the desktop", async ({ page }) => {
+  const slot = (name: string) => icon(page, name).boundingBox();
+  const gamesSlot = await slot("Games");
+  const readmeSlot = await slot("README.txt");
+  const searchSlot = await slot("Sid Search");
   await icon(page, "Games").click({ button: "right" });
-  await expect(page.getByRole("menuitem", { name: /^Move to Recycle Bin/ })).toBeDisabled();
+  await page.getByRole("menuitem", { name: /^Move to Recycle Bin/ }).click();
+  await expect(icon(page, "Games")).toHaveCount(0);
+  await expect(page.locator(".os-folder-notice")).toContainText("Moved Games to Recycle Bin.");
+  await icon(page, "README.txt").press("Delete");
+  await expect(icon(page, "README.txt")).toHaveCount(0);
+  expect(await slot("Sid Search")).toEqual(searchSlot);
+  expect((await saved(page)).trash.map(({ id }: { id: string }) => id)).toEqual(["games", "readme"]);
+  await page.locator(".os-start").click();
+  const start = page.getByRole("dialog", { name: "Start menu" });
+  await start.getByRole("searchbox", { name: "Search apps" }).fill("Snake");
+  await expect(start.getByRole("list", { name: "Search results" }).getByRole("button", { name: "Snake", exact: true })).toHaveCount(0);
   await page.keyboard.press("Escape");
-  await expect(icon(page, "Games")).toBeFocused();
-  await icon(page, "Games").press("Delete");
-  await expect(page.getByRole("alert")).toContainText("Only custom folders");
-  await expect(icon(page, "Games")).toBeVisible();
+
+  await icon(page, "Recycle Bin").press("Delete");
+  await expect(page.getByRole("alert")).toContainText("Recycle Bin stays on the desktop");
+  await expect(icon(page, "Recycle Bin")).toBeVisible();
+  await icon(page, "Recycle Bin").click({ button: "right" });
+  await expect(page.getByRole("menuitem", { name: /^Move to Recycle Bin/ })).toHaveCount(0);
+  await expect(page.getByRole("menuitem", { name: /^Cut/ })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await icon(page, "Recycle Bin").click();
+  await expect(bin(page).getByRole("list", { name: "Recycled items" }).getByRole("listitem")).toHaveText([
+    /README\.txt\s*App · From Desktop/,
+    /Games\s*\d+ items · From Desktop/
+  ]);
+  await bin(page).getByRole("button", { name: "Restore all", exact: true }).click();
+  await expect(bin(page).getByRole("status")).toHaveText("Restored 2 items.");
+  await expect(bin(page)).toContainText("The Recycle Bin is empty.");
+  await expect(bin(page).getByRole("button", { name: "Restore all", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Show desktop", exact: true }).click();
+  expect(await slot("Games")).toEqual(gamesSlot);
+  expect(await slot("README.txt")).toEqual(readmeSlot);
+  expect((await saved(page)).trash).toEqual([]);
   await icon(page, "Games").press("F2");
   await editor(page).fill("Fun");
   await editor(page).press("Enter");
   await expect(icon(page, "Fun")).toHaveAttribute("data-entry-id", "games");
+
   const id = await create(page, "Destination");
   await icon(page, "Destination").click();
   await icon(page, "Recycle Bin").press("Control+x");
   await folderWindow(page, id).locator(".os-folder-window").press("Control+v");
   await expect(page.getByRole("alert")).toContainText("Recycle Bin stays on the desktop");
   await expect(icon(page, "Recycle Bin")).toBeVisible();
+});
+
+test("cutting items, opening the Recycle Bin, and pressing Ctrl+V recycles them", async ({ page }) => {
+  await icon(page, "Library").click({ modifiers: ["Control"] });
+  await icon(page, "GitHub").click({ modifiers: ["Control"] });
+  await page.keyboard.press("Control+x");
+  await expect(icon(page, "Library")).toHaveClass(/is-cut/);
+  await icon(page, "Recycle Bin").click();
+  await expect(bin(page).locator(".os-recycle-bin")).toBeFocused();
+  await page.keyboard.press("Control+v");
+  await expect(icon(page, "Library")).toHaveCount(0);
+  await expect(icon(page, "GitHub")).toHaveCount(0);
+  await expect(page.locator(".os-folder-notice")).toContainText("Moved 2 items to Recycle Bin.");
+  const items = bin(page).getByRole("list", { name: "Recycled items" }).getByRole("listitem");
+  await expect(items).toHaveCount(2);
+  await expect(bin(page).getByRole("button", { name: "Paste", exact: true })).toHaveCount(0);
+
+  await placeWindow(page, bin(page), 900, 120);
+  await icon(page, "Sid Search").click({ modifiers: ["Control"] });
+  await icon(page, "README.txt").click({ modifiers: ["Control"] });
+  await page.keyboard.press("Delete");
+  await expect(icon(page, "Sid Search")).toHaveCount(0);
+  await expect(icon(page, "README.txt")).toHaveCount(0);
+  await expect(items).toHaveCount(4);
+  await expect(items.first()).toContainText(/README\.txt|Sid Search/);
+  await bin(page).getByRole("button", { name: "Restore GitHub", exact: true }).click();
+  await expect(bin(page).getByRole("status")).toHaveText("Restored GitHub to Desktop.");
+  await expect(bin(page).locator(".os-recycle-bin")).toBeFocused();
+  await expect(icon(page, "GitHub")).toBeVisible();
+});
+
+test("Ctrl+V goes to the window you last clicked, the focused Recycle Bin icon, or explains where paste works", async ({ page }) => {
+  const id = await create(page, "Inbox");
+  await icon(page, "Inbox").click();
+  const folder = folderWindow(page, id);
+  await placeWindow(page, folder, 980, 80);
+  await icon(page, "Games").press("Control+x");
+  await icon(page, "README.txt").click();
+  const readme = page.locator('.os-win[data-app="readme"]');
+  await placeWindow(page, readme, 420, 80);
+  await readme.locator(".os-note p").first().click();
+  await page.keyboard.press("Control+v");
+  await expect(page.locator(".os-folder-notice")).toContainText("Paste works on the desktop, in a folder, or in the Recycle Bin.");
+  await expect(icon(page, "Games")).toHaveClass(/is-cut/);
+  await folder.locator(".os-win__title").click();
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.keyboard.press("Control+v");
+  await expect(folder.getByRole("button", { name: "Games", exact: true })).toBeVisible();
+  await expect(icon(page, "Games")).toHaveCount(0);
+
+  await icon(page, "Library").press("Control+x");
+  await icon(page, "Recycle Bin").press("Control+v");
+  await expect(icon(page, "Library")).toHaveCount(0);
+  expect((await saved(page)).trash.map(({ id }: { id: string }) => id)).toEqual(["library"]);
+});
+
+test("dragging icons onto the Recycle Bin icon or into its window recycles them", async ({ page }) => {
+  await startDrag(page, icon(page, "Library"), icon(page, "Recycle Bin"));
+  await expect(icon(page, "Recycle Bin")).toHaveAttribute("data-drop-state", "valid");
+  await expect(page.locator(".os-entry-drag")).toContainText("Move to Recycle Bin");
+  await page.mouse.up();
+  await expect(icon(page, "Library")).toHaveCount(0);
+  await icon(page, "Recycle Bin").click();
+  await placeWindow(page, bin(page), 900, 120);
+  const content = bin(page).locator(".os-recycle-bin");
+  await startDrag(page, icon(page, "GitHub"), content);
+  await expect(content).toHaveAttribute("data-drop-state", "valid");
+  await page.mouse.up();
+  await expect(icon(page, "GitHub")).toHaveCount(0);
+  await expect(bin(page).getByRole("list", { name: "Recycled items" }).getByRole("listitem")).toHaveText([/GitHub/, /Library/]);
+  await startDrag(page, icon(page, "Recycle Bin"), content);
+  await expect(page.locator(".os-entry-drag")).toContainText("Recycle Bin stays on the desktop");
+  await page.mouse.up();
+  await expect(icon(page, "Recycle Bin")).toBeVisible();
+  await bin(page).getByRole("button", { name: "Restore all", exact: true }).click();
+  await expect(icon(page, "Library")).toBeVisible();
+  await expect(icon(page, "GitHub")).toBeVisible();
+});
+
+test("restoring an app inside a folder puts it back in its original place in that folder", async ({ page }) => {
+  await icon(page, "Games").click();
+  const games = folderWindow(page, "games");
+  const before = await games.locator(".os-folder .os-icon").evaluateAll((items) => items.map((item) => item.getAttribute("data-entry-id")));
+  await games.locator(`.os-icon[data-entry-id="${before[1]}"]`).press("Delete");
+  await games.locator(`.os-icon[data-entry-id="${before[2]}"]`).press("Delete");
+  await expect(games.locator(".os-folder .os-icon")).toHaveCount(before.length - 2);
+  await page.getByRole("button", { name: "Open Settings", exact: true }).click();
+  await page.getByRole("region", { name: "Folder organization" }).getByRole("button", { name: "Open Recycle Bin", exact: true }).click();
+  await expect(bin(page)).toContainText("App · From Games");
+  await bin(page).getByRole("button", { name: "Restore all", exact: true }).click();
+  await expect(games.locator(".os-folder .os-icon")).toHaveCount(before.length);
+  expect(await games.locator(".os-folder .os-icon").evaluateAll((items) => items.map((item) => item.getAttribute("data-entry-id")))).toEqual(before);
 });
 
 test("existing folder layouts migrate without losing names, locations, or apps", async ({ page }) => {

@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from "react";
 import { Folder, type LucideIcon } from "lucide-react";
 import { apps, type AppId } from "./apps";
-import { isFolder, orderedRootEntries, type EntryId, type FolderOrganization } from "./folderOrganization";
+import { isFolder, orderedRootEntries, recycleBinId, type EntryId, type FolderOrganization } from "./folderOrganization";
 import { useFolderDrag } from "./FolderDrag";
 import { FolderMenuButton, FolderNameEditor, useFolderActions } from "./FolderActions";
 
@@ -25,7 +25,7 @@ function PhoneHomeApps({ open, organization }: { open: (id: EntryId) => void; or
           const Icon = def.icon;
           return (
             <li key={id}>
-              <button type="button" className={`os-icon${clipboard.includes(id) ? " is-cut" : ""}`} aria-label={def.label} data-entry-id={id === "settings" ? undefined : id} data-folder-drop={folder ? id : undefined} onPointerDown={(event) => {
+              <button type="button" className={`os-icon${clipboard.includes(id) ? " is-cut" : ""}`} aria-label={def.label} data-entry-id={id === "settings" ? undefined : id} data-folder-drop={folder || id === recycleBinId ? id : undefined} onPointerDown={(event) => {
                 if (id === "settings" || (event.pointerType === "touch" && !arranging)) return;
                 startDrag(event, [id]);
               }} onClick={(event) => { if (!consumeClick(event)) open(id); }}>

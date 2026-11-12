@@ -4,9 +4,12 @@ import { apps, desktopApps, desktopDocuments, desktopRows, menuSections, type Ap
 export type FolderId = string;
 export type EntryId = AppId | FolderId;
 export type FolderContents = { name: string; items: EntryId[] };
-type RecycledFolder = { id: FolderId; parent: FolderId | null; index: number };
-export type FolderOrganization = { root: EntryId[]; folders: Record<FolderId, FolderContents>; trash: RecycledFolder[] };
+export type RecycledEntry = { id: EntryId; parent: FolderId | null; index: number };
+export type FolderOrganization = { root: EntryId[]; folders: Record<FolderId, FolderContents>; trash: RecycledEntry[] };
+export type Restored = { name: string; destination: string };
 
+/* The Recycle Bin's entry ID doubles as its drop and paste destination. */
+export const recycleBinId: FolderId = "recyclebin";
 const storageKey = "lab-os-folders-v1";
 const maximumFolders = 40;
 const maximumDepth = 8;
@@ -30,8 +33,9 @@ export type FolderOrganizationApi = {
   saved: boolean;
   createFolder: (parent: FolderId | null, name?: string) => FolderId;
   renameFolder: (id: FolderId, name: string) => boolean;
-  deleteFolder: (id: FolderId) => void;
-  restoreFolder: (id: FolderId) => { name: string; destination: string } | undefined;
+  recycleEntries: (ids: EntryId[]) => boolean;
+  restoreEntry: (id: EntryId) => Restored | undefined;
+  restoreAll: () => number;
   moveEntries: (ids: EntryId[], parent: FolderId | null) => boolean;
   restoreDefaults: () => void;
   error: string;
@@ -67,11 +71,12 @@ function validateOrganization(value: unknown): FolderOrganization {
     if (!name) throw new Error("Saved folder name is malformed.");
     folders[id] = { name, items: folder.items };
   }
-  const trash: RecycledFolder[] = [];
+  const trash: RecycledEntry[] = [];
   if (value.trash !== undefined) {
     if (!Array.isArray(value.trash)) throw new Error("Saved Recycle Bin is malformed.");
+    // Earlier releases recycled custom folders only; those entries keep the same shape.
     for (const item of value.trash) {
-      if (!isRecord(item) || typeof item.id !== "string" || !item.id.startsWith("custom-folder-") || !hasOwn(folders, item.id)
+      if (!isRecord(item) || typeof item.id !== "string" || item.id === recycleBinId || (!hasOwn(folders, item.id) && !availableApps.includes(item.id as AppId))
         || (item.parent !== null && typeof item.parent !== "string") || typeof item.index !== "number" || !Number.isInteger(item.index) || item.index < 0) {
         throw new Error("Saved Recycle Bin entry is malformed.");
       }
@@ -191,6 +196,35 @@ export function folderMoveError(organization: FolderOrganization, ids: EntryId[]
   return "";
 }
 
+export function recycleError(organization: FolderOrganization, ids: EntryId[]): string {
+  if (!ids.length || ids.some((id) => !hasOwn(organization.folders, id) && !availableApps.includes(id as AppId))) {
+    return "Choose apps or folders that still exist.";
+  }
+  if (ids.includes(recycleBinId)) return "Recycle Bin stays on the desktop.";
+  if (ids.some((id) => isRecycled(organization, id))) return "That item is already in the Recycle Bin.";
+  return "";
+}
+
+/* Puts a recycled item back in its original folder and position, or on the Desktop if that folder is gone,
+   recycled, or too deep for it. A restored folder whose name is now taken gets a numbered suffix. */
+function restoreFromTrash(organization: FolderOrganization, id: EntryId): { next: FolderOrganization; restored: Restored } | undefined {
+  const item = organization.trash.find((entry) => entry.id === id);
+  if (!item) return;
+  const folder = isFolder(organization, id);
+  const parent = item.parent !== null && organization.folders[item.parent] && !isRecycled(organization, item.parent)
+    && (!folder || nestingDepth(organization, item.parent) + subTreeHeight(organization, id) <= maximumDepth) ? item.parent : null;
+  const name = folder ? unusedName(organization, parent, organization.folders[id].name) : apps[id as AppId].label;
+  const items = [...(parentEntries(organization, parent) ?? [])];
+  items.splice(Math.min(item.index, items.length), 0, id);
+  const folders = { ...organization.folders };
+  if (folder) folders[id] = { ...folders[id], name };
+  if (parent !== null) folders[parent] = { ...folders[parent], items };
+  return {
+    next: { root: parent === null ? items : organization.root, folders, trash: organization.trash.filter((entry) => entry.id !== id) },
+    restored: { name, destination: parent === null ? "Desktop" : organization.folders[parent].name }
+  };
+}
+
 let idSequence = 0;
 
 export function FolderOrganizationProvider({ children }: { children: ReactNode }) {
@@ -245,38 +279,42 @@ export function FolderOrganizationProvider({ children }: { children: ReactNode }
     return true;
   }, [commit]);
 
-  const deleteFolder = useCallback((id: FolderId) => {
+  const recycleEntries = useCallback((ids: EntryId[]) => {
     const current = organizationRef.current;
-    if (!id.startsWith("custom-folder-") || !current.folders[id]) { setError("Only custom folders can be deleted."); return; }
-    if (isRecycled(current, id)) { setError("That folder is already in the Recycle Bin."); return; }
-    const parent = Object.entries(current.folders).find(([, entry]) => entry.items.includes(id))?.[0] ?? null;
-    const siblings = parentEntries(current, parent);
-    if (!siblings) { setError("The destination folder no longer exists."); return; }
-    const index = siblings.indexOf(id);
-    const items = siblings.filter((entry) => entry !== id);
-    commit({
-      ...current,
-      root: parent === null ? items : current.root,
-      folders: parent === null ? current.folders : { ...current.folders, [parent]: { ...current.folders[parent], items } },
-      trash: [...current.trash, { id, parent, index }]
-    });
+    const unique = [...new Set(ids)];
+    const invalid = recycleError(current, unique);
+    if (invalid) { setError(invalid); return false; }
+    // Items inside a folder that is also being recycled go with it.
+    const moving = unique.filter((id) => !unique.some((other) => other !== id && isFolder(current, other) && folderDescendants(current, other).includes(id)));
+    let root = [...current.root];
+    const folders = { ...current.folders };
+    const trash = [...current.trash];
+    for (const id of moving) {
+      const parent = folderParent(current, id);
+      // The index at removal time: restoring in reverse removal order rebuilds the original order exactly.
+      const index = (parent === null ? root : folders[parent].items).indexOf(id);
+      if (parent === null) root = root.filter((entry) => entry !== id);
+      else folders[parent] = { ...folders[parent], items: folders[parent].items.filter((entry) => entry !== id) };
+      trash.push({ id, parent, index: Math.max(0, index) });
+    }
+    commit({ root, folders, trash });
+    return true;
   }, [commit]);
 
-  const restoreFolder = useCallback((id: FolderId) => {
+  const restoreEntry = useCallback((id: EntryId) => {
+    const result = restoreFromTrash(organizationRef.current, id);
+    if (!result) { setError("That item is no longer in the Recycle Bin."); return; }
+    commit(result.next);
+    return result.restored;
+  }, [commit]);
+
+  /* Undoes the removals newest first, so folders return before items recycled from inside them and siblings keep their order. */
+  const restoreAll = useCallback(() => {
     const current = organizationRef.current;
-    const item = current.trash.find((entry) => entry.id === id);
-    if (!item) { setError("That folder is no longer in the Recycle Bin."); return; }
-    const parent = item.parent !== null && current.folders[item.parent] && !isRecycled(current, item.parent)
-      && nestingDepth(current, item.parent) + subTreeHeight(current, id) <= maximumDepth ? item.parent : null;
-    const name = unusedName(current, parent, current.folders[id].name);
-    const items = [...(parentEntries(current, parent) ?? [])];
-    items.splice(Math.min(item.index, items.length), 0, id);
-    commit({
-      root: parent === null ? items : current.root,
-      folders: { ...current.folders, [id]: { ...current.folders[id], name }, ...(parent === null ? {} : { [parent]: { ...current.folders[parent], items } }) },
-      trash: current.trash.filter((entry) => entry.id !== id)
-    });
-    return { name, destination: parent === null ? "Desktop" : current.folders[parent].name };
+    let next = current;
+    for (const item of [...current.trash].reverse()) next = restoreFromTrash(next, item.id)?.next ?? next;
+    if (current.trash.length) commit(next);
+    return current.trash.length;
   }, [commit]);
 
   const moveEntries = useCallback((ids: EntryId[], parent: FolderId | null) => {
@@ -317,8 +355,8 @@ export function FolderOrganizationProvider({ children }: { children: ReactNode }
     }
   }, []);
   const clearError = useCallback(() => setError(""), []);
-  const value = useMemo(() => ({ organization, saved, createFolder, renameFolder, deleteFolder, restoreFolder, moveEntries, restoreDefaults, error, clearError }),
-    [organization, saved, createFolder, renameFolder, deleteFolder, restoreFolder, moveEntries, restoreDefaults, error, clearError]);
+  const value = useMemo(() => ({ organization, saved, createFolder, renameFolder, recycleEntries, restoreEntry, restoreAll, moveEntries, restoreDefaults, error, clearError }),
+    [organization, saved, createFolder, renameFolder, recycleEntries, restoreEntry, restoreAll, moveEntries, restoreDefaults, error, clearError]);
 
   return <FolderOrganizationContext.Provider value={value}>{children}</FolderOrganizationContext.Provider>;
 }

@@ -1,9 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from "react";
 import { Folder } from "lucide-react";
 import { apps, type AppId } from "./apps";
-import { entryLabel, folderMoveError, folderParent, isFolder, useFolderOrganization, type EntryId, type FolderId } from "./folderOrganization";
+import { entryLabel, folderMoveError, folderParent, isFolder, recycleBinId, recycleError, useFolderOrganization, type EntryId, type FolderId, type FolderOrganization } from "./folderOrganization";
 
 type Point = { x: number; y: number };
+/* A destination of recycleBinId moves the items to the Recycle Bin. */
 type Transfer = { ids: EntryId[]; destination: FolderId | null; point?: Point; start?: Point };
 type DropTarget = { element: HTMLElement; parent: FolderId | null };
 type DragPreview = { ids: EntryId[]; point: Point; message: string; invalid: boolean };
@@ -15,12 +16,22 @@ type FolderDragApi = {
   consumeClick: (event: MouseEvent) => boolean;
   cutEntries: (ids: EntryId[]) => void;
   pasteEntries: (parent: FolderId | null) => void;
+  recycle: (ids: EntryId[]) => void;
   handleKeys: (event: KeyboardEvent<HTMLElement>, parent: FolderId | null, selected?: EntryId[]) => void;
   registerDesktopMove: (handler: (transfer: Transfer) => boolean) => () => void;
   dismiss: () => void;
 };
 
 const FolderDragContext = createContext<FolderDragApi | null>(null);
+const pasteHint = "Paste works on the desktop, in a folder, or in the Recycle Bin. Click one of them, then press Ctrl/Cmd+V.";
+
+function isTextField(target: EventTarget | null) {
+  return target instanceof HTMLElement && !!target.closest("input, textarea, select, [contenteditable='true'], [contenteditable='']");
+}
+
+function dropError(organization: FolderOrganization, ids: EntryId[], parent: FolderId | null) {
+  return parent === recycleBinId ? recycleError(organization, ids) : folderMoveError(organization, ids, parent);
+}
 
 function targetAt(point: Point): DropTarget | null {
   const hit = document.elementFromPoint(point.x, point.y);
@@ -43,9 +54,13 @@ export function FolderDragProvider({ children }: { children: ReactNode }) {
   const cleanupRef = useRef<(() => void) | null>(null);
   const suppressedClick = useRef(false);
   const desktopMove = useRef<((transfer: Transfer) => boolean) | null>(null);
+  const lastPointer = useRef<Element | null>(null);
 
   useEffect(() => {
-    const resetClick = () => { suppressedClick.current = false; };
+    const resetClick = (event: globalThis.PointerEvent) => {
+      suppressedClick.current = false;
+      lastPointer.current = event.target instanceof Element ? event.target : null;
+    };
     document.addEventListener("pointerdown", resetClick, true);
     return () => {
       document.removeEventListener("pointerdown", resetClick, true);
@@ -59,19 +74,23 @@ export function FolderDragProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const transfer = useCallback((request: Transfer) => {
-    const { organization, moveEntries } = current.current;
-    const changed = request.ids.some((id) => folderParent(organization, id) !== request.destination);
+    const { organization, moveEntries, recycleEntries } = current.current;
+    const toBin = request.destination === recycleBinId;
+    const changed = toBin || request.ids.some((id) => folderParent(organization, id) !== request.destination);
     const touchesDesktop = request.destination === null || request.ids.some((id) => organization.root.includes(id));
-    if (folderMoveError(organization, request.ids, request.destination)) {
-      moveEntries(request.ids, request.destination);
+    if (dropError(organization, request.ids, request.destination)) {
+      if (toBin) recycleEntries(request.ids);
+      else moveEntries(request.ids, request.destination);
       return;
     }
+    // The desktop records every icon's slot first, so recycled or moved icons can return to where they were.
     if (touchesDesktop && desktopMove.current?.(request) === false) return;
-    if (!moveEntries(request.ids, request.destination)) return;
-    setClipboard([]);
+    if (!(toBin ? recycleEntries(request.ids) : moveEntries(request.ids, request.destination))) return;
+    // Recycling something else leaves an unrelated cut selection in place, as in a file manager.
+    setClipboard((cut) => (toBin ? cut.filter((id) => !request.ids.includes(id)) : []));
     if (changed) {
       const label = request.ids.length === 1 ? entryLabel(organization, request.ids[0]) : `${request.ids.length} items`;
-      const destination = request.destination === null ? "Desktop" : organization.folders[request.destination].name;
+      const destination = request.destination === null ? "Desktop" : toBin ? "Recycle Bin" : organization.folders[request.destination].name;
       setNotice(`Moved ${label} to ${destination}.`);
     } else setNotice("");
   }, []);
@@ -109,16 +128,17 @@ export function FolderDragProvider({ children }: { children: ReactNode }) {
       target = targetAt(point);
       const hit = target;
       const { organization } = current.current;
-      const invalid = hit ? folderMoveError(organization, ids, hit.parent) : "";
+      const invalid = hit ? dropError(organization, ids, hit.parent) : "";
       hit?.element.setAttribute("data-drop-state", invalid ? "invalid" : "valid");
-      const destination = hit?.parent == null ? "Desktop" : organization.folders[hit.parent]?.name;
+      const toBin = hit?.parent === recycleBinId;
+      const destination = hit?.parent == null ? "Desktop" : toBin ? "Recycle Bin" : organization.folders[hit.parent]?.name;
       // Rearranging within the same place needs no caption, just the floating icon.
-      const unchanged = !!hit && !invalid && ids.every((id) => folderParent(organization, id) === hit.parent);
+      const unchanged = !!hit && !toBin && !invalid && ids.every((id) => folderParent(organization, id) === hit.parent);
       setPreview({
         ids,
         point,
         invalid: !hit || !!invalid,
-        message: invalid || (hit ? (unchanged ? "" : `Move to ${destination}`) : "Drop on a folder or the desktop")
+        message: invalid || (hit ? (unchanged ? "" : `Move to ${destination}`) : "Drop on a folder, the desktop, or the Recycle Bin")
       });
     };
     const cleanup = () => {
@@ -157,7 +177,7 @@ export function FolderDragProvider({ children }: { children: ReactNode }) {
       cleanup();
       if (!active) return;
       if (destination) transfer({ ids, destination: destination.parent, point, start });
-      else setNotice("Move cancelled. Drop on a folder or the desktop.");
+      else setNotice("Move cancelled. Drop on a folder, the desktop, or the Recycle Bin.");
     };
     cleanupRef.current = cleanup;
     document.addEventListener("pointermove", move, true);
@@ -184,9 +204,12 @@ export function FolderDragProvider({ children }: { children: ReactNode }) {
   const pasteEntries = (parent: FolderId | null) => {
     if (clipboard.length) transfer({ ids: clipboard, destination: parent });
   };
+  const recycle = useCallback((ids: EntryId[]) => {
+    if (ids.length) transfer({ ids, destination: recycleBinId });
+  }, [transfer]);
   const handleKeys = (event: KeyboardEvent<HTMLElement>, parent: FolderId | null, selected: EntryId[] = []) => {
     const target = event.target;
-    if (!(target instanceof HTMLElement) || target.closest("input, textarea, select, [contenteditable='true']")) return;
+    if (!(target instanceof HTMLElement) || isTextField(target)) return;
     const id = target.closest<HTMLElement>("[data-entry-id]")?.dataset.entryId;
     const ids = id && !selected.includes(id) ? [id] : selected;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "x" && ids.length) {
@@ -196,7 +219,13 @@ export function FolderDragProvider({ children }: { children: ReactNode }) {
     } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v" && clipboard.length) {
       event.preventDefault();
       event.stopPropagation();
-      pasteEntries(parent);
+      pasteEntries(id === recycleBinId ? recycleBinId : parent);
+    } else if (event.key === "Delete" && !event.ctrlKey && !event.metaKey && !event.altKey && ids.length) {
+      event.preventDefault();
+      event.stopPropagation();
+      // Keep focus in this view once the focused icon leaves it.
+      event.currentTarget.focus({ preventScroll: true });
+      recycle(ids);
     } else if (event.key === "Escape" && clipboard.length) {
       setClipboard([]);
       setNotice("Move cancelled.");
@@ -204,8 +233,33 @@ export function FolderDragProvider({ children }: { children: ReactNode }) {
   };
   const dismiss = () => { setNotice(""); folders.clearError(); };
 
+  /* Ctrl/Cmd+V pastes into wherever the keyboard focus is, or else the last place clicked: a folder window,
+     the Recycle Bin, or the desktop. Views that handle keys themselves (icon lists, folder windows) paste first. */
+  const clipboardRef = useRef(clipboard);
+  clipboardRef.current = clipboard;
+  useEffect(() => {
+    const paste = (event: globalThis.KeyboardEvent) => {
+      if (event.defaultPrevented || !(event.ctrlKey || event.metaKey) || event.shiftKey || event.altKey || event.key.toLowerCase() !== "v") return;
+      const ids = clipboardRef.current;
+      if (!ids.length || isTextField(event.target)) return;
+      const focused = event.target instanceof Element && event.target !== document.body && event.target !== document.documentElement ? event.target : null;
+      const origin = focused ?? (lastPointer.current?.isConnected ? lastPointer.current : null);
+      const win = origin?.closest<HTMLElement>(".os-win");
+      const destination = win ? (win.dataset.app === recycleBinId ? recycleBinId : win.dataset.folderId)
+        : !origin || origin.closest(".os-desktop") ? null : undefined;
+      if (destination === undefined) {
+        setNotice(pasteHint);
+        return;
+      }
+      event.preventDefault();
+      transfer({ ids, destination });
+    };
+    document.addEventListener("keydown", paste);
+    return () => document.removeEventListener("keydown", paste);
+  }, [transfer]);
+
   return (
-    <FolderDragContext.Provider value={{ preview, clipboard, notice, startDrag, consumeClick, cutEntries, pasteEntries, handleKeys, registerDesktopMove, dismiss }}>
+    <FolderDragContext.Provider value={{ preview, clipboard, notice, startDrag, consumeClick, cutEntries, pasteEntries, recycle, handleKeys, registerDesktopMove, dismiss }}>
       {children}
     </FolderDragContext.Provider>
   );
