@@ -1,5 +1,6 @@
 import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { Grip, RotateCcw, X } from "lucide-react";
+import { iconAreaWidth } from "./desktopLayout";
 import { clamp } from "./OsWindow";
 import { noteKey, noteSizeKey } from "./settings/osSettings";
 import type { DeskSize, OsStyle } from "./types";
@@ -15,7 +16,8 @@ const defaultSize: NoteSize = { width: noteBox.width, height: noteBox.height };
 const minimumSize: NoteSize = { width: 200, height: 160 };
 
 function clampNoteSize(size: NoteSize, desk: DeskSize): NoteSize {
-  const width = Math.max(0, desk.w - noteBox.right - noteGap);
+  /* Keep the default icon columns available even when the note fills the desktop height. */
+  const width = Math.max(0, desk.w - noteBox.right - iconAreaWidth - noteGap);
   const height = Math.max(0, desk.h - noteBox.top - noteGap);
   return {
     width: clamp(size.width, Math.min(minimumSize.width, width), width),
