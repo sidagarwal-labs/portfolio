@@ -4,10 +4,11 @@ import type { ActivityStats } from "../analytics";
 import type { GitHubInsights } from "../contract";
 import { fmtDate, fmtInt, fmtMonth, fmtRange, plural } from "./format";
 
-const STEP = 14;
-const CELL = 11;
-const LEFT = 30;
-const TOP = 18;
+/* Compact, GitHub-style: 8px cells on a 10px grid, drawn at their natural size beside the at-a-glance stats. */
+const STEP = 10;
+const CELL = 8;
+const LEFT = 26;
+const TOP = 14;
 const WEEKDAY_LABELS: [number, string][] = [[1, "Mon"], [3, "Wed"], [5, "Fri"]];
 
 /** Integer count range for each shade, from the model's quantile thresholds. */
@@ -59,7 +60,6 @@ export function Heatmap({ insights, calendar, stats, unit }: { insights: GitHubI
           width={width}
           height={height}
           viewBox={`0 0 ${width} ${height}`}
-          style={{ minWidth: width, maxWidth: Math.round(width * 1.5) }}
           role="img"
           aria-label={summary}
           onMouseOver={(event) => {
@@ -69,7 +69,7 @@ export function Heatmap({ insights, calendar, stats, unit }: { insights: GitHubI
           onMouseLeave={() => setHover(null)}
         >
           {calendar.months.map((month) => (
-            <text key={month.month} className="gh-heat__month" x={LEFT + month.week * STEP} y={11}>{month.label}</text>
+            <text key={month.month} className="gh-heat__month" x={LEFT + month.week * STEP} y={9}>{month.label}</text>
           ))}
           {WEEKDAY_LABELS.map(([row, label]) => (
             <text key={label} className="gh-heat__weekday" x={LEFT - 6} y={TOP + row * STEP + CELL / 2} dy="0.35em" textAnchor="end">{label}</text>
@@ -85,7 +85,7 @@ export function Heatmap({ insights, calendar, stats, unit }: { insights: GitHubI
               y={TOP + c.weekday * STEP}
               width={CELL}
               height={CELL}
-              rx={2}
+              rx={1.5}
             >
               <title>{`${fmtDate(c.date)}: ${plural(c.count, unit.replace(/s$/, ""), unit)}`}</title>
             </rect>
@@ -100,7 +100,7 @@ export function Heatmap({ insights, calendar, stats, unit }: { insights: GitHubI
           Less
           {[0, 1, 2, 3, 4].map((level) => (
             <svg key={level} width={CELL} height={CELL} className="gh-legend__cell">
-              <rect className="gh-swatch" data-level={level} width={CELL} height={CELL} rx={2}>
+              <rect className="gh-swatch" data-level={level} width={CELL} height={CELL} rx={1.5}>
                 <title>{level === 0 ? "0" : ranges[level - 1] ?? "none"}</title>
               </rect>
             </svg>
