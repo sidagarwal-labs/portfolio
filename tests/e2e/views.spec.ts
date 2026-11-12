@@ -956,7 +956,7 @@ test("Start search and restart use the real desktop rather than a different thre
   const search = page.getByRole("searchbox", { name: "Search apps" });
   await expect(search).toBeFocused();
   await search.fill("no-such-app");
-  await expect(page.getByRole("status")).toContainText("No apps match this search.");
+  await expect(page.getByRole("dialog", { name: "Start menu" }).getByRole("status")).toContainText("No apps match this search.");
   await search.fill("journal");
   const menu = page.getByRole("dialog", { name: "Start menu" });
   await menu.getByRole("list", { name: "Search results", exact: true }).getByRole("button", { name: "Journal", exact: true }).click();
