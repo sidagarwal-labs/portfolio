@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { apps, desktopApps, desktopDocuments, desktopRows, type AppId } from "./apps";
+import { Folder, type LucideIcon } from "lucide-react";
+import { apps, desktopDocuments, desktopRows, type AppId } from "./apps";
+import { defaultDesktopGroups, folderDescendants, isFolder, type EntryId, type FolderId, type FolderOrganization } from "./folderOrganization";
 import type { DeskSize } from "./types";
 import { clamp } from "./OsWindow";
 
 export const iconCell = 92;
 export const iconAreaWidth = 8 + Math.max(desktopDocuments.length, ...desktopRows.map((row) => row.length)) * iconCell;
 type Position = { col: number; row: number };
-type Positions = Partial<Record<AppId, Position>>;
+type Positions = Partial<Record<EntryId, Position>>;
 // Version the layout once; subsequent manual arrangements keep their normal persistence.
 const key = "lab-os-icons-v3";
 
@@ -15,7 +17,7 @@ function readPositions(): Positions {
     const raw: unknown = JSON.parse(localStorage.getItem(key) ?? "{}");
     if (!raw || typeof raw !== "object") throw new Error("Invalid saved desktop layout");
     const result: Positions = {};
-    for (const id of desktopApps) {
+    for (const id of Object.keys(raw)) {
       const value: unknown = Reflect.get(raw, id);
       if (!value || typeof value !== "object" || !("col" in value) || !("row" in value)) continue;
       if (typeof value.col === "number" && typeof value.row === "number" && Number.isInteger(value.col) && Number.isInteger(value.row) && value.col >= 0 && value.row >= 0) result[id] = { col: value.col, row: value.row };
@@ -29,13 +31,13 @@ function readPositions(): Positions {
 
 /* Saved icons claim their slots first. An icon with no saved position takes its default slot, or else joins its default
    neighbour wherever the user put it: right of the icon before it in its group (left of the next one if it leads the group). */
-function layoutIcons(saved: Positions, columns: number, rows: number): Positions {
+function layoutIcons(saved: Positions, columns: number, rows: number, root: EntryId[]): Positions {
   const result: Positions = {};
-  const taken = new Map<number, AppId>();
+  const taken = new Map<number, EntryId>();
   const slot = (col: number, row: number) => col * rows + row;
   const isFree = (col: number, row: number) => col >= 0 && col < columns && !taken.has(slot(col, row));
-  const put = (id: AppId, col: number, row: number) => { result[id] = { col, row }; taken.set(slot(col, row), id); };
-  const putFirstFree = (id: AppId) => {
+  const put = (id: EntryId, col: number, row: number) => { result[id] = { col, row }; taken.set(slot(col, row), id); };
+  const putFirstFree = (id: EntryId) => {
     let next = 0;
     while (taken.has(next)) next += 1;
     put(id, Math.floor(next / rows), next % rows);
@@ -53,7 +55,7 @@ function layoutIcons(saved: Positions, columns: number, rows: number): Positions
     }
     return true;
   };
-  const putNearest = (id: AppId, col: number, row: number, preferRight: boolean) => {
+  const putNearest = (id: EntryId, col: number, row: number, preferRight: boolean) => {
     for (let distance = 0; distance <= columns; distance += 1) {
       for (const candidate of preferRight ? [col + distance, col - distance] : [col - distance, col + distance]) {
         if (isFree(candidate, row)) { put(id, candidate, row); return; }
@@ -62,7 +64,10 @@ function layoutIcons(saved: Positions, columns: number, rows: number): Positions
     putFirstFree(id);
   };
 
-  const groups = [...desktopRows.map((ids, row) => ({ ids, row })), { ids: desktopDocuments, row: rows - 1 }];
+  const groups = defaultDesktopGroups(root).map((ids, row) => ({
+    ids,
+    row: ids.every((id) => desktopDocuments.includes(id as AppId)) ? rows - 1 : row
+  }));
   const layout = groups.flatMap(({ ids, row }) => ids.map((id, col) => ({ id, ids, col: clamp(col, 0, columns - 1), row: clamp(row, 0, rows - 1) })));
   for (const { id } of layout) {
     const position = saved[id];
@@ -105,19 +110,20 @@ function layoutIcons(saved: Positions, columns: number, rows: number): Positions
 type Box = { left: number; top: number; width: number; height: number };
 const cellKey = ({ col, row }: Position) => `${col},${row}`;
 
-function DesktopIcons({ desk, open, reset }: { desk: DeskSize; open: (id: AppId) => void; reset: number }) {
+function DesktopIcons({ desk, open, reset, organization, moveEntries }: { desk: DeskSize; open: (id: EntryId) => void; reset: number; organization: FolderOrganization; moveEntries: (ids: EntryId[], parent: FolderId | null) => void }) {
   const [saved, setSaved] = useState(readPositions);
   const [notice, setNotice] = useState("");
-  const [selected, setSelected] = useState<AppId[]>([]);
+  const [selected, setSelected] = useState<EntryId[]>([]);
+  const [dropTarget, setDropTarget] = useState<FolderId | null>(null);
   const [marquee, setMarquee] = useState<Box | null>(null);
   const selectedRef = useRef(selected);
   selectedRef.current = selected;
   const listRef = useRef<HTMLUListElement>(null);
-  const suppressClick = useRef<AppId | null>(null);
+  const suppressClick = useRef<EntryId | null>(null);
   const lastReset = useRef(reset);
   const columns = Math.max(1, Math.floor((desk.w - 16) / iconCell));
   const rows = Math.max(1, Math.floor((desk.h - 16) / iconCell));
-  const positions = useMemo(() => layoutIcons(saved, columns, rows), [saved, rows, columns]);
+  const positions = useMemo(() => layoutIcons(saved, columns, rows, organization.root), [saved, rows, columns, organization.root]);
 
   useEffect(() => {
     if (lastReset.current === reset) return;
@@ -142,7 +148,7 @@ function DesktopIcons({ desk, open, reset }: { desk: DeskSize; open: (id: AppId)
       event.preventDefault();
       desktop.setPointerCapture(event.pointerId);
       const bounds = desktop.getBoundingClientRect();
-      const icons = [...list.querySelectorAll<HTMLElement>(".os-icon")].map((icon) => ({ id: icon.dataset.app as AppId, rect: icon.getBoundingClientRect() }));
+      const icons = [...list.querySelectorAll<HTMLElement>(".os-icon")].map((icon) => ({ id: icon.dataset.entryId as EntryId, rect: icon.getBoundingClientRect() }));
       const x = clamp(event.clientX - bounds.left, 0, bounds.width);
       const y = clamp(event.clientY - bounds.top, 0, bounds.height);
       let active = false;
@@ -158,7 +164,7 @@ function DesktopIcons({ desk, open, reset }: { desk: DeskSize; open: (id: AppId)
         const left = bounds.left + box.left;
         const top = bounds.top + box.top;
         const hits = icons.filter(({ rect }) => rect.left < left + box.width && rect.right > left && rect.top < top + box.height && rect.bottom > top).map(({ id }) => id);
-        setSelected(desktopApps.filter((id) => base.includes(id) || hits.includes(id)));
+        setSelected(organization.root.filter((id) => base.includes(id) || hits.includes(id)));
       };
       const finish = () => {
         desktop.removeEventListener("pointermove", move);
@@ -184,10 +190,10 @@ function DesktopIcons({ desk, open, reset }: { desk: DeskSize; open: (id: AppId)
       desktop.removeEventListener("pointerdown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, []);
+  }, [organization.root]);
 
   /* Moves icons by a whole number of cells, keeping their spacing; icons in the way take the cells the group left. */
-  const moveIcons = (ids: AppId[], by: Position) => {
+  const moveIcons = (ids: EntryId[], by: Position) => {
     const from = ids.flatMap((id) => (positions[id] ? [{ id, at: positions[id] }] : []));
     if (!from.length) return;
     const col = clamp(by.col, -Math.min(...from.map(({ at }) => at.col)), columns - 1 - Math.max(...from.map(({ at }) => at.col)));
@@ -197,7 +203,7 @@ function DesktopIcons({ desk, open, reset }: { desk: DeskSize; open: (id: AppId)
     const targets = new Set(from.map(({ at }) => cellKey({ col: at.col + col, row: at.row + row })));
     const vacated = from.map(({ at }) => at).filter((at) => !targets.has(cellKey(at)));
     for (const { id, at } of from) next[id] = { col: at.col + col, row: at.row + row };
-    for (const other of desktopApps) {
+    for (const other of organization.root) {
       const at = positions[other];
       if (ids.includes(other) || !at || !targets.has(cellKey(at))) continue;
       const nearest = vacated.reduce((best, cell, index) => (Math.abs(cell.col - at.col) + Math.abs(cell.row - at.row) < Math.abs(vacated[best].col - at.col) + Math.abs(vacated[best].row - at.row) ? index : best), 0);
@@ -208,11 +214,14 @@ function DesktopIcons({ desk, open, reset }: { desk: DeskSize; open: (id: AppId)
     catch (error) { console.warn("Desktop layout could not be saved.", error); setNotice("Icon positions changed for this session; browser storage is unavailable."); }
   };
 
-  const drag = (event: ReactPointerEvent<HTMLButtonElement>, id: AppId) => {
+  const drag = (event: ReactPointerEvent<HTMLButtonElement>, id: EntryId) => {
     if (event.button !== 0) return;
     const button = event.currentTarget;
     const group = selected.length > 1 && selected.includes(id) ? selected : [id];
-    const tiles = group.flatMap((member) => listRef.current?.querySelector(`.os-icon[data-app="${member}"]`)?.parentElement ?? []);
+    const tiles = group.flatMap((member) => {
+      const tile = [...(listRef.current?.querySelectorAll<HTMLElement>(".os-icon") ?? [])].find((icon) => icon.dataset.entryId === member);
+      return tile?.parentElement ? [tile.parentElement] : [];
+    });
     if (!positions[id] || !tiles.length) return;
     event.preventDefault();
     button.focus({ preventScroll: true });
@@ -222,10 +231,22 @@ function DesktopIcons({ desk, open, reset }: { desk: DeskSize; open: (id: AppId)
     let dx = 0;
     let dy = 0;
     let moved = false;
+    const dropTargetAt = (x: number, y: number) => {
+      const candidates = listRef.current?.querySelectorAll<HTMLElement>("[data-folder-drop]") ?? [];
+      return [...candidates].find((candidate) => {
+        const id = candidate.dataset.folderDrop;
+        if (!id || group.includes(id)) return false;
+        const rect = candidate.getBoundingClientRect();
+        return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+      })?.dataset.folderDrop;
+    };
     const move = (pointer: PointerEvent) => {
       dx = pointer.clientX - x;
       dy = pointer.clientY - y;
       moved ||= Math.hypot(dx, dy) > 5;
+      const target = dropTargetAt(pointer.clientX, pointer.clientY);
+      const invalid = target && group.some((member) => isFolder(organization, member) && (member === target || folderDescendants(organization, member).includes(target)));
+      setDropTarget(target && !invalid ? target : null);
       if (moved) for (const tile of tiles) { tile.style.transform = `translate(${dx}px, ${dy}px)`; tile.style.zIndex = "1"; }
     };
     const cleanup = () => {
@@ -236,11 +257,15 @@ function DesktopIcons({ desk, open, reset }: { desk: DeskSize; open: (id: AppId)
       for (const tile of tiles) { tile.style.transform = ""; tile.style.zIndex = ""; }
     };
     const finish = () => {
+      const target = dropTargetAt(x + dx, y + dy);
       cleanup();
+      setDropTarget(null);
       if (moved) {
         suppressClick.current = id;
         if (group.length === 1) setSelected([]);
-        moveIcons(group, { col: Math.round(dx / iconCell), row: Math.round(dy / iconCell) });
+        const invalid = target && group.some((member) => isFolder(organization, member) && (member === target || folderDescendants(organization, member).includes(target)));
+        if (target && !invalid) moveEntries(group, target);
+        else moveIcons(group, { col: Math.round(dx / iconCell), row: Math.round(dy / iconCell) });
         window.setTimeout(() => { suppressClick.current = null; }, 0);
       }
     };
@@ -255,17 +280,21 @@ function DesktopIcons({ desk, open, reset }: { desk: DeskSize; open: (id: AppId)
       <p className="sr-only" id="os-icon-help">Click to open. Drag to move icons; they snap to the grid. Shift and arrow keys also move the focused icon. Drag across the desktop or Control-click icons to select several; Enter opens them and Escape clears the selection.</p>
       {marquee && <div className="os-marquee" aria-hidden="true" style={marquee} />}
       <ul ref={listRef} className="os-icons" aria-label="Desktop" aria-describedby="os-icon-help">
-        {desktopApps.map((id) => {
-          const Icon = apps[id].icon;
+        {organization.root.map((id) => {
+          const folder = organization.folders[id];
+          const def = folder
+            ? { icon: Folder as LucideIcon, label: folder.name, blurb: `${folder.items.length} items`, tint: apps.projects.tint }
+            : apps[id as AppId];
+          const Icon = def.icon;
           const position = positions[id];
           const isSelected = selected.includes(id);
           return (
             <li key={id} style={{ left: (position?.col ?? 0) * iconCell, top: (position?.row ?? 0) * iconCell }}>
-              <button type="button" className={`os-icon${isSelected ? " is-selected" : ""}`} data-app={id} aria-pressed={isSelected} title={apps[id].blurb} onPointerDown={(event) => drag(event, id)}
+              <button type="button" className={`os-icon${isSelected ? " is-selected" : ""}${dropTarget === id ? " is-drop-target" : ""}`} data-app={id} data-entry-id={id} data-folder-drop={folder ? id : undefined} aria-pressed={isSelected} title={def.blurb} onPointerDown={(event) => drag(event, id)}
                 onClick={(event) => {
                   if (suppressClick.current === id) return;
                   if (event.ctrlKey || event.metaKey || event.shiftKey) {
-                    setSelected(isSelected ? selected.filter((other) => other !== id) : desktopApps.filter((other) => other === id || selected.includes(other)));
+                    setSelected(isSelected ? selected.filter((other) => other !== id) : organization.root.filter((other) => other === id || selected.includes(other)));
                     return;
                   }
                   setSelected([]);
@@ -280,8 +309,8 @@ function DesktopIcons({ desk, open, reset }: { desk: DeskSize; open: (id: AppId)
                   event.preventDefault();
                   moveIcons([id], { col: event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0, row: event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0 });
                 }}>
-                <span className="os-icon__tile" style={{ "--tint": apps[id].tint } as CSSProperties} aria-hidden="true"><Icon size={26} strokeWidth={1.7} /></span>
-                <span className="os-icon__label">{apps[id].label}</span>
+                <span className="os-icon__tile" style={{ "--tint": def.tint } as CSSProperties} aria-hidden="true"><Icon size={26} strokeWidth={1.7} /></span>
+                <span className="os-icon__label">{def.label}</span>
               </button>
             </li>
           );

@@ -11,6 +11,7 @@ export type OsTarget = { value: string; seq: number };
 export type OsWin = Rect & {
   id: string;
   app: AppId;
+  folderId?: string;
   z: number;
   minimized: boolean;
   maximized: boolean;
@@ -29,6 +30,7 @@ export type OsWin = Rect & {
 
 export type OsActions = {
   open: (app: AppId, target?: string) => void;
+  openEntry: (id: string) => void;
   focus: (id: string) => void;
   close: (id: string) => void;
   minimize: (id: string) => void;

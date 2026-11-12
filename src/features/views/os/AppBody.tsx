@@ -1,9 +1,10 @@
-import { lazy, memo, Suspense, useCallback, type CSSProperties } from "react";
+import { lazy, memo, Suspense, useCallback } from "react";
 import { ArrowLeft, ArrowRight, Download, ExternalLink, FileText, Lock, RotateCw } from "lucide-react";
 import { profileContent } from "../../../content/siteContent";
 import { siteViews } from "../siteViews";
 import { contactLinks, roleLine } from "../viewData";
-import { apps, type AppDef, type AppId } from "./apps";
+import { apps, type AppId } from "./apps";
+import FolderContents from "./FolderContents";
 import { frameName, siteUrl } from "./embed";
 import type { OsActions, OsTarget, OsWin } from "./types";
 
@@ -111,7 +112,7 @@ function Readme({ actions }: { actions: OsActions }) {
       <p><strong>Hi, I'm Sid Agarwal.</strong> {roleLine}.</p>
       <p>This site is a browser-based desktop simulation, and its apps are my portfolio. It does not control your computer or files.</p>
       <p>Drag desktop icons to arrange them; Shift + arrow keys also move a focused icon. Positions are saved in this browser. Drag title bars to move windows, their edges or corners to resize, and double-click a title bar to maximize. The taskbar restores minimized apps. Settings, in Start or behind the taskbar's gear, changes the wallpaper, style, clock, and motion.</p>
-      <p>Sid Search, Library, and GitHub start on the top row of the desktop. arXiv Search has its own icon beside the Projects folder on the second row; the folder holds shortcuts to my other project repositories and Reader (which Microsoft links also open). Other designs holds Training run, Terminal, and Journal, and Games holds the games. The Start menu and the phone home screen use the same folders, and Start search finds the apps inside them. Resume and README.txt start at the bottom-left of the desktop.</p>
+      <p>Sid Search, Library, and GitHub start on the top row of the desktop. arXiv Search has its own icon beside the Projects folder on the second row. Projects, Other designs, and Games start with shortcuts to my projects, other site designs, and games. Create your own folders, nest them, and move apps from Settings or by dragging desktop icons onto folders. Your folder layout is shared with Start and the phone home screen, and Start search finds apps inside folders. Settings can restore the default layout. Resume and README.txt start at the bottom-left of the desktop.</p>
       <ul>
         {appList.map((id) => (
           <li key={id}>
@@ -154,29 +155,10 @@ function Readme({ actions }: { actions: OsActions }) {
   );
 }
 
-function AppFolder({ folder, actions }: { folder: Extract<AppDef, { kind: "folder" }>; actions: OsActions }) {
-  return (
-    <ul className="os-folder" aria-label={`${folder.label} apps`}>
-      {folder.children.map((id) => {
-        const def = apps[id];
-        const Icon = def.icon;
-        return (
-          <li key={id}>
-            <button type="button" className="os-icon" onClick={() => actions.open(id)}>
-              <span className="os-icon__tile" style={{ "--tint": def.tint } as CSSProperties} aria-hidden="true"><Icon size={24} strokeWidth={1.8} /></span>
-              <span className="os-icon__label">{def.label}</span>
-              <span className="os-icon__blurb">{def.blurb}</span>
-            </button>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
 type AppBodyProps = {
   id: string;
   app: AppId;
+  folderId?: string;
   src?: string;
   target?: OsTarget;
   active: boolean;
@@ -184,7 +166,7 @@ type AppBodyProps = {
   actions: OsActions;
 };
 
-function AppBody({ id, app, src, target, active, actions }: AppBodyProps) {
+function AppBody({ id, app, folderId, src, target, active, actions }: AppBodyProps) {
   const def = apps[app];
   const frameRef = useCallback((frame: HTMLIFrameElement | null) => actions.registerFrame(id, frame), [actions, id]);
 
@@ -193,7 +175,7 @@ function AppBody({ id, app, src, target, active, actions }: AppBodyProps) {
   }
   if (def.kind === "pdf") return <ResumeViewer />;
   if (def.kind === "note") return <Readme actions={actions} />;
-  if (def.kind === "folder") return <AppFolder folder={def} actions={actions} />;
+  if (def.kind === "folder") return <FolderContents folderId={folderId ?? app} actions={actions} />;
   if (def.kind === "link") return null;
   if (def.kind === "app") {
     const Native = nativeApps[app as keyof typeof nativeApps];
