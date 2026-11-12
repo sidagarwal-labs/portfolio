@@ -1,0 +1,239 @@
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from "react";
+import { Folder } from "lucide-react";
+import { apps, type AppId } from "./apps";
+import { entryLabel, folderMoveError, folderParent, isFolder, useFolderOrganization, type EntryId, type FolderId } from "./folderOrganization";
+
+type Point = { x: number; y: number };
+type Transfer = { ids: EntryId[]; destination: FolderId | null; point?: Point; start?: Point };
+type DropTarget = { element: HTMLElement; parent: FolderId | null };
+type DragPreview = { ids: EntryId[]; point: Point; message: string; invalid: boolean };
+type FolderDragApi = {
+  preview: DragPreview | null;
+  clipboard: EntryId[];
+  notice: string;
+  startDrag: (event: PointerEvent<HTMLButtonElement>, ids: EntryId[], onBegin?: () => void) => void;
+  consumeClick: (event: MouseEvent) => boolean;
+  cutEntries: (ids: EntryId[]) => void;
+  pasteEntries: (parent: FolderId | null) => void;
+  handleKeys: (event: KeyboardEvent<HTMLElement>, parent: FolderId | null, selected?: EntryId[]) => void;
+  registerDesktopMove: (handler: (transfer: Transfer) => boolean) => () => void;
+  dismiss: () => void;
+};
+
+const FolderDragContext = createContext<FolderDragApi | null>(null);
+
+function targetAt(point: Point): DropTarget | null {
+  const hit = document.elementFromPoint(point.x, point.y);
+  const element = hit?.closest<HTMLElement>("[data-folder-drop]");
+  if (!element) return null;
+  // A covered desktop/folder is not a target through another app's window.
+  const window = hit?.closest(".os-win");
+  if (window && !window.contains(element)) return null;
+  const id = element.dataset.folderDrop;
+  return id === undefined ? null : { element, parent: id === "desktop" ? null : id };
+}
+
+export function FolderDragProvider({ children }: { children: ReactNode }) {
+  const folders = useFolderOrganization();
+  const [preview, setPreview] = useState<DragPreview | null>(null);
+  const [clipboard, setClipboard] = useState<EntryId[]>([]);
+  const [notice, setNotice] = useState("");
+  const current = useRef(folders);
+  current.current = folders;
+  const cleanupRef = useRef<(() => void) | null>(null);
+  const suppressedClick = useRef(false);
+  const desktopMove = useRef<((transfer: Transfer) => boolean) | null>(null);
+
+  useEffect(() => {
+    const resetClick = () => { suppressedClick.current = false; };
+    document.addEventListener("pointerdown", resetClick, true);
+    return () => {
+      document.removeEventListener("pointerdown", resetClick, true);
+      cleanupRef.current?.();
+    };
+  }, []);
+
+  const registerDesktopMove = useCallback((handler: (transfer: Transfer) => boolean) => {
+    desktopMove.current = handler;
+    return () => { if (desktopMove.current === handler) desktopMove.current = null; };
+  }, []);
+
+  const transfer = useCallback((request: Transfer) => {
+    const { organization, moveEntries } = current.current;
+    const changed = request.ids.some((id) => folderParent(organization, id) !== request.destination);
+    const touchesDesktop = request.destination === null || request.ids.some((id) => organization.root.includes(id));
+    if (folderMoveError(organization, request.ids, request.destination)) {
+      moveEntries(request.ids, request.destination);
+      return;
+    }
+    if (touchesDesktop && desktopMove.current?.(request) === false) return;
+    if (!moveEntries(request.ids, request.destination)) return;
+    setClipboard([]);
+    if (changed) {
+      const label = request.ids.length === 1 ? entryLabel(organization, request.ids[0]) : `${request.ids.length} items`;
+      const destination = request.destination === null ? "Desktop" : organization.folders[request.destination].name;
+      setNotice(`Moved ${label} to ${destination}.`);
+    } else setNotice("");
+  }, []);
+
+  const startDrag = useCallback((event: PointerEvent<HTMLButtonElement>, ids: EntryId[], onBegin?: () => void) => {
+    if (event.button !== 0 || !event.isPrimary || !ids.length) return;
+    cleanupRef.current?.();
+    suppressedClick.current = false;
+    const button = event.currentTarget;
+    const container = button.closest("[data-entry-container]");
+    const icons = [...(container?.querySelectorAll<HTMLElement>("[data-entry-id]") ?? [])].filter((icon) => ids.includes(icon.dataset.entryId ?? ""));
+    const desktop = button.closest(".os-desktop");
+    const start = { x: event.clientX, y: event.clientY };
+    const pointerId = event.pointerId;
+    let active = false;
+    let target: DropTarget | null = null;
+    event.preventDefault();
+    button.focus({ preventScroll: true });
+    button.setPointerCapture(pointerId);
+
+    const clearTarget = () => target?.element.removeAttribute("data-drop-state");
+    const move = (pointer: globalThis.PointerEvent) => {
+      if (pointer.pointerId !== pointerId) return;
+      const point = { x: pointer.clientX, y: pointer.clientY };
+      if (!active && Math.hypot(point.x - start.x, point.y - start.y) < 5) return;
+      if (!active) {
+        active = true;
+        onBegin?.();
+        desktop?.classList.add("is-moving-entry");
+        icons.forEach((icon) => icon.setAttribute("data-entry-dragging", "true"));
+        setNotice("");
+        current.current.clearError();
+      }
+      clearTarget();
+      target = targetAt(point);
+      const { organization } = current.current;
+      const invalid = target ? folderMoveError(organization, ids, target.parent) : "";
+      target?.element.setAttribute("data-drop-state", invalid ? "invalid" : "valid");
+      const destination = target?.parent == null ? "Desktop" : organization.folders[target.parent]?.name;
+      setPreview({
+        ids,
+        point,
+        invalid: !target || !!invalid,
+        message: invalid || (target ? `Move to ${destination}` : "Drop on a folder or the desktop")
+      });
+    };
+    const cleanup = () => {
+      document.removeEventListener("pointermove", move, true);
+      document.removeEventListener("pointerup", finish, true);
+      document.removeEventListener("pointercancel", cancelPointer, true);
+      document.removeEventListener("keydown", cancelKey, true);
+      button.removeEventListener("lostpointercapture", cancelPointer);
+      window.removeEventListener("blur", cancel);
+      clearTarget();
+      icons.forEach((icon) => icon.removeAttribute("data-entry-dragging"));
+      desktop?.classList.remove("is-moving-entry");
+      if (button.hasPointerCapture(pointerId)) button.releasePointerCapture(pointerId);
+      cleanupRef.current = null;
+      setPreview(null);
+    };
+    const cancel = () => {
+      suppressedClick.current = active;
+      cleanup();
+      if (active) setNotice("Move cancelled.");
+    };
+    const cancelPointer = (pointer: globalThis.PointerEvent) => {
+      if (pointer.pointerId === pointerId) cancel();
+    };
+    const cancelKey = (key: globalThis.KeyboardEvent) => {
+      if (key.key !== "Escape") return;
+      key.preventDefault();
+      key.stopPropagation();
+      cancel();
+    };
+    const finish = (pointer: globalThis.PointerEvent) => {
+      if (pointer.pointerId !== pointerId) return;
+      const point = { x: pointer.clientX, y: pointer.clientY };
+      const destination = active ? targetAt(point) : null;
+      suppressedClick.current = active;
+      cleanup();
+      if (!active) return;
+      if (destination) transfer({ ids, destination: destination.parent, point, start });
+      else setNotice("Move cancelled. Drop on a folder or the desktop.");
+    };
+    cleanupRef.current = cleanup;
+    document.addEventListener("pointermove", move, true);
+    document.addEventListener("pointerup", finish, true);
+    document.addEventListener("pointercancel", cancelPointer, true);
+    document.addEventListener("keydown", cancelKey, true);
+    button.addEventListener("lostpointercapture", cancelPointer);
+    window.addEventListener("blur", cancel);
+  }, [transfer]);
+
+  const consumeClick = useCallback((event: MouseEvent) => {
+    if (!event.detail || !suppressedClick.current) return false;
+    suppressedClick.current = false;
+    event.preventDefault();
+    return true;
+  }, []);
+
+  const cutEntries = (ids: EntryId[]) => {
+    if (!ids.length) return;
+    setClipboard(ids);
+    const label = ids.length === 1 ? entryLabel(folders.organization, ids[0]) : `${ids.length} items`;
+    setNotice(`${label} cut. Open the destination, then paste with Ctrl/Cmd+V.`);
+  };
+  const pasteEntries = (parent: FolderId | null) => {
+    if (clipboard.length) transfer({ ids: clipboard, destination: parent });
+  };
+  const handleKeys = (event: KeyboardEvent<HTMLElement>, parent: FolderId | null, selected: EntryId[] = []) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement) || target.closest("input, textarea, select, [contenteditable='true']")) return;
+    const id = target.closest<HTMLElement>("[data-entry-id]")?.dataset.entryId;
+    const ids = id && !selected.includes(id) ? [id] : selected;
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "x" && ids.length) {
+      event.preventDefault();
+      event.stopPropagation();
+      cutEntries(ids);
+    } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v" && clipboard.length) {
+      event.preventDefault();
+      event.stopPropagation();
+      pasteEntries(parent);
+    } else if (event.key === "Escape" && clipboard.length) {
+      setClipboard([]);
+      setNotice("Move cancelled.");
+    }
+  };
+  const dismiss = () => { setNotice(""); folders.clearError(); };
+
+  return (
+    <FolderDragContext.Provider value={{ preview, clipboard, notice, startDrag, consumeClick, cutEntries, pasteEntries, handleKeys, registerDesktopMove, dismiss }}>
+      {children}
+    </FolderDragContext.Provider>
+  );
+}
+
+export function useFolderDrag() {
+  const context = useContext(FolderDragContext);
+  if (!context) throw new Error("useFolderDrag must be used inside Lab OS");
+  return context;
+}
+
+export function FolderDragLayer() {
+  const { preview, notice, dismiss } = useFolderDrag();
+  const { organization, error } = useFolderOrganization();
+  const first = preview?.ids[0];
+  const def = first && !isFolder(organization, first) ? apps[first as AppId] : apps.projects;
+  const Icon = first && isFolder(organization, first) ? Folder : def.icon;
+  return (
+    <>
+      {preview && first && (
+        <div className={`os-entry-drag${preview.invalid ? " is-invalid" : ""}`} aria-hidden="true" style={{ left: Math.max(0, Math.min(preview.point.x + 14, window.innerWidth - 250)), top: Math.max(0, Math.min(preview.point.y + 14, window.innerHeight - 100)) }}>
+          <span className="os-icon__tile" style={{ "--tint": def.tint } as CSSProperties}><Icon size={24} /></span>
+          <div><strong>{preview.ids.length > 1 ? `${preview.ids.length} items` : entryLabel(organization, first)}</strong><span>{preview.message}</span></div>
+        </div>
+      )}
+      {(error || notice) && (
+        <div className="os-folder-notice" role={error ? "alert" : "status"}>
+          <span>{error || notice}</span>
+          <button type="button" onClick={dismiss} aria-label="Dismiss folder notification">Dismiss</button>
+        </div>
+      )}
+    </>
+  );
+}

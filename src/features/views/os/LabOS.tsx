@@ -18,10 +18,12 @@ import DesktopIcons, { iconAreaWidth } from "./DesktopIcons";
 import StartMenuApps, { appSections, systemSections } from "./StartMenuApps";
 import PhoneHomeApps from "./PhoneHomeApps";
 import { FolderOrganizationProvider, isFolder, useFolderOrganization, type EntryId, type FolderId } from "./folderOrganization";
+import { FolderDragLayer, FolderDragProvider } from "./FolderDrag";
 import FeedbackDialog from "./feedback/FeedbackDialog";
 import type { FeedbackContext } from "./feedback/feedbackClient";
 import "../search/search.css";
 import "./os.css";
+import "./folder-manager.css";
 
 const phoneQuery = "(max-width: 760px), (max-height: 500px)";
 const dayFormat = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
@@ -565,7 +567,7 @@ function DesktopShell() {
           </div>
         ) : null}
 
-        <div ref={deskRef} className="os-desktop">
+        <div ref={deskRef} className="os-desktop" data-folder-drop="desktop">
           {phone ? (
             <div ref={homeRef} className="os-home">
               <section className="os-widget" aria-label="About Sid">
@@ -593,7 +595,7 @@ function DesktopShell() {
               </div>
             </div>
           ) : (
-            <DesktopIcons desk={desk} open={openEntry} reset={iconReset} organization={folderState.organization} moveEntries={folderState.moveEntries} />
+            <DesktopIcons desk={desk} open={openEntry} reset={iconReset} organization={folderState.organization} />
           )}
 
           {desk.w > 0 && windows.map((win) => (
@@ -705,6 +707,7 @@ function DesktopShell() {
           </div>
         )}
         {feedback && <FeedbackDialog context={feedback} onClose={closeFeedback} />}
+        <FolderDragLayer />
       </div>
 
       {booting && <BootSequence onDone={finishBoot} desktop={false} />}
@@ -732,7 +735,7 @@ function OsProviders({ api, still, children }: { api: OsSettingsApi; still: bool
 }
 
 function LabOS() {
-  return <FolderOrganizationProvider><SignalsProvider><DesktopShell /></SignalsProvider></FolderOrganizationProvider>;
+  return <FolderOrganizationProvider><FolderDragProvider><SignalsProvider><DesktopShell /></SignalsProvider></FolderDragProvider></FolderOrganizationProvider>;
 }
 
 export default LabOS;

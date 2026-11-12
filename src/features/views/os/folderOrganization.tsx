@@ -29,7 +29,7 @@ export type FolderOrganizationApi = {
   createFolder: (parent: FolderId | null, name: string) => FolderId;
   renameFolder: (id: FolderId, name: string) => boolean;
   deleteFolder: (id: FolderId) => void;
-  moveEntries: (ids: EntryId[], parent: FolderId | null) => void;
+  moveEntries: (ids: EntryId[], parent: FolderId | null) => boolean;
   restoreDefaults: () => void;
   error: string;
   clearError: () => void;
@@ -119,6 +119,39 @@ function siblingHasName(organization: FolderOrganization, parent: FolderId | nul
   return siblings.some((id) => id !== except && hasOwn(organization.folders, id) && organization.folders[id].name.toLowerCase() === name.toLowerCase());
 }
 
+export function folderParent(organization: FolderOrganization, id: EntryId): FolderId | null {
+  return Object.entries(organization.folders).find(([, folder]) => folder.items.includes(id))?.[0] ?? null;
+}
+
+export function folderTrail(organization: FolderOrganization, id: FolderId): FolderId[] {
+  const trail = [id];
+  let parent = folderParent(organization, id);
+  while (parent !== null) {
+    trail.unshift(parent);
+    parent = folderParent(organization, parent);
+  }
+  return trail;
+}
+
+export function entryLabel(organization: FolderOrganization, id: EntryId) {
+  return isFolder(organization, id) ? organization.folders[id].name : apps[id as AppId].label;
+}
+
+export function folderMoveError(organization: FolderOrganization, ids: EntryId[], parent: FolderId | null): string {
+  if (!ids.length || ids.some((id) => !hasOwn(organization.folders, id) && !availableApps.includes(id as AppId))) {
+    return "Choose apps or folders that still exist.";
+  }
+  if (parent !== null && !hasOwn(organization.folders, parent)) return "The destination folder no longer exists.";
+  const movingFolders = ids.filter((id) => isFolder(organization, id));
+  if (parent !== null && movingFolders.some((id) => containsFolder(organization, id, parent))) {
+    return "A folder cannot be moved into itself or one of its child folders.";
+  }
+  if (movingFolders.some((id) => nestingDepth(organization, parent) + subTreeHeight(organization, id) > maximumDepth)) {
+    return `Folders can be nested up to ${maximumDepth} levels.`;
+  }
+  return "";
+}
+
 let idSequence = 0;
 
 export function FolderOrganizationProvider({ children }: { children: ReactNode }) {
@@ -190,20 +223,12 @@ export function FolderOrganizationProvider({ children }: { children: ReactNode }
 
   const moveEntries = useCallback((ids: EntryId[], parent: FolderId | null) => {
     const current = organizationRef.current;
-    const moving = [...new Set(ids)].filter((id) => hasOwn(current.folders, id) || availableApps.includes(id as AppId));
-    if (!moving.length || (parent !== null && !current.folders[parent])) { setError("Choose apps and an existing destination."); return; }
-    if (parent && moving.some((id) => hasOwn(current.folders, id) ?
-      nestingDepth(current, parent) + subTreeHeight(current, id) > maximumDepth :
-      nestingDepth(current, parent) + 1 > maximumDepth)) {
-      setError(`Folders can be nested up to ${maximumDepth} levels.`);
-      return;
-    }
-    if (parent && moving.some((id) => hasOwn(current.folders, id) && containsFolder(current, id, parent))) {
-      setError("A folder cannot be moved into itself or one of its child folders.");
-      return;
-    }
+    const moving = [...new Set(ids)];
+    const invalid = folderMoveError(current, moving, parent);
+    if (invalid) { setError(invalid); return false; }
     const target = parentEntries(current, parent);
-    if (!target) { setError("The destination folder no longer exists."); return; }
+    if (!target) { setError("The destination folder no longer exists."); return false; }
+    if (moving.every((id) => target.includes(id))) { setError(""); return true; }
     let root = [...current.root];
     const folders = { ...current.folders };
     const sources = [null, ...Object.keys(current.folders)];
@@ -217,6 +242,7 @@ export function FolderOrganizationProvider({ children }: { children: ReactNode }
     if (parent === null) root = [...root, ...moving];
     else folders[parent] = { ...folders[parent], items: [...folders[parent].items, ...moving] };
     commit({ root, folders });
+    return true;
   }, [commit]);
 
   const restoreDefaults = useCallback(() => {
