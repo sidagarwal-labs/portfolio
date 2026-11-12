@@ -213,6 +213,8 @@ test("when the shift does not fit a full row, arXiv Search takes the nearest fre
     forward: { col: 0, row: 1 }, designs: { col: 1, row: 1 }, leaderboards: { col: 0, row: 2 },
     resume: { col: 0, row: 3 }, readme: { col: 1, row: 3 }
   };
+  /* The welcome note covers the top-right cells of this small desktop; hide it so the full rows stay as saved. */
+  await page.addInitScript(() => localStorage.setItem("lab-os-settings-v1", JSON.stringify({ note: false })));
   await openSavedDesktop(page, saved, { width: 800, height: 600 });
   const { cells, columns } = await desktopCells(page);
   expect(columns, "the narrowest desktop has eight columns, so row 0 is full from Projects on").toBe(8);

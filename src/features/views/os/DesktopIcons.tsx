@@ -5,11 +5,13 @@ import { defaultDesktopGroups, type EntryId, type FolderOrganization } from "./f
 import { useFolderDrag } from "./FolderDrag";
 import type { DeskSize } from "./types";
 import { clamp } from "./OsWindow";
+import { noteBox } from "./WelcomeNote";
 
 export const iconCell = 92;
 export const iconAreaWidth = 8 + Math.max(desktopDocuments.length, ...desktopRows.map((row) => row.length)) * iconCell;
 type Position = { col: number; row: number };
 type Positions = Partial<Record<EntryId, Position>>;
+const cellKey = ({ col, row }: Position) => `${col},${row}`;
 // Version the layout once; subsequent manual arrangements keep their normal persistence.
 const key = "lab-os-icons-v3";
 
@@ -30,24 +32,40 @@ function readPositions(): Positions {
   }
 }
 
+/* Grid cells the welcome note covers in the top-right corner of the desktop. The icon list is inset 8px from the desktop. */
+function noteCells(desk: DeskSize, columns: number, rows: number) {
+  const cells = new Set<string>();
+  const right = desk.w - noteBox.right - 8;
+  const left = right - noteBox.width;
+  const top = noteBox.top - 8;
+  const bottom = top + noteBox.height;
+  for (let col = 0; col < columns; col += 1) {
+    if (col * iconCell >= right || (col + 1) * iconCell <= left) continue;
+    for (let row = 0; row < rows; row += 1) if (row * iconCell < bottom && (row + 1) * iconCell > top) cells.add(cellKey({ col, row }));
+  }
+  return cells;
+}
+
 /* Saved icons claim their slots first. An icon with no saved position takes its default slot, or else joins its default
-   neighbour wherever the user put it: right of the icon before it in its group (left of the next one if it leads the group). */
-function layoutIcons(saved: Positions, columns: number, rows: number, root: EntryId[]): Positions {
+   neighbour wherever the user put it: right of the icon before it in its group (left of the next one if it leads the group).
+   Blocked cells (under the welcome note) are never used. */
+function layoutIcons(saved: Positions, columns: number, rows: number, root: EntryId[], blocked: Set<string>): Positions {
   const result: Positions = {};
   const taken = new Map<number, EntryId>();
   const slot = (col: number, row: number) => col * rows + row;
-  const isFree = (col: number, row: number) => col >= 0 && col < columns && !taken.has(slot(col, row));
+  const isBlocked = (col: number, row: number) => blocked.has(cellKey({ col, row }));
+  const isFree = (col: number, row: number) => col >= 0 && col < columns && !taken.has(slot(col, row)) && !isBlocked(col, row);
   const put = (id: EntryId, col: number, row: number) => { result[id] = { col, row }; taken.set(slot(col, row), id); };
   const putFirstFree = (id: EntryId) => {
     let next = 0;
-    while (taken.has(next)) next += 1;
+    while (taken.has(next) || isBlocked(Math.floor(next / rows), next % rows)) next += 1;
     put(id, Math.floor(next / rows), next % rows);
   };
   /* Moves the run of icons starting at col one column right, if the row has room past its end. */
   const shiftRight = (col: number, row: number) => {
     let end = col;
     while (end < columns && taken.has(slot(end, row))) end += 1;
-    if (end >= columns) return false;
+    if (end >= columns || isBlocked(end, row)) return false;
     for (let from = end - 1; from >= col; from -= 1) {
       const id = taken.get(slot(from, row));
       if (!id) continue;
@@ -76,6 +94,7 @@ function layoutIcons(saved: Positions, columns: number, rows: number, root: Entr
     const col = clamp(position.col, 0, columns - 1);
     const row = clamp(position.row, 0, rows - 1);
     if (isFree(col, row)) put(id, col, row);
+    else if (isBlocked(col, row)) putNearest(id, col, row, false);
     else putFirstFree(id);
   }
 
@@ -109,9 +128,8 @@ function layoutIcons(saved: Positions, columns: number, rows: number, root: Entr
 }
 
 type Box = { left: number; top: number; width: number; height: number };
-const cellKey = ({ col, row }: Position) => `${col},${row}`;
 
-function DesktopIcons({ desk, open, reset, organization }: { desk: DeskSize; open: (id: EntryId) => void; reset: number; organization: FolderOrganization }) {
+function DesktopIcons({ desk, open, reset, organization, note }: { desk: DeskSize; open: (id: EntryId) => void; reset: number; organization: FolderOrganization; note: boolean }) {
   const { startDrag, consumeClick, clipboard, handleKeys, registerDesktopMove } = useFolderDrag();
   const [saved, setSaved] = useState(readPositions);
   const [notice, setNotice] = useState("");
@@ -123,7 +141,8 @@ function DesktopIcons({ desk, open, reset, organization }: { desk: DeskSize; ope
   const lastReset = useRef(reset);
   const columns = Math.max(1, Math.floor((desk.w - 16) / iconCell));
   const rows = Math.max(1, Math.floor((desk.h - 16) / iconCell));
-  const positions = useMemo(() => layoutIcons(saved, columns, rows, organization.root), [saved, rows, columns, organization.root]);
+  const blocked = useMemo(() => (note ? noteCells(desk, columns, rows) : new Set<string>()), [note, desk, columns, rows]);
+  const positions = useMemo(() => layoutIcons(saved, columns, rows, organization.root, blocked), [saved, rows, columns, organization.root, blocked]);
 
   useEffect(() => {
     setSelected((current) => current.filter((id) => organization.root.includes(id)));
@@ -202,15 +221,20 @@ function DesktopIcons({ desk, open, reset, organization }: { desk: DeskSize; ope
     catch (error) { console.warn("Desktop layout could not be saved.", error); setNotice("Icon positions changed for this session; browser storage is unavailable."); }
   }, []);
 
-  /* Moves icons by a whole number of cells, keeping their spacing; icons in the way take the cells the group left. */
+  /* Moves icons by a whole number of cells, keeping their spacing; icons in the way take the cells the group left.
+     Returns false when the move would put an icon under the welcome note. */
   const moveIcons = useCallback((ids: EntryId[], by: Position) => {
     const from = ids.flatMap((id) => (positions[id] ? [{ id, at: positions[id] }] : []));
-    if (!from.length) return;
+    if (!from.length) return true;
     const col = clamp(by.col, -Math.min(...from.map(({ at }) => at.col)), columns - 1 - Math.max(...from.map(({ at }) => at.col)));
     const row = clamp(by.row, -Math.min(...from.map(({ at }) => at.row)), rows - 1 - Math.max(...from.map(({ at }) => at.row)));
-    if (!col && !row) return;
+    if (!col && !row) return true;
     const next: Positions = { ...saved, ...positions };
     const targets = new Set(from.map(({ at }) => cellKey({ col: at.col + col, row: at.row + row })));
+    if ([...targets].some((cell) => blocked.has(cell))) {
+      setNotice("The welcome note is using that spot.");
+      return false;
+    }
     const vacated = from.map(({ at }) => at).filter((at) => !targets.has(cellKey(at)));
     for (const { id, at } of from) next[id] = { col: at.col + col, row: at.row + row };
     for (const other of organization.root) {
@@ -220,12 +244,12 @@ function DesktopIcons({ desk, open, reset, organization }: { desk: DeskSize; ope
       next[other] = vacated.splice(nearest, 1)[0];
     }
     savePositions(next);
-  }, [positions, saved, organization.root, columns, rows, savePositions]);
+    return true;
+  }, [positions, saved, organization.root, columns, rows, blocked, savePositions]);
 
   useLayoutEffect(() => registerDesktopMove(({ ids, destination, point, start }) => {
     if (destination === null && point && start && ids.every((id) => organization.root.includes(id))) {
-      moveIcons(ids, { col: Math.round((point.x - start.x) / iconCell), row: Math.round((point.y - start.y) / iconCell) });
-      return true;
+      return moveIcons(ids, { col: Math.round((point.x - start.x) / iconCell), row: Math.round((point.y - start.y) / iconCell) });
     }
     const next = { ...saved, ...positions };
     const bounds = listRef.current?.getBoundingClientRect();
@@ -233,7 +257,7 @@ function DesktopIcons({ desk, open, reset, organization }: { desk: DeskSize; ope
       const incoming = ids.filter((id) => !organization.root.includes(id));
       const occupied = new Set(organization.root.flatMap((id) => !ids.includes(id) && positions[id] ? [cellKey(positions[id])] : []));
       const slots = Array.from({ length: columns * rows }, (_, index) => ({ col: Math.floor(index / rows), row: index % rows }))
-        .filter((slot) => !occupied.has(cellKey(slot)));
+        .filter((slot) => !occupied.has(cellKey(slot)) && !blocked.has(cellKey(slot)));
       if (incoming.length > slots.length) {
         setNotice("The desktop is full. Move some items into folders first.");
         return false;
@@ -249,7 +273,7 @@ function DesktopIcons({ desk, open, reset, organization }: { desk: DeskSize; ope
     // Keep positions for items inside folders too, so cut/paste can restore their previous desktop slots.
     savePositions(next);
     return true;
-  }), [registerDesktopMove, saved, positions, organization.root, columns, rows, moveIcons, savePositions]);
+  }), [registerDesktopMove, saved, positions, organization.root, columns, rows, blocked, moveIcons, savePositions]);
 
   return (
     <>

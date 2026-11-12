@@ -259,6 +259,8 @@ test("keyboard cut/paste preserves positions and text editing, and folder manage
 });
 
 test("a full desktop rejects transfers without losing items and accepts them once a slot is free", async ({ page }) => {
+  /* Every grid cell counts toward capacity here, so hide the welcome note that would cover the top-right cells. */
+  await page.evaluate(() => localStorage.setItem("lab-os-settings-v1", JSON.stringify({ note: false })));
   await page.setViewportSize({ width: 800, height: 600 });
   await page.reload();
   await page.getByRole("button", { name: "Show desktop", exact: true }).click();

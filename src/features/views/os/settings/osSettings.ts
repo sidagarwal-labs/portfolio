@@ -4,6 +4,8 @@ import type { OsStyle } from "../types";
 /* Lab OS settings live in this browser only. Every key starts with "lab-os-", which About this PC counts. */
 export const settingsKey = "lab-os-settings-v1";
 export const styleKey = "lab-os-style-v1";
+/* The visitor's own welcome note text; absent until they edit it. */
+export const noteKey = "lab-os-note-v1";
 const iconLayoutKey = /^lab-os-icons-v\d+$/;
 const folderOrganizationKey = "lab-os-folders-v1";
 const ownKey = /^lab-os-/;
@@ -64,9 +66,11 @@ export type OsSettings = {
   clock: ClockHours;
   seconds: boolean;
   motion: Motion;
+  /* Whether the welcome note shows on the desktop and phone home screen. */
+  note: boolean;
 };
 
-export const defaultSettings: OsSettings = { wallpaper: "default", color: "#3a6ea5", clock: "12", seconds: false, motion: "system" };
+export const defaultSettings: OsSettings = { wallpaper: "default", color: "#3a6ea5", clock: "12", seconds: false, motion: "system", note: true };
 
 const hexColor = /^#[0-9a-f]{6}$/i;
 const isWallpaperId = (value: unknown): value is WallpaperId =>
@@ -87,7 +91,8 @@ export function readSettings(): OsSettings {
       color: typeof color === "string" && hexColor.test(color) ? color.toLowerCase() : defaultSettings.color,
       clock: clock === "24" ? "24" : "12",
       seconds: field("seconds") === true,
-      motion: motion === "reduce" || motion === "full" ? motion : "system"
+      motion: motion === "reduce" || motion === "full" ? motion : "system",
+      note: field("note") !== false
     };
   } catch (error) {
     console.warn("Saved Lab OS settings could not be read.", error);
@@ -105,11 +110,11 @@ export function writeSettings(settings: OsSettings) {
   }
 }
 
-/* Settings, style, and the desktop icon layout. Other Lab OS data, such as game best scores, stays. */
+/* Settings, style, folders, the desktop icon layout, and the welcome note. Other Lab OS data, such as game best scores, stays. */
 export function clearSavedSettings() {
   try {
     const keys = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index) ?? "");
-    for (const key of keys) if (key === settingsKey || key === styleKey || key === folderOrganizationKey || iconLayoutKey.test(key)) localStorage.removeItem(key);
+    for (const key of keys) if (key === settingsKey || key === styleKey || key === folderOrganizationKey || key === noteKey || iconLayoutKey.test(key)) localStorage.removeItem(key);
     return true;
   } catch (error) {
     console.warn("Saved Lab OS settings could not be cleared.", error);

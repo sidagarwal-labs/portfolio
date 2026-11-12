@@ -19,11 +19,13 @@ import StartMenuApps, { appSections, systemSections } from "./StartMenuApps";
 import PhoneHomeApps from "./PhoneHomeApps";
 import { FolderOrganizationProvider, isFolder, useFolderOrganization, type EntryId, type FolderId } from "./folderOrganization";
 import { FolderDragLayer, FolderDragProvider } from "./FolderDrag";
+import WelcomeNote, { noteBox, noteGap, useWelcomeNote } from "./WelcomeNote";
 import FeedbackDialog from "./feedback/FeedbackDialog";
 import type { FeedbackContext } from "./feedback/feedbackClient";
 import "../search/search.css";
 import "./os.css";
 import "./folder-manager.css";
+import "./welcome-note.css";
 
 const phoneQuery = "(max-width: 760px), (max-height: 500px)";
 const dayFormat = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
@@ -84,12 +86,15 @@ function useClock() {
   return now;
 }
 
-/* Sid Search fills the desktop beside the icons; everything else opens centered, cascading. */
-function initialRect(app: AppId, desk: DeskSize, count: number): Rect & { maximized: boolean } {
+/* Sid Search fills the desktop beside the icons, leaving the welcome note uncovered when it still gets a comfortable width;
+   everything else opens centered, cascading. */
+function initialRect(app: AppId, desk: DeskSize, count: number, note = false): Rect & { maximized: boolean } {
   const size = apps[app].size;
   if (size === "fill") {
     const x = iconAreaWidth + 12;
-    const w = desk.w - x - 16;
+    const full = desk.w - x - 16;
+    const beside = full - noteBox.width - noteGap;
+    const w = note && beside >= 640 ? beside : full;
     return { x, y: 12, w, h: desk.h - 24, maximized: w < 640 };
   }
   const w = Math.min(size.w, desk.w - 32);
@@ -152,6 +157,8 @@ function DesktopShell() {
   const [online, setOnline] = useState(() => navigator.onLine);
   const [iconReset, setIconReset] = useState(0);
   const [off, setOff] = useState(false);
+  const welcome = useWelcomeNote();
+  const [noteNotice, setNoteNotice] = useState("");
   const frames = useRef(new Map<string, HTMLIFrameElement>());
   const zRef = useRef(1);
   const idRef = useRef(0);
@@ -159,8 +166,8 @@ function DesktopShell() {
   const launched = useRef(false);
   /* Deep links like /#writing open Sid Search at that section. */
   const initialHash = useRef(location.hash);
-  const live = useRef({ windows, desk, phone, style });
-  live.current = { windows, desk, phone, style };
+  const live = useRef({ windows, desk, phone, style, note: settings.note });
+  live.current = { windows, desk, phone, style, note: settings.note };
   const [feedback, setFeedback] = useState<FeedbackContext>();
   const feedbackOpener = useRef<HTMLElement | null>(null);
   const now = useClock();
@@ -241,7 +248,7 @@ function DesktopShell() {
     setMenuOpen(false);
     setCalendarOpen(false);
     setDesktopWindows([]);
-    const { windows: current, desk: size, phone: onPhone } = live.current;
+    const { windows: current, desk: size, phone: onPhone, note } = live.current;
     const shortcut = apps[requested];
     if (shortcut.kind === "folder") {
       openFolder(requested);
@@ -273,7 +280,7 @@ function DesktopShell() {
     const win: OsWin = {
       id: `${app}-${++idRef.current}`,
       app,
-      ...initialRect(app, size, current.length),
+      ...initialRect(app, size, current.length, note && !onPhone),
       z: ++zRef.current,
       minimized: false,
       src: def.kind === "site" ? `${import.meta.env.BASE_URL}${(page ?? def.path)?.slice(1) ?? ""}${hash}` : undefined,
@@ -466,7 +473,27 @@ function DesktopShell() {
     setStyle("modern");
     dropStyleParam();
     setIconReset((value) => value + 1);
-  }, [dropStyleParam, folderState.restoreDefaults]);
+    welcome.restore();
+    setNoteNotice("");
+  }, [dropStyleParam, folderState.restoreDefaults, welcome.restore]);
+
+  /* Focus moves to the apps before the note unmounts, so it isn't lost to the page. */
+  const hideNote = useCallback(() => {
+    const container = phone ? homeRef.current?.querySelector<HTMLElement>(".os-home__grid") : deskRef.current?.querySelector<HTMLElement>(".os-icons");
+    container?.focus({ preventScroll: true });
+    updateSettings({ note: false });
+    setNoteNotice("Welcome note hidden. Settings can show it again.");
+  }, [phone, updateSettings]);
+
+  useEffect(() => {
+    if (!noteNotice) return;
+    if (settings.note) {
+      setNoteNotice("");
+      return;
+    }
+    const timer = window.setTimeout(() => setNoteNotice(""), 6000);
+    return () => window.clearTimeout(timer);
+  }, [noteNotice, settings.note]);
 
   const settingsApi = useMemo<OsSettingsApi>(
     () => ({ settings, update: updateSettings, style, setStyle: changeStyle, deviceReducedMotion, phone, saved, arrangeIcons, resetAll }),
@@ -583,6 +610,7 @@ function DesktopShell() {
                   ))}
                 </div>
               </section>
+              {settings.note && <WelcomeNote text={welcome.text} saved={welcome.saved} style={style} phone onChange={welcome.change} onHide={hideNote} />}
               <p className="os-home__date"><time dateTime={now.toISOString()}>{dayFormat.format(now)}</time></p>
               <SignalStatus open={open} />
               <PhoneHomeApps open={openEntry} organization={folderState.organization} />
@@ -595,8 +623,12 @@ function DesktopShell() {
               </div>
             </div>
           ) : (
-            <DesktopIcons desk={desk} open={openEntry} reset={iconReset} organization={folderState.organization} />
+            <>
+              <DesktopIcons desk={desk} open={openEntry} reset={iconReset} organization={folderState.organization} note={settings.note} />
+              {settings.note && <WelcomeNote text={welcome.text} saved={welcome.saved} style={style} phone={false} onChange={welcome.change} onHide={hideNote} />}
+            </>
           )}
+          {noteNotice && <p className="os-welcome-notice" role="status">{noteNotice}</p>}
 
           {desk.w > 0 && windows.map((win) => (
             <OsWindow key={win.id} win={win} active={win.id === activeId} phone={phone} desk={desk} actions={actions} />
