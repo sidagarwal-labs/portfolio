@@ -17,6 +17,7 @@ import { SignalStatus, SignalsProvider } from "./Signals";
 import DesktopIcons, { iconAreaWidth } from "./DesktopIcons";
 import StartMenuApps, { appSections, systemSections } from "./StartMenuApps";
 import PhoneHomeApps from "./PhoneHomeApps";
+import { FolderOrganizationProvider, isFolder, useFolderOrganization, type EntryId, type FolderId } from "./folderOrganization";
 import FeedbackDialog from "./feedback/FeedbackDialog";
 import type { FeedbackContext } from "./feedback/feedbackClient";
 import "../search/search.css";
@@ -119,6 +120,7 @@ function isPlainClick(event: ReactMouseEvent) {
 }
 
 function DesktopShell() {
+  const folderState = useFolderOrganization();
   const deviceReducedMotion = usePrefersReducedMotion();
   const { setView } = useSiteView();
   const location = useLocation();
@@ -210,12 +212,39 @@ function DesktopShell() {
     });
   }, []);
 
+  const openFolder = useCallback((folderId: FolderId) => {
+    const folder = folderState.organization.folders[folderId];
+    if (!folder) return;
+    setMenuOpen(false);
+    setCalendarOpen(false);
+    setDesktopWindows([]);
+    const { windows: current, desk: size } = live.current;
+    const existing = current.find((win) => win.folderId === folderId);
+    if (existing) { focus(existing.id); return; }
+    const win: OsWin = {
+      id: `${folderId}-${++idRef.current}`,
+      app: "projects",
+      folderId,
+      ...initialRect("projects", size, current.length),
+      z: ++zRef.current,
+      minimized: false,
+      maximized: false,
+      history: [],
+      index: -1
+    };
+    setWindows((list) => list.some((item) => item.folderId === folderId) ? list : [...list, win]);
+  }, [focus, folderState.organization]);
+
   const open = useCallback((requested: AppId, requestedTarget?: string) => {
     setMenuOpen(false);
     setCalendarOpen(false);
     setDesktopWindows([]);
     const { windows: current, desk: size, phone: onPhone } = live.current;
     const shortcut = apps[requested];
+    if (shortcut.kind === "folder") {
+      openFolder(requested);
+      return;
+    }
     /* Shortcuts (such as a project's repository) open the app they point to. */
     const app = shortcut.kind === "link" ? shortcut.opens.app : requested;
     const targetValue = shortcut.kind === "link" ? shortcut.opens.target : requestedTarget;
@@ -251,7 +280,12 @@ function DesktopShell() {
       target
     };
     setWindows((list) => (list.some((item) => item.app === app) ? list : [...list, win]));
-  }, [focus]);
+  }, [focus, openFolder]);
+
+  const openEntry = useCallback((id: EntryId) => {
+    if (isFolder(folderState.organization, id)) openFolder(id);
+    else if (Object.prototype.hasOwnProperty.call(apps, id)) open(id as AppId);
+  }, [folderState.organization, openFolder, open]);
 
   const close = useCallback((id: string) => setWindows((current) => current.filter((win) => win.id !== id)), []);
 
@@ -309,8 +343,8 @@ function DesktopShell() {
   }, []);
 
   const actions = useMemo<OsActions>(
-    () => ({ open, focus, close, minimize, toggleMax, place, home, traverse, reload, registerFrame, setView, feedback: openFeedback }),
-    [open, focus, close, minimize, toggleMax, place, home, traverse, reload, registerFrame, setView, openFeedback]
+    () => ({ open, openEntry, focus, close, minimize, toggleMax, place, home, traverse, reload, registerFrame, setView, feedback: openFeedback }),
+    [open, openEntry, focus, close, minimize, toggleMax, place, home, traverse, reload, registerFrame, setView, openFeedback]
   );
 
   /* Desktop: Sid Search opens right away. Phone: the home screen comes first unless a deep link asked for a section. */
@@ -424,12 +458,13 @@ function DesktopShell() {
 
   const resetAll = useCallback(() => {
     setSaved(clearSavedSettings());
+    folderState.restoreDefaults();
     settingsRef.current = defaultSettings;
     setSettings(defaultSettings);
     setStyle("modern");
     dropStyleParam();
     setIconReset((value) => value + 1);
-  }, [dropStyleParam]);
+  }, [dropStyleParam, folderState.restoreDefaults]);
 
   const settingsApi = useMemo<OsSettingsApi>(
     () => ({ settings, update: updateSettings, style, setStyle: changeStyle, deviceReducedMotion, phone, saved, arrangeIcons, resetAll }),
@@ -478,7 +513,8 @@ function DesktopShell() {
   };
 
   const taskButtons = windows.map((win) => {
-    const def = apps[win.app];
+    const folder = win.folderId ? folderState.organization.folders[win.folderId] : undefined;
+    const def = folder ? { ...apps.projects, title: folder.name } : apps[win.app];
     const Icon = def.icon;
     const current = win.id === activeId;
     return (
@@ -547,7 +583,7 @@ function DesktopShell() {
               </section>
               <p className="os-home__date"><time dateTime={now.toISOString()}>{dayFormat.format(now)}</time></p>
               <SignalStatus open={open} />
-              <PhoneHomeApps open={open} />
+              <PhoneHomeApps open={openEntry} organization={folderState.organization} />
               <div className="os-home__footer">
                 <button type="button" className="os-button" onClick={() => changeStyle(retro ? "modern" : "retro")}>
                   <Palette size={15} strokeWidth={2} aria-hidden="true" />
@@ -557,7 +593,7 @@ function DesktopShell() {
               </div>
             </div>
           ) : (
-            <DesktopIcons desk={desk} open={open} reset={iconReset} />
+            <DesktopIcons desk={desk} open={openEntry} reset={iconReset} organization={folderState.organization} moveEntries={folderState.moveEntries} />
           )}
 
           {desk.w > 0 && windows.map((win) => (
@@ -631,7 +667,7 @@ function DesktopShell() {
               </label>
               <div className="os-menu__cols">
                 <div>
-                  <StartMenuApps query={appQuery} open={open} sections={appSections} />
+                  <StartMenuApps query={appQuery} open={openEntry} sections={appSections} organization={folderState.organization} createFolder={folderState.createFolder} error={folderState.error} clearError={folderState.clearError} />
                 </div>
                 <div>
                   <h2 className="os-menu__heading">Contact</h2>
@@ -648,7 +684,7 @@ function DesktopShell() {
                       );
                     })}
                   </ul>
-                  {!appQuery.trim() && <StartMenuApps query="" open={open} sections={systemSections} />}
+                  {!appQuery.trim() && <StartMenuApps query="" open={openEntry} sections={systemSections} organization={folderState.organization} createFolder={folderState.createFolder} error={folderState.error} clearError={folderState.clearError} />}
                 </div>
               </div>
               <div className="os-menu__foot">
@@ -696,7 +732,7 @@ function OsProviders({ api, still, children }: { api: OsSettingsApi; still: bool
 }
 
 function LabOS() {
-  return <SignalsProvider><DesktopShell /></SignalsProvider>;
+  return <FolderOrganizationProvider><SignalsProvider><DesktopShell /></SignalsProvider></FolderOrganizationProvider>;
 }
 
 export default LabOS;

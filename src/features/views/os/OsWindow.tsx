@@ -2,6 +2,7 @@ import { memo, useLayoutEffect, useRef, type CSSProperties, type PointerEvent as
 import { ArrowLeft, ChevronLeft, Copy, Minus, Square, X } from "lucide-react";
 import AppBody, { BrowserBar } from "./AppBody";
 import { apps } from "./apps";
+import { useFolderOrganization } from "./folderOrganization";
 import type { DeskSize, OsActions, OsWin, Rect } from "./types";
 
 const minWidth = 300;
@@ -33,7 +34,9 @@ type OsWindowProps = {
 
 function OsWindow({ win, active, phone, desk, actions }: OsWindowProps) {
   const ref = useRef<HTMLElement>(null);
-  const def = apps[win.app];
+  const { organization } = useFolderOrganization();
+  const folder = win.folderId ? organization.folders[win.folderId] : undefined;
+  const def = folder ? { ...apps.projects, title: folder.name, label: folder.name } : apps[win.app];
   const Icon = def.icon;
   const box = placeWindow(win, desk);
   const canGoBack = win.index > 0;
@@ -113,6 +116,7 @@ function OsWindow({ win, active, phone, desk, actions }: OsWindowProps) {
       style={style}
       aria-label={def.title}
       data-app={def.id}
+      data-folder-id={win.folderId}
       onPointerDownCapture={() => actions.focus(win.id)}
       onFocusCapture={() => actions.focus(win.id)}
     >
@@ -155,7 +159,7 @@ function OsWindow({ win, active, phone, desk, actions }: OsWindowProps) {
       {def.kind === "site" && !phone && <BrowserBar win={win} actions={actions} />}
 
       <div className="os-win__body">
-        <AppBody id={win.id} app={win.app} src={win.src} target={win.target} active={active} phone={phone} actions={actions} />
+        <AppBody id={win.id} app={win.app} folderId={win.folderId} src={win.src} target={win.target} active={active} phone={phone} actions={actions} />
         {/* A PDF viewer swallows clicks, so an inactive one is covered until the window is focused. */}
         {def.kind === "pdf" && !active && <div className="os-win__shield" aria-hidden="true" />}
       </div>

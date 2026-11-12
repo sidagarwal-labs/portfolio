@@ -5,6 +5,7 @@ import type { OsStyle } from "../types";
 export const settingsKey = "lab-os-settings-v1";
 export const styleKey = "lab-os-style-v1";
 const iconLayoutKey = /^lab-os-icons-v\d+$/;
+const folderOrganizationKey = "lab-os-folders-v1";
 const ownKey = /^lab-os-/;
 
 export type Motion = "system" | "reduce" | "full";
@@ -108,7 +109,7 @@ export function writeSettings(settings: OsSettings) {
 export function clearSavedSettings() {
   try {
     const keys = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index) ?? "");
-    for (const key of keys) if (key === settingsKey || key === styleKey || iconLayoutKey.test(key)) localStorage.removeItem(key);
+    for (const key of keys) if (key === settingsKey || key === styleKey || key === folderOrganizationKey || iconLayoutKey.test(key)) localStorage.removeItem(key);
     return true;
   } catch (error) {
     console.warn("Saved Lab OS settings could not be cleared.", error);

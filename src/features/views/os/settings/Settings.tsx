@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { Check } from "lucide-react";
 import { siteViews } from "../../siteViews";
 import { apps } from "../apps";
+import FolderManager from "../FolderManager";
 import type { OsActions, OsStyle, OsTarget } from "../types";
 import { clockFormat, currentWallpaper, labOsStorage, useOsSettings, wallpapers, type ClockHours, type Motion } from "./osSettings";
 import "./settings.css";
@@ -152,6 +153,10 @@ export default function Settings({ actions }: { target?: OsTarget; actions: OsAc
             </p>
           </fieldset>
         </section>
+
+        <div className="os-set__section">
+          <FolderManager />
+        </div>
 
         <section className="os-set__section" aria-labelledby={`${id}-views`}>
           <h2 id={`${id}-views`}>Full-page views</h2>
