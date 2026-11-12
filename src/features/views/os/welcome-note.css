@@ -1,0 +1,61 @@
+/* ---------- Welcome note ---------- */
+
+/* A sticky note in the desktop's top-right corner (a card on the phone home screen). Windows open above it.
+   WelcomeNote.tsx sets its desktop size and position, which DesktopIcons and Sid Search also use. */
+.os-welcome { position: absolute; display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(120, 96, 20, 0.2); border-radius: 10px; background: #fdf3b4; color: #3b3317; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28), 0 1px 2px rgba(0, 0, 0, 0.18); }
+
+.os-welcome--card { position: relative; flex: none; border-radius: 18px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22); }
+
+.os-welcome :focus-visible { outline-color: #7a5d00; }
+
+.os-welcome__bar { display: flex; align-items: center; gap: 2px; min-height: 32px; padding: 0 4px 0 12px; background: rgba(120, 96, 20, 0.08); }
+
+.os-welcome__title { flex: 1; min-width: 0; margin: 0; overflow: hidden; color: #5f4f17; font-size: 12px; font-weight: 600; line-height: 1.2; letter-spacing: 0.02em; white-space: nowrap; text-overflow: ellipsis; }
+
+.os-welcome__ctl { position: relative; display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: #5f4f17; cursor: pointer; }
+
+.os-welcome__ctl:hover:not(:disabled) { background: rgba(120, 96, 20, 0.14); color: #3b3317; }
+
+.os-welcome__ctl:disabled { opacity: 0.35; cursor: default; }
+
+.os-welcome__text { flex: 1; width: 100%; min-height: 0; margin: 0; padding: 8px 12px; border: 0; background: transparent; color: inherit; font: inherit; font-size: 14px; line-height: 1.45; resize: none; }
+
+.os-welcome__text::placeholder { color: #7d6f45; }
+
+.os-welcome__text:focus-visible { border-radius: 6px; outline-offset: -4px; }
+
+.os-welcome--card .os-welcome__text { min-height: 150px; }
+
+.os-welcome__hint { margin: 0; padding: 0 12px 8px; color: #665c38; font-size: 11.5px; line-height: 1.3; }
+
+/* Shown briefly where the note was, so it's clear how to bring it back. */
+.os-welcome-notice { position: absolute; top: 12px; right: 16px; z-index: 1; max-width: 260px; margin: 0; padding: 10px 14px; border-radius: 6px; background: #202636; color: #fff; font-size: 12px; }
+
+/* Retro: a small Notepad window. */
+.os--retro .os-welcome { padding: 3px; border: 0; border-radius: 0; background: #c0c0c0; color: #000; box-shadow: var(--bevel-out); }
+
+.os--retro .os-welcome__bar { min-height: 22px; gap: 0; padding: 0 3px 0 4px; background: linear-gradient(90deg, #000080, #1084d0); }
+
+.os--retro .os-welcome__title { color: #fff; font-weight: 700; letter-spacing: 0; }
+
+.os--retro .os-welcome__ctl { width: 18px; height: 16px; border-radius: 0; background: #c0c0c0; color: #000; box-shadow: var(--bevel-out); }
+
+.os--retro .os-welcome__ctl::after { content: ""; position: absolute; inset: -3px 0; }
+
+.os--retro .os-welcome__ctl:hover:not(:disabled) { background: #c0c0c0; color: #000; }
+
+.os--retro .os-welcome__ctl:active:not(:disabled) { box-shadow: var(--bevel-in); }
+
+.os--retro .os-welcome__ctl:disabled { opacity: 1; color: #808080; }
+
+.os--retro .os-welcome__ctl--close { margin-left: 2px; }
+
+.os--retro .os-welcome__text { margin-top: 3px; padding: 4px 6px; background: #fff; box-shadow: var(--bevel-in); font-family: "Courier New", Courier, monospace; font-size: 13px; line-height: 1.35; }
+
+.os--retro .os-welcome__text:focus-visible { border-radius: 0; }
+
+.os--retro .os-welcome__text::placeholder { color: #606060; }
+
+.os--retro .os-welcome__hint { margin-top: 3px; padding: 2px 6px; box-shadow: inset -1px -1px #fff, inset 1px 1px #808080; color: #000; font-size: 11px; }
+
+.os--retro .os-welcome-notice { border: 1px solid #000; border-radius: 0; background: #ffffe1; color: #000; }

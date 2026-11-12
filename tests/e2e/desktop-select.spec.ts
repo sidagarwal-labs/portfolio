@@ -35,12 +35,12 @@ async function row(page: Page, index: number) {
 const selectedIds = (page: Page) => page.locator('.os-icons .os-icon[aria-pressed="true"]').evaluateAll((buttons) => buttons.map((button) => (button as HTMLElement).dataset.app).sort());
 const ids = (list: Icon[]) => list.map((icon) => icon.id).sort();
 
-/* Drags from empty space on the right of the desktop across a whole row of icons. */
+/* Drags from empty space in the middle of the desktop (the welcome note covers the top-right corner) across a whole row of icons. */
 async function selectRow(page: Page, index: number, release = true) {
   const target = await row(page, index);
   const desk = (await page.locator(".os-desktop").boundingBox())!;
   const left = Math.min(...target.map((icon) => icon.x));
-  await page.mouse.move(desk.x + desk.width - 40, target[0].y + 20);
+  await page.mouse.move(desk.x + desk.width / 2, target[0].y + 20);
   await page.mouse.down();
   await page.mouse.move(left + 20, target[0].y + 60, { steps: 8 });
   if (release) await page.mouse.up();

@@ -107,6 +107,16 @@ export default function Settings({ actions }: { target?: OsTarget; actions: OsAc
               <span className="os-set__hint">Choosing a color switches to Solid color.</span>
             </div>
           </fieldset>
+          <fieldset className="os-set__group">
+            <legend>Welcome note</legend>
+            <div className="os-set__choices">
+              <label className="os-set-choice">
+                <input type="checkbox" checked={settings.note} onChange={(event) => update({ note: event.target.checked })} />
+                Show welcome note
+              </label>
+            </div>
+            <p className="os-set__hint">Your edits to the note stay in this browser. Reset all brings back the original text.</p>
+          </fieldset>
         </section>
 
         <section className="os-set__section">
@@ -182,7 +192,7 @@ export default function Settings({ actions }: { target?: OsTarget; actions: OsAc
             </div>
           )}
           <div className="os-set__action">
-            <p>Clear the wallpaper, style, clock, motion, and icon layout this browser saved for Lab OS.</p>
+            <p>Clear the wallpaper, style, clock, motion, icon layout, folders, and welcome note this browser saved for Lab OS.</p>
             <button ref={resetRef} type="button" className="os-button" aria-expanded={confirming} aria-controls={`${id}-confirm`} onClick={() => { setMessage(""); setConfirming(true); }}>
               Reset all Lab OS settings…
             </button>
