@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { Folder, type LucideIcon } from "lucide-react";
 import { apps, desktopDocuments, type AppId } from "./apps";
 import { iconCell } from "./desktopLayout";
-import { defaultDesktopGroups, type EntryId, type FolderOrganization } from "./folderOrganization";
+import { defaultDesktopGroups, recycleBinId, type EntryId, type FolderOrganization } from "./folderOrganization";
 import { useFolderDrag } from "./FolderDrag";
 import type { DeskSize } from "./types";
 import { clamp } from "./OsWindow";
@@ -277,7 +277,7 @@ function DesktopIcons({ desk, open, reset, organization, note }: { desk: DeskSiz
 
   return (
     <>
-      <p className="sr-only" id="os-icon-help">Click to open. Right-click for actions; Ctrl or Command Shift N creates a folder, F2 renames, and Delete moves a custom folder to the Recycle Bin. Drag to arrange icons or move them into and out of folders. Shift and arrow keys move the focused icon. Drag across the desktop or Control-click icons to select several; Enter opens them and Escape clears the selection. Ctrl or Command X cuts items; Ctrl or Command V pastes them here.</p>
+      <p className="sr-only" id="os-icon-help">Click to open. Right-click for actions; Ctrl or Command Shift N creates a folder, F2 renames, and Delete moves the selected apps or folders to the Recycle Bin. Drag to arrange icons, move them into and out of folders, or drop them on the Recycle Bin. Shift and arrow keys move the focused icon. Drag across the desktop or Control-click icons to select several; Enter opens them and Escape clears the selection. Ctrl or Command X cuts items; Ctrl or Command V pastes them here, or into the folder or Recycle Bin window you last clicked.</p>
       {marquee && <div className="os-marquee" aria-hidden="true" style={marquee} />}
       <ul ref={listRef} className="os-icons" aria-label="Desktop" aria-describedby="os-icon-help" data-entry-container tabIndex={0} onKeyDown={(event) => handleKeys(event, null, selected)}>
         {organization.root.map((id) => {
@@ -290,7 +290,7 @@ function DesktopIcons({ desk, open, reset, organization, note }: { desk: DeskSiz
           const isSelected = selected.includes(id);
           return (
             <li key={id} style={{ left: (position?.col ?? 0) * iconCell, top: (position?.row ?? 0) * iconCell }}>
-              <button type="button" className={`os-icon${isSelected ? " is-selected" : ""}${clipboard.includes(id) ? " is-cut" : ""}`} data-app={id} data-entry-id={id} data-folder-drop={folder ? id : undefined} aria-label={def.label} aria-pressed={isSelected} title={def.blurb} onPointerDown={(event) => {
+              <button type="button" className={`os-icon${isSelected ? " is-selected" : ""}${clipboard.includes(id) ? " is-cut" : ""}`} data-app={id} data-entry-id={id} data-folder-drop={folder || id === recycleBinId ? id : undefined} aria-label={def.label} aria-pressed={isSelected} title={def.blurb} onPointerDown={(event) => {
                 const group = selected.length > 1 && selected.includes(id) ? selected : [id];
                 startDrag(event, group, () => { if (group.length === 1) setSelected([]); });
               }}

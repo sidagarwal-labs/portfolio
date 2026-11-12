@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { useFolderDrag } from "./FolderDrag";
-import { folderParent, isFolder, isRecycled, useFolderOrganization, type FolderId } from "./folderOrganization";
+import { folderParent, isFolder, isRecycled, recycleBinId, useFolderOrganization, type EntryId, type FolderId } from "./folderOrganization";
 import { useOsSettings } from "./settings/osSettings";
 import type { OsActions } from "./types";
 
@@ -16,7 +16,7 @@ type FolderActionsApi = {
   showMenu: (menu: Menu) => void;
   closeMenu: (focus?: boolean) => void;
   open: (id: string) => void;
-  remove: (id: FolderId) => void;
+  remove: (id: EntryId) => void;
 };
 const Context = createContext<FolderActionsApi | null>(null);
 
@@ -40,7 +40,8 @@ function surface(target: EventTarget | null) {
 }
 
 export function FolderActionsProvider({ actions, children }: { actions: OsActions; children: ReactNode }) {
-  const { organization, createFolder, clearError, deleteFolder } = useFolderOrganization();
+  const { organization, createFolder, clearError } = useFolderOrganization();
+  const { recycle } = useFolderDrag();
   const { phone } = useOsSettings();
   const [editing, setEditing] = useState<Editing | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
@@ -61,13 +62,13 @@ export function FolderActionsProvider({ actions, children }: { actions: OsAction
     if (focus && menu?.opener.isConnected) menu.opener.focus({ preventScroll: true });
     setMenu(null);
   }, [menu]);
-  const remove = useCallback((id: FolderId) => {
+  const remove = useCallback((id: EntryId) => {
     const focused = document.activeElement;
     if (focused instanceof HTMLElement) focused.closest<HTMLElement>(".os-folder-window, [data-entry-container]")?.focus({ preventScroll: true });
-    deleteFolder(id);
+    recycle([id]);
     setMenu(null);
     setEditing(null);
-  }, [deleteFolder]);
+  }, [recycle]);
 
   useEffect(() => {
     const contextMenu = (event: MouseEvent) => {
@@ -89,9 +90,6 @@ export function FolderActionsProvider({ actions, children }: { actions: OsAction
       } else if (event.key === "F2" && id && isFolder(organization, id)) {
         event.preventDefault();
         rename(id, scope);
-      } else if (event.key === "Delete" && id && isFolder(organization, id)) {
-        event.preventDefault();
-        remove(id);
       } else if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
         event.preventDefault();
         const rect = event.target.getBoundingClientRect();
@@ -104,7 +102,7 @@ export function FolderActionsProvider({ actions, children }: { actions: OsAction
       document.removeEventListener("contextmenu", contextMenu);
       document.removeEventListener("keydown", keyDown);
     };
-  }, [organization, create, rename, remove]);
+  }, [organization, create, rename]);
 
   return <Context.Provider value={{ editing, menu, create, rename, finish: (cancel) => { setEditing(null); if (cancel) clearError(); }, showMenu: setMenu, closeMenu, open: actions.openEntry, remove }}>{children}</Context.Provider>;
 }
@@ -182,6 +180,8 @@ export function FolderActionLayer() {
   if (!menu) return null;
   const { id, scope, parent } = menu;
   const folder = id && isFolder(organization, id) && !isRecycled(organization, id);
+  const bin = id === recycleBinId;
+  const recyclable = id && !bin && !isRecycled(organization, id);
   const act = (action: () => void) => { closeMenu(); action(); };
   return (
     <div ref={ref} role="menu" aria-label="Folder actions" className="os-folder-menu" style={{ left: menu.x, top: menu.y }} onKeyDown={(event) => {
@@ -199,9 +199,9 @@ export function FolderActionLayer() {
       {id && <button type="button" role="menuitem" onClick={() => act(() => open(id))}>Open</button>}
       {!id && <button type="button" role="menuitem" onClick={() => act(() => create(parent))}>New folder <kbd>Ctrl/Cmd+Shift+N</kbd></button>}
       {folder && <button type="button" role="menuitem" onClick={() => act(() => rename(id, scope))}>Rename <kbd>F2</kbd></button>}
-      {id && id !== "recyclebin" && <button type="button" role="menuitem" onClick={() => act(() => cutEntries([id]))}>Cut <kbd>Ctrl/Cmd+X</kbd></button>}
-      {(!id || folder) && <button type="button" role="menuitem" disabled={!clipboard.length} onClick={() => act(() => pasteEntries(folder ? id : parent))}>Paste <kbd>Ctrl/Cmd+V</kbd></button>}
-      {folder && <button type="button" role="menuitem" disabled={!id.startsWith("custom-folder-")} onClick={() => act(() => remove(id))}>Move to Recycle Bin <kbd>Delete</kbd></button>}
+      {id && !bin && <button type="button" role="menuitem" onClick={() => act(() => cutEntries([id]))}>Cut <kbd>Ctrl/Cmd+X</kbd></button>}
+      {(!id || folder || bin) && <button type="button" role="menuitem" disabled={!clipboard.length} onClick={() => act(() => pasteEntries(folder || bin ? id : parent))}>{bin ? "Paste into Recycle Bin" : "Paste"} <kbd>Ctrl/Cmd+V</kbd></button>}
+      {recyclable && <button type="button" role="menuitem" onClick={() => act(() => remove(id))}>Move to Recycle Bin <kbd>Delete</kbd></button>}
       {!id && <button type="button" role="menuitem" onClick={() => act(() => open("recyclebin"))}>Open Recycle Bin</button>}
     </div>
   );

@@ -1,9 +1,10 @@
-import { Fragment, useEffect, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useRef, useState, type CSSProperties } from "react";
 import { Folder } from "lucide-react";
 import { apps, type AppId } from "./apps";
 import { folderTrail, isFolder, useFolderOrganization, type EntryId, type FolderId } from "./folderOrganization";
 import { useFolderDrag } from "./FolderDrag";
 import { FolderMenuButton, FolderNameEditor, useFolderActions } from "./FolderActions";
+import { useActivationFocus } from "./useActivationFocus";
 import type { OsActions } from "./types";
 
 export default function FolderContents({ folderId, actions }: { folderId: FolderId; actions: OsActions }) {
@@ -13,6 +14,8 @@ export default function FolderContents({ folderId, actions }: { folderId: Folder
   const folder = organization.folders[folderId];
   const [selected, setSelected] = useState<EntryId[]>([]);
   const [selecting, setSelecting] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useActivationFocus(ref);
 
   useEffect(() => {
     setSelected((current) => current.filter((id) => folder?.items.includes(id)));
@@ -21,7 +24,7 @@ export default function FolderContents({ folderId, actions }: { folderId: Folder
   if (!folder) return <p className="os-folder-empty">This folder no longer exists.</p>;
 
   return (
-    <div className="os-folder-window" data-folder-drop={folderId} tabIndex={0} aria-label={`${folder.name} folder`} onKeyDown={(event) => {
+    <div ref={ref} className="os-folder-window" data-folder-drop={folderId} tabIndex={0} aria-label={`${folder.name} folder`} onKeyDown={(event) => {
       handleKeys(event, folderId, selected);
       if (event.defaultPrevented) return;
       if (event.key === "Escape") setSelected([]);
@@ -55,7 +58,7 @@ export default function FolderContents({ folderId, actions }: { folderId: Folder
           {clipboard.length > 0 && <button type="button" className="os-button" onClick={() => pasteEntries(folderId)}>Paste</button>}
         </div>
       </div>
-      <p className="sr-only" id={`folder-help-${folderId}`}>Right-click for folder actions, or use the Actions button. F2 renames and Delete moves a custom folder to the Recycle Bin. Drag items into folders, another window, or onto the desktop. Drop onto the path above to move to a parent folder. Control-click to select several. Ctrl or Command X cuts and Ctrl or Command V pastes. On touch screens, enable Select items to drag or cut and paste.</p>
+      <p className="sr-only" id={`folder-help-${folderId}`}>Right-click for folder actions, or use the Actions button. F2 renames and Delete moves the selected apps or folders to the Recycle Bin. Drag items into folders, another window, the Recycle Bin, or onto the desktop. Drop onto the path above to move to a parent folder. Control-click to select several. Ctrl or Command X cuts and Ctrl or Command V pastes. On touch screens, enable Select items to drag or cut and paste.</p>
       <ul className="os-folder" aria-label={`${folder.name} apps`} aria-describedby={`folder-help-${folderId}`} data-entry-container data-selecting={selecting}>
         {folder.items.map((id) => {
           const childFolder = isFolder(organization, id);
