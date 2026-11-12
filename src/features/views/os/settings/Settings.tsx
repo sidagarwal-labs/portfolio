@@ -155,7 +155,7 @@ export default function Settings({ actions }: { target?: OsTarget; actions: OsAc
         </section>
 
         <div className="os-set__section">
-          <FolderManager />
+          <FolderManager open={actions.openEntry} />
         </div>
 
         <section className="os-set__section" aria-labelledby={`${id}-views`}>

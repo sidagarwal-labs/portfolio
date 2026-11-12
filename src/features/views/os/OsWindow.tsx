@@ -122,7 +122,7 @@ function OsWindow({ win, active, phone, desk, actions }: OsWindowProps) {
     >
       {phone ? (
         <header className="os-win__bar">
-          <button type="button" className="os-win__home" onClick={actions.home}>
+          <button type="button" className="os-win__home" onClick={actions.home} data-folder-drop={win.folderId ? "desktop" : undefined}>
             <ChevronLeft size={18} strokeWidth={2} aria-hidden="true" />
             Home
           </button>

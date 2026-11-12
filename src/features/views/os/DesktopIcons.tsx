@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Folder, type LucideIcon } from "lucide-react";
 import { apps, desktopDocuments, desktopRows, type AppId } from "./apps";
-import { defaultDesktopGroups, folderDescendants, isFolder, type EntryId, type FolderId, type FolderOrganization } from "./folderOrganization";
+import { defaultDesktopGroups, type EntryId, type FolderOrganization } from "./folderOrganization";
+import { useFolderDrag } from "./FolderDrag";
 import type { DeskSize } from "./types";
 import { clamp } from "./OsWindow";
 
@@ -110,20 +111,23 @@ function layoutIcons(saved: Positions, columns: number, rows: number, root: Entr
 type Box = { left: number; top: number; width: number; height: number };
 const cellKey = ({ col, row }: Position) => `${col},${row}`;
 
-function DesktopIcons({ desk, open, reset, organization, moveEntries }: { desk: DeskSize; open: (id: EntryId) => void; reset: number; organization: FolderOrganization; moveEntries: (ids: EntryId[], parent: FolderId | null) => void }) {
+function DesktopIcons({ desk, open, reset, organization }: { desk: DeskSize; open: (id: EntryId) => void; reset: number; organization: FolderOrganization }) {
+  const { startDrag, consumeClick, clipboard, handleKeys, registerDesktopMove } = useFolderDrag();
   const [saved, setSaved] = useState(readPositions);
   const [notice, setNotice] = useState("");
   const [selected, setSelected] = useState<EntryId[]>([]);
-  const [dropTarget, setDropTarget] = useState<FolderId | null>(null);
   const [marquee, setMarquee] = useState<Box | null>(null);
   const selectedRef = useRef(selected);
   selectedRef.current = selected;
   const listRef = useRef<HTMLUListElement>(null);
-  const suppressClick = useRef<EntryId | null>(null);
   const lastReset = useRef(reset);
   const columns = Math.max(1, Math.floor((desk.w - 16) / iconCell));
   const rows = Math.max(1, Math.floor((desk.h - 16) / iconCell));
   const positions = useMemo(() => layoutIcons(saved, columns, rows, organization.root), [saved, rows, columns, organization.root]);
+
+  useEffect(() => {
+    setSelected((current) => current.filter((id) => organization.root.includes(id)));
+  }, [organization.root]);
 
   useEffect(() => {
     if (lastReset.current === reset) return;
@@ -192,14 +196,20 @@ function DesktopIcons({ desk, open, reset, organization, moveEntries }: { desk: 
     };
   }, [organization.root]);
 
+  const savePositions = useCallback((next: Positions) => {
+    setSaved(next);
+    try { localStorage.setItem(key, JSON.stringify(next)); setNotice(""); }
+    catch (error) { console.warn("Desktop layout could not be saved.", error); setNotice("Icon positions changed for this session; browser storage is unavailable."); }
+  }, []);
+
   /* Moves icons by a whole number of cells, keeping their spacing; icons in the way take the cells the group left. */
-  const moveIcons = (ids: EntryId[], by: Position) => {
+  const moveIcons = useCallback((ids: EntryId[], by: Position) => {
     const from = ids.flatMap((id) => (positions[id] ? [{ id, at: positions[id] }] : []));
     if (!from.length) return;
     const col = clamp(by.col, -Math.min(...from.map(({ at }) => at.col)), columns - 1 - Math.max(...from.map(({ at }) => at.col)));
     const row = clamp(by.row, -Math.min(...from.map(({ at }) => at.row)), rows - 1 - Math.max(...from.map(({ at }) => at.row)));
     if (!col && !row) return;
-    const next: Positions = { ...positions };
+    const next: Positions = { ...saved, ...positions };
     const targets = new Set(from.map(({ at }) => cellKey({ col: at.col + col, row: at.row + row })));
     const vacated = from.map(({ at }) => at).filter((at) => !targets.has(cellKey(at)));
     for (const { id, at } of from) next[id] = { col: at.col + col, row: at.row + row };
@@ -209,77 +219,43 @@ function DesktopIcons({ desk, open, reset, organization, moveEntries }: { desk: 
       const nearest = vacated.reduce((best, cell, index) => (Math.abs(cell.col - at.col) + Math.abs(cell.row - at.row) < Math.abs(vacated[best].col - at.col) + Math.abs(vacated[best].row - at.row) ? index : best), 0);
       next[other] = vacated.splice(nearest, 1)[0];
     }
-    setSaved(next);
-    try { localStorage.setItem(key, JSON.stringify(next)); setNotice(""); }
-    catch (error) { console.warn("Desktop layout could not be saved.", error); setNotice("Icon positions changed for this session; browser storage is unavailable."); }
-  };
+    savePositions(next);
+  }, [positions, saved, organization.root, columns, rows, savePositions]);
 
-  const drag = (event: ReactPointerEvent<HTMLButtonElement>, id: EntryId) => {
-    if (event.button !== 0) return;
-    const button = event.currentTarget;
-    const group = selected.length > 1 && selected.includes(id) ? selected : [id];
-    const tiles = group.flatMap((member) => {
-      const tile = [...(listRef.current?.querySelectorAll<HTMLElement>(".os-icon") ?? [])].find((icon) => icon.dataset.entryId === member);
-      return tile?.parentElement ? [tile.parentElement] : [];
-    });
-    if (!positions[id] || !tiles.length) return;
-    event.preventDefault();
-    button.focus({ preventScroll: true });
-    button.setPointerCapture(event.pointerId);
-    const x = event.clientX;
-    const y = event.clientY;
-    let dx = 0;
-    let dy = 0;
-    let moved = false;
-    const dropTargetAt = (x: number, y: number) => {
-      const candidates = listRef.current?.querySelectorAll<HTMLElement>("[data-folder-drop]") ?? [];
-      return [...candidates].find((candidate) => {
-        const id = candidate.dataset.folderDrop;
-        if (!id || group.includes(id)) return false;
-        const rect = candidate.getBoundingClientRect();
-        return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
-      })?.dataset.folderDrop;
-    };
-    const move = (pointer: PointerEvent) => {
-      dx = pointer.clientX - x;
-      dy = pointer.clientY - y;
-      moved ||= Math.hypot(dx, dy) > 5;
-      const target = dropTargetAt(pointer.clientX, pointer.clientY);
-      const invalid = target && group.some((member) => isFolder(organization, member) && (member === target || folderDescendants(organization, member).includes(target)));
-      setDropTarget(target && !invalid ? target : null);
-      if (moved) for (const tile of tiles) { tile.style.transform = `translate(${dx}px, ${dy}px)`; tile.style.zIndex = "1"; }
-    };
-    const cleanup = () => {
-      button.removeEventListener("pointermove", move);
-      button.removeEventListener("pointerup", finish);
-      button.removeEventListener("pointercancel", cleanup);
-      button.removeEventListener("lostpointercapture", cleanup);
-      for (const tile of tiles) { tile.style.transform = ""; tile.style.zIndex = ""; }
-    };
-    const finish = () => {
-      const target = dropTargetAt(x + dx, y + dy);
-      cleanup();
-      setDropTarget(null);
-      if (moved) {
-        suppressClick.current = id;
-        if (group.length === 1) setSelected([]);
-        const invalid = target && group.some((member) => isFolder(organization, member) && (member === target || folderDescendants(organization, member).includes(target)));
-        if (target && !invalid) moveEntries(group, target);
-        else moveIcons(group, { col: Math.round(dx / iconCell), row: Math.round(dy / iconCell) });
-        window.setTimeout(() => { suppressClick.current = null; }, 0);
+  useLayoutEffect(() => registerDesktopMove(({ ids, destination, point, start }) => {
+    if (destination === null && point && start && ids.every((id) => organization.root.includes(id))) {
+      moveIcons(ids, { col: Math.round((point.x - start.x) / iconCell), row: Math.round((point.y - start.y) / iconCell) });
+      return true;
+    }
+    const next = { ...saved, ...positions };
+    const bounds = listRef.current?.getBoundingClientRect();
+    if (destination === null) {
+      const incoming = ids.filter((id) => !organization.root.includes(id));
+      const occupied = new Set(organization.root.flatMap((id) => !ids.includes(id) && positions[id] ? [cellKey(positions[id])] : []));
+      const slots = Array.from({ length: columns * rows }, (_, index) => ({ col: Math.floor(index / rows), row: index % rows }))
+        .filter((slot) => !occupied.has(cellKey(slot)));
+      if (incoming.length > slots.length) {
+        setNotice("The desktop is full. Move some items into folders first.");
+        return false;
       }
-    };
-    button.addEventListener("pointermove", move);
-    button.addEventListener("pointerup", finish);
-    button.addEventListener("pointercancel", cleanup);
-    button.addEventListener("lostpointercapture", cleanup);
-  };
+      for (const id of incoming) {
+        const preferred = point && bounds
+          ? { col: clamp(Math.floor((point.x - bounds.left) / iconCell), 0, columns - 1), row: clamp(Math.floor((point.y - bounds.top) / iconCell), 0, rows - 1) }
+          : saved[id] ?? { col: 0, row: 0 };
+        slots.sort((a, b) => (Math.abs(a.col - preferred.col) + Math.abs(a.row - preferred.row)) - (Math.abs(b.col - preferred.col) + Math.abs(b.row - preferred.row)));
+        next[id] = slots.shift();
+      }
+    }
+    // Keep positions for items inside folders too, so cut/paste can restore their previous desktop slots.
+    savePositions(next);
+    return true;
+  }), [registerDesktopMove, saved, positions, organization.root, columns, rows, moveIcons, savePositions]);
 
   return (
     <>
-      <p className="sr-only" id="os-icon-help">Click to open. Drag to move icons; they snap to the grid. Shift and arrow keys also move the focused icon. Drag across the desktop or Control-click icons to select several; Enter opens them and Escape clears the selection.</p>
+      <p className="sr-only" id="os-icon-help">Click to open. Drag to arrange icons or move them into and out of folders. Shift and arrow keys move the focused icon. Drag across the desktop or Control-click icons to select several; Enter opens them and Escape clears the selection. Ctrl or Command X cuts items; Ctrl or Command V pastes them here.</p>
       {marquee && <div className="os-marquee" aria-hidden="true" style={marquee} />}
-      <ul ref={listRef} className="os-icons" aria-label="Desktop" aria-describedby="os-icon-help">
+      <ul ref={listRef} className="os-icons" aria-label="Desktop" aria-describedby="os-icon-help" data-entry-container tabIndex={0} onKeyDown={(event) => handleKeys(event, null, selected)}>
         {organization.root.map((id) => {
           const folder = organization.folders[id];
           const def = folder
@@ -290,9 +266,12 @@ function DesktopIcons({ desk, open, reset, organization, moveEntries }: { desk: 
           const isSelected = selected.includes(id);
           return (
             <li key={id} style={{ left: (position?.col ?? 0) * iconCell, top: (position?.row ?? 0) * iconCell }}>
-              <button type="button" className={`os-icon${isSelected ? " is-selected" : ""}${dropTarget === id ? " is-drop-target" : ""}`} data-app={id} data-entry-id={id} data-folder-drop={folder ? id : undefined} aria-pressed={isSelected} title={def.blurb} onPointerDown={(event) => drag(event, id)}
+              <button type="button" className={`os-icon${isSelected ? " is-selected" : ""}${clipboard.includes(id) ? " is-cut" : ""}`} data-app={id} data-entry-id={id} data-folder-drop={folder ? id : undefined} aria-pressed={isSelected} title={def.blurb} onPointerDown={(event) => {
+                const group = selected.length > 1 && selected.includes(id) ? selected : [id];
+                startDrag(event, group, () => { if (group.length === 1) setSelected([]); });
+              }}
                 onClick={(event) => {
-                  if (suppressClick.current === id) return;
+                  if (consumeClick(event)) return;
                   if (event.ctrlKey || event.metaKey || event.shiftKey) {
                     setSelected(isSelected ? selected.filter((other) => other !== id) : organization.root.filter((other) => other === id || selected.includes(other)));
                     return;
