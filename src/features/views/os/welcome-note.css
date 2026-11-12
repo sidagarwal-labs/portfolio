@@ -59,3 +59,16 @@
 .os--retro .os-welcome__hint { margin-top: 3px; padding: 2px 6px; box-shadow: inset -1px -1px #fff, inset 1px 1px #808080; color: #000; font-size: 11px; }
 
 .os--retro .os-welcome-notice { border: 1px solid #000; border-radius: 0; background: #ffffe1; color: #000; }
+
+/* The note stays anchored at the top-right; only its left and bottom sides resize. */
+.os-welcome:not(.os-welcome--card) .os-welcome__hint { padding-left: 28px; }
+
+.os-welcome__grip { position: absolute; z-index: 1; touch-action: none; }
+
+.os-welcome__grip--w { top: 32px; bottom: 24px; left: 0; width: 6px; cursor: ew-resize; }
+
+.os-welcome__grip--s { right: 0; bottom: 0; left: 24px; height: 6px; cursor: ns-resize; }
+
+.os-welcome__grip--sw { display: grid; place-items: center; bottom: 0; left: 0; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 0; background: transparent; color: inherit; cursor: nesw-resize; }
+
+.os-welcome__grip--sw:focus-visible { outline-offset: -3px; }

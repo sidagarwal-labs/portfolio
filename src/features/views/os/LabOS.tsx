@@ -19,7 +19,7 @@ import StartMenuApps, { appSections, systemSections } from "./StartMenuApps";
 import PhoneHomeApps from "./PhoneHomeApps";
 import { FolderOrganizationProvider, isFolder, useFolderOrganization, type EntryId, type FolderId } from "./folderOrganization";
 import { FolderDragLayer, FolderDragProvider } from "./FolderDrag";
-import WelcomeNote, { noteBox, noteGap, useWelcomeNote } from "./WelcomeNote";
+import WelcomeNote, { noteGap, useWelcomeNote, type NoteSize } from "./WelcomeNote";
 import FeedbackDialog from "./feedback/FeedbackDialog";
 import type { FeedbackContext } from "./feedback/feedbackClient";
 import "../search/search.css";
@@ -88,12 +88,12 @@ function useClock() {
 
 /* Sid Search fills the desktop beside the icons, leaving the welcome note uncovered when it still gets a comfortable width;
    everything else opens centered, cascading. */
-function initialRect(app: AppId, desk: DeskSize, count: number, note = false): Rect & { maximized: boolean } {
+function initialRect(app: AppId, desk: DeskSize, count: number, note?: NoteSize): Rect & { maximized: boolean } {
   const size = apps[app].size;
   if (size === "fill") {
     const x = iconAreaWidth + 12;
     const full = desk.w - x - 16;
-    const beside = full - noteBox.width - noteGap;
+    const beside = full - (note?.width ?? 0) - noteGap;
     const w = note && beside >= 640 ? beside : full;
     return { x, y: 12, w, h: desk.h - 24, maximized: w < 640 };
   }
@@ -157,7 +157,8 @@ function DesktopShell() {
   const [online, setOnline] = useState(() => navigator.onLine);
   const [iconReset, setIconReset] = useState(0);
   const [off, setOff] = useState(false);
-  const welcome = useWelcomeNote();
+  const welcome = useWelcomeNote(desk);
+  const noteSize = settings.note && !phone ? welcome.size : undefined;
   const [noteNotice, setNoteNotice] = useState("");
   const frames = useRef(new Map<string, HTMLIFrameElement>());
   const zRef = useRef(1);
@@ -166,8 +167,8 @@ function DesktopShell() {
   const launched = useRef(false);
   /* Deep links like /#writing open Sid Search at that section. */
   const initialHash = useRef(location.hash);
-  const live = useRef({ windows, desk, phone, style, note: settings.note });
-  live.current = { windows, desk, phone, style, note: settings.note };
+  const live = useRef({ windows, desk, phone, style, note: noteSize });
+  live.current = { windows, desk, phone, style, note: noteSize };
   const [feedback, setFeedback] = useState<FeedbackContext>();
   const feedbackOpener = useRef<HTMLElement | null>(null);
   const now = useClock();
@@ -280,7 +281,7 @@ function DesktopShell() {
     const win: OsWin = {
       id: `${app}-${++idRef.current}`,
       app,
-      ...initialRect(app, size, current.length, note && !onPhone),
+      ...initialRect(app, size, current.length, note),
       z: ++zRef.current,
       minimized: false,
       src: def.kind === "site" ? `${import.meta.env.BASE_URL}${(page ?? def.path)?.slice(1) ?? ""}${hash}` : undefined,
@@ -466,14 +467,15 @@ function DesktopShell() {
   const arrangeIcons = useCallback(() => setIconReset((value) => value + 1), []);
 
   const resetAll = useCallback(() => {
-    setSaved(clearSavedSettings());
+    const cleared = clearSavedSettings();
+    setSaved(cleared);
     folderState.restoreDefaults();
     settingsRef.current = defaultSettings;
     setSettings(defaultSettings);
     setStyle("modern");
     dropStyleParam();
     setIconReset((value) => value + 1);
-    welcome.restore();
+    welcome.restore(cleared);
     setNoteNotice("");
   }, [dropStyleParam, folderState.restoreDefaults, welcome.restore]);
 
@@ -610,7 +612,7 @@ function DesktopShell() {
                   ))}
                 </div>
               </section>
-              {settings.note && <WelcomeNote text={welcome.text} saved={welcome.saved} style={style} phone onChange={welcome.change} onHide={hideNote} />}
+              {settings.note && <WelcomeNote note={welcome} style={style} phone desk={desk} onHide={hideNote} />}
               <p className="os-home__date"><time dateTime={now.toISOString()}>{dayFormat.format(now)}</time></p>
               <SignalStatus open={open} />
               <PhoneHomeApps open={openEntry} organization={folderState.organization} />
@@ -624,8 +626,8 @@ function DesktopShell() {
             </div>
           ) : (
             <>
-              <DesktopIcons desk={desk} open={openEntry} reset={iconReset} organization={folderState.organization} note={settings.note} />
-              {settings.note && <WelcomeNote text={welcome.text} saved={welcome.saved} style={style} phone={false} onChange={welcome.change} onHide={hideNote} />}
+              <DesktopIcons desk={desk} open={openEntry} reset={iconReset} organization={folderState.organization} note={noteSize} />
+              {settings.note && <WelcomeNote note={welcome} style={style} phone={false} desk={desk} onHide={hideNote} />}
             </>
           )}
           {noteNotice && <p className="os-welcome-notice" role="status">{noteNotice}</p>}
