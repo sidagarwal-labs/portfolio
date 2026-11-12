@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Folder, type LucideIcon } from "lucide-react";
-import { apps, desktopDocuments, desktopRows, type AppId } from "./apps";
+import { apps, desktopDocuments, type AppId } from "./apps";
+import { iconCell } from "./desktopLayout";
 import { defaultDesktopGroups, type EntryId, type FolderOrganization } from "./folderOrganization";
 import { useFolderDrag } from "./FolderDrag";
 import type { DeskSize } from "./types";
 import { clamp } from "./OsWindow";
 import { noteBox, type NoteSize } from "./WelcomeNote";
 
-export const iconCell = 92;
-export const iconAreaWidth = 8 + Math.max(desktopDocuments.length, ...desktopRows.map((row) => row.length)) * iconCell;
 type Position = { col: number; row: number };
 type Positions = Partial<Record<EntryId, Position>>;
 const cellKey = ({ col, row }: Position) => `${col},${row}`;

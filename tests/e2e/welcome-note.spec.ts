@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { iconAreaWidth } from "../../src/features/views/os/desktopLayout";
 
 const noteKey = "lab-os-note-v1";
 const sizeKey = "lab-os-note-size-v1";
@@ -26,6 +27,21 @@ const noteRegion = (page: Page) => page.getByRole("region", { name: "Welcome not
 async function expectSize(page: Page, width: number, height: number) {
   await expect(noteRegion(page)).toHaveCSS("width", `${width}px`);
   await expect(noteRegion(page)).toHaveCSS("height", `${height}px`);
+}
+
+async function expectIconsWithinDesktop(page: Page) {
+  const desk = (await page.locator(".os-desktop").boundingBox())!;
+  const icons = await page.locator(".os-icons > li").evaluateAll((items) => items.map((item) => {
+    const { x, y, width, height } = item.getBoundingClientRect();
+    return { x, y, width, height, label: item.textContent ?? "" };
+  }));
+  expect(icons.length).toBeGreaterThan(0);
+  for (const icon of icons) {
+    expect(icon.x, icon.label).toBeGreaterThanOrEqual(desk.x);
+    expect(icon.y, icon.label).toBeGreaterThanOrEqual(desk.y);
+    expect(icon.x + icon.width, icon.label).toBeLessThanOrEqual(desk.x + desk.width);
+    expect(icon.y + icon.height, icon.label).toBeLessThanOrEqual(desk.y + desk.height);
+  }
 }
 
 async function dragNote(page: Page, edge: "w" | "s" | "sw", dx: number, dy: number) {
@@ -230,17 +246,21 @@ for (const style of ["modern", "retro"]) {
     expect(textBox.height).toBeGreaterThan(50);
     await text.fill("Still editable at minimum size");
 
-    await dragNote(page, "sw", -1800, 1800);
-    const desk = (await page.locator(".os-desktop").boundingBox())!;
-    await expectSize(page, desk.width - 28, desk.height - 24);
-    const box = (await noteRegion(page).boundingBox())!;
-    expect(box.x).toBe(desk.x + 12);
-    expect(box.y).toBe(desk.y + 12);
-    expect(box.x + box.width).toBe(desk.x + desk.width - 16);
-    expect(box.y + box.height).toBe(desk.y + desk.height - 12);
-    await grip.press("Shift+ArrowLeft");
-    await grip.press("Shift+ArrowDown");
-    await expectSize(page, desk.width - 28, desk.height - 24);
+    for (const viewport of [{ width: 1440, height: 900 }, { width: 800, height: 520 }]) {
+      await page.setViewportSize(viewport);
+      await dragNote(page, "sw", -1800, 1800);
+      const desk = (await page.locator(".os-desktop").boundingBox())!;
+      await expectSize(page, desk.width - iconAreaWidth - 28, desk.height - 24);
+      const box = (await noteRegion(page).boundingBox())!;
+      expect(box.x).toBe(desk.x + iconAreaWidth + 12);
+      expect(box.y).toBe(desk.y + 12);
+      expect(box.x + box.width).toBe(desk.x + desk.width - 16);
+      expect(box.y + box.height).toBe(desk.y + desk.height - 12);
+      await grip.press("Shift+ArrowLeft");
+      await grip.press("Shift+ArrowDown");
+      await expectSize(page, desk.width - iconAreaWidth - 28, desk.height - 24);
+      await expectIconsWithinDesktop(page);
+    }
     await expect(text).toHaveValue("Still editable at minimum size");
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   });
@@ -248,6 +268,7 @@ for (const style of ["modern", "retro"]) {
 
 test("viewport clamping and phone cards preserve the preferred desktop size", async ({ page }) => {
   await openDesktop(page);
+  await page.setViewportSize({ width: 1680, height: 900 });
   await page.getByRole("button", { name: "Show desktop", exact: true }).click();
   await dragNote(page, "sw", -980, 500);
   await expectSize(page, 1200, 720);
@@ -255,13 +276,15 @@ test("viewport clamping and phone cards preserve the preferred desktop size", as
 
   await page.setViewportSize({ width: 1000, height: 650 });
   const desktop = (await page.locator(".os-desktop").boundingBox())!;
-  await expectSize(page, desktop.width - 28, desktop.height - 24);
+  await expectSize(page, desktop.width - iconAreaWidth - 28, desktop.height - 24);
+  await expectIconsWithinDesktop(page);
   const grip = noteRegion(page).getByRole("button", { name: "Resize welcome note" });
   await grip.press("ArrowLeft");
   await grip.press("ArrowDown");
   expect(await storedSize(page)).toEqual({ width: 1200, height: 720 });
   await page.reload();
-  await expectSize(page, desktop.width - 28, desktop.height - 24);
+  await expectSize(page, desktop.width - iconAreaWidth - 28, desktop.height - 24);
+  await expectIconsWithinDesktop(page);
   await expect(page.locator(searchWin)).toHaveClass(/is-maximized/);
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -273,7 +296,7 @@ test("viewport clamping and phone cards preserve the preferred desktop size", as
   await page.reload();
   await expect(card).toBeInViewport();
   await expect(card.locator(".os-welcome__grip")).toHaveCount(0);
-  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.setViewportSize({ width: 1680, height: 900 });
   await expectSize(page, 1200, 720);
   expect(await storedSize(page)).toEqual({ width: 1200, height: 720 });
 });
