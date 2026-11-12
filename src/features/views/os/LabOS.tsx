@@ -17,8 +17,9 @@ import { SignalStatus, SignalsProvider } from "./Signals";
 import DesktopIcons, { iconAreaWidth } from "./DesktopIcons";
 import StartMenuApps, { appSections, systemSections } from "./StartMenuApps";
 import PhoneHomeApps from "./PhoneHomeApps";
-import { FolderOrganizationProvider, isFolder, useFolderOrganization, type EntryId, type FolderId } from "./folderOrganization";
+import { FolderOrganizationProvider, isFolder, isRecycled, useFolderOrganization, type EntryId, type FolderId } from "./folderOrganization";
 import { FolderDragLayer, FolderDragProvider } from "./FolderDrag";
+import { FolderActionLayer, FolderActionsProvider } from "./FolderActions";
 import WelcomeNote, { noteBox, noteGap, useWelcomeNote } from "./WelcomeNote";
 import FeedbackDialog from "./feedback/FeedbackDialog";
 import type { FeedbackContext } from "./feedback/feedbackClient";
@@ -224,6 +225,7 @@ function DesktopShell() {
   const openFolder = useCallback((folderId: FolderId) => {
     const folder = folderState.organization.folders[folderId];
     if (!folder) return;
+    if (isRecycled(folderState.organization, folderId)) { console.warn("Restore a recycled folder before opening it."); return; }
     setMenuOpen(false);
     setCalendarOpen(false);
     setDesktopWindows([]);
@@ -311,8 +313,14 @@ function DesktopShell() {
   }, []);
 
   const home = useCallback(() => {
+    setMenuOpen(false);
+    setCalendarOpen(false);
     setWindows((current) => (current.some((win) => !win.minimized) ? current.map((win) => ({ ...win, minimized: true })) : current));
   }, []);
+
+  useEffect(() => {
+    setWindows((current) => current.filter((win) => !win.folderId || (isFolder(folderState.organization, win.folderId) && !isRecycled(folderState.organization, win.folderId))));
+  }, [folderState.organization]);
 
   const traverse = useCallback((id: string, delta: number) => {
     const win = live.current.windows.find((item) => item.id === id);
@@ -575,7 +583,7 @@ function DesktopShell() {
   );
 
   return (
-    <OsProviders api={settingsApi} still={still}>
+    <OsProviders api={settingsApi} still={still} actions={actions}>
       <div
         ref={rootRef}
         className={`os os--${style}${phone ? " os--phone" : ""}${still ? " os--still" : ""}${settings.motion === "reduce" ? " os--no-motion" : ""}${wall.tone === "light" ? " os--wall-light" : ""}`}
@@ -701,7 +709,7 @@ function DesktopShell() {
               </label>
               <div className="os-menu__cols">
                 <div>
-                  <StartMenuApps query={appQuery} open={openEntry} sections={appSections} organization={folderState.organization} createFolder={folderState.createFolder} error={folderState.error} clearError={folderState.clearError} />
+                  <StartMenuApps query={appQuery} open={openEntry} sections={appSections} organization={folderState.organization} />
                 </div>
                 <div>
                   <h2 className="os-menu__heading">Contact</h2>
@@ -718,7 +726,7 @@ function DesktopShell() {
                       );
                     })}
                   </ul>
-                  {!appQuery.trim() && <StartMenuApps query="" open={openEntry} sections={systemSections} organization={folderState.organization} createFolder={folderState.createFolder} error={folderState.error} clearError={folderState.clearError} />}
+                  {!appQuery.trim() && <StartMenuApps query="" open={openEntry} sections={systemSections} organization={folderState.organization} />}
                 </div>
               </div>
               <div className="os-menu__foot">
@@ -740,6 +748,7 @@ function DesktopShell() {
         )}
         {feedback && <FeedbackDialog context={feedback} onClose={closeFeedback} />}
         <FolderDragLayer />
+        <FolderActionLayer />
       </div>
 
       {booting && <BootSequence onDone={finishBoot} desktop={false} />}
@@ -758,10 +767,10 @@ function DesktopShell() {
 }
 
 /* Apps inside Lab OS read its settings, and its Reduce motion choice replaces the device preference for them. */
-function OsProviders({ api, still, children }: { api: OsSettingsApi; still: boolean; children: ReactNode }) {
+function OsProviders({ api, still, actions, children }: { api: OsSettingsApi; still: boolean; actions: OsActions; children: ReactNode }) {
   return (
     <OsSettingsContext.Provider value={api}>
-      <ReducedMotionOverride.Provider value={still}>{children}</ReducedMotionOverride.Provider>
+      <ReducedMotionOverride.Provider value={still}><FolderActionsProvider actions={actions}>{children}</FolderActionsProvider></ReducedMotionOverride.Provider>
     </OsSettingsContext.Provider>
   );
 }

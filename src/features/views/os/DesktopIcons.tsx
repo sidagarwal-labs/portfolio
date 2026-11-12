@@ -6,6 +6,7 @@ import { useFolderDrag } from "./FolderDrag";
 import type { DeskSize } from "./types";
 import { clamp } from "./OsWindow";
 import { noteBox } from "./WelcomeNote";
+import { FolderMenuButton, FolderNameEditor } from "./FolderActions";
 
 export const iconCell = 92;
 export const iconAreaWidth = 8 + Math.max(desktopDocuments.length, ...desktopRows.map((row) => row.length)) * iconCell;
@@ -277,7 +278,7 @@ function DesktopIcons({ desk, open, reset, organization, note }: { desk: DeskSiz
 
   return (
     <>
-      <p className="sr-only" id="os-icon-help">Click to open. Drag to arrange icons or move them into and out of folders. Shift and arrow keys move the focused icon. Drag across the desktop or Control-click icons to select several; Enter opens them and Escape clears the selection. Ctrl or Command X cuts items; Ctrl or Command V pastes them here.</p>
+      <p className="sr-only" id="os-icon-help">Click to open. Right-click for actions; Ctrl or Command Shift N creates a folder, F2 renames, and Delete moves a custom folder to the Recycle Bin. Drag to arrange icons or move them into and out of folders. Shift and arrow keys move the focused icon. Drag across the desktop or Control-click icons to select several; Enter opens them and Escape clears the selection. Ctrl or Command X cuts items; Ctrl or Command V pastes them here.</p>
       {marquee && <div className="os-marquee" aria-hidden="true" style={marquee} />}
       <ul ref={listRef} className="os-icons" aria-label="Desktop" aria-describedby="os-icon-help" data-entry-container tabIndex={0} onKeyDown={(event) => handleKeys(event, null, selected)}>
         {organization.root.map((id) => {
@@ -290,7 +291,7 @@ function DesktopIcons({ desk, open, reset, organization, note }: { desk: DeskSiz
           const isSelected = selected.includes(id);
           return (
             <li key={id} style={{ left: (position?.col ?? 0) * iconCell, top: (position?.row ?? 0) * iconCell }}>
-              <button type="button" className={`os-icon${isSelected ? " is-selected" : ""}${clipboard.includes(id) ? " is-cut" : ""}`} data-app={id} data-entry-id={id} data-folder-drop={folder ? id : undefined} aria-pressed={isSelected} title={def.blurb} onPointerDown={(event) => {
+              <button type="button" className={`os-icon${isSelected ? " is-selected" : ""}${clipboard.includes(id) ? " is-cut" : ""}`} data-app={id} data-entry-id={id} data-folder-drop={folder ? id : undefined} aria-label={def.label} aria-pressed={isSelected} title={def.blurb} onPointerDown={(event) => {
                 const group = selected.length > 1 && selected.includes(id) ? selected : [id];
                 startDrag(event, group, () => { if (group.length === 1) setSelected([]); });
               }}
@@ -315,6 +316,7 @@ function DesktopIcons({ desk, open, reset, organization, note }: { desk: DeskSiz
                 <span className="os-icon__tile" style={{ "--tint": def.tint } as CSSProperties} aria-hidden="true"><Icon size={26} strokeWidth={1.7} /></span>
                 <span className="os-icon__label">{def.label}</span>
               </button>
+              {folder && <><FolderNameEditor id={id} scope="desktop" /><FolderMenuButton id={id} scope="desktop" /></>}
             </li>
           );
         })}

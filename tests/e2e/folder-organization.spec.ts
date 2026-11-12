@@ -31,17 +31,20 @@ async function drag(page: Page, source: Locator, target: Locator | Point) {
 async function createFolder(page: Page, name: string) {
   await page.locator(".os-start").click();
   const menu = page.getByRole("dialog", { name: "Start menu" });
-  await menu.getByLabel("New folder name").fill(name);
-  await menu.getByRole("button", { name: "Create folder" }).click();
-  const controls = await menu.getByRole("button", { name, exact: true }).getAttribute("aria-controls");
-  expect(controls).toMatch(/^os-menu-folder-custom-folder-/);
-  await page.locator(".os-start").click();
-  return controls!.replace("os-menu-folder-", "");
+  await menu.getByRole("button", { name: "New folder", exact: true }).click();
+  const input = page.getByRole("textbox", { name: "Folder name", exact: true });
+  await input.fill(name);
+  await input.press("Enter");
+  const id = await page.locator(".os-icons").getByRole("button", { name, exact: true }).getAttribute("data-entry-id");
+  expect(id).toMatch(/^custom-folder-/);
+  return id!;
 }
 
 async function createSubfolder(window: Locator, name: string) {
-  await window.getByLabel("New subfolder").fill(name);
-  await window.getByRole("button", { name: "Create", exact: true }).click();
+  await window.locator(".os-folder-toolbar").getByRole("button", { name: "New folder", exact: true }).click();
+  const input = window.getByRole("textbox", { name: "Folder name", exact: true });
+  await input.fill(name);
+  await input.press("Enter");
   const id = await window.getByRole("list").getByRole("button", { name, exact: true }).getAttribute("data-entry-id");
   expect(id).toMatch(/^custom-folder-/);
   return id!;
@@ -238,12 +241,15 @@ test("keyboard cut/paste preserves positions and text editing, and folder manage
   await expect(folderIcon(window, "library")).toBeVisible();
   await folderIcon(window, "library").press("Control+x");
   const before = await savedFolders(page);
-  const input = window.getByLabel("New subfolder");
+  await window.getByRole("button", { name: "Actions for Keyboard", exact: true }).click();
+  await page.getByRole("menuitem", { name: /^Rename/ }).click();
+  const input = window.getByRole("textbox", { name: "Folder name", exact: true });
   await input.fill("Editable text");
   await input.press("Control+a");
   await input.press("Control+x");
   await input.press("Control+v");
   expect(await savedFolders(page)).toBe(before);
+  await input.press("Escape");
   await expect(folderIcon(window, "library")).toHaveClass(/is-cut/);
   await page.locator(".os-icons").press("Control+v");
   await expect(desktopIcon(page, "library")).toBeVisible();
@@ -260,23 +266,30 @@ test("keyboard cut/paste preserves positions and text editing, and folder manage
   expect(await desktopIcon(page, "library").boundingBox()).not.toEqual(occupiedSlot);
   await desktopIcon(page, "library").press("Control+x");
   await window.locator(".os-folder-window").press("Control+v");
-  await window.getByRole("button", { name: "Rename folder", exact: true }).click();
-  await window.getByLabel("Folder name", { exact: true }).fill("Renamed");
-  await window.getByRole("button", { name: "Save name", exact: true }).click();
+  await window.getByRole("button", { name: "Actions for Keyboard", exact: true }).click();
+  await page.getByRole("menuitem", { name: /^Rename/ }).click();
+  await window.getByRole("textbox", { name: "Folder name", exact: true }).fill("Renamed");
+  await window.getByRole("textbox", { name: "Folder name", exact: true }).press("Enter");
   await expect(window.getByRole("list", { name: "Renamed apps" })).toBeVisible();
-  await window.getByRole("button", { name: "Delete folder", exact: true }).click();
+  await window.getByRole("button", { name: "Actions for Renamed", exact: true }).click();
+  await page.getByRole("menuitem", { name: /^Move to Recycle Bin/ }).click();
   await expect(desktopIcon(page, id)).toHaveCount(0);
-  await expect(window).toContainText("This folder no longer exists.");
-  await expect(desktopIcon(page, "library")).toBeVisible();
+  await expect(window).toHaveCount(0);
+  await expect(desktopIcon(page, "library")).toHaveCount(0);
+  await desktopIcon(page, "recyclebin").click();
+  await page.getByRole("button", { name: "Restore Renamed", exact: true }).click();
+  await desktopIcon(page, id).click();
+  await expect(folderIcon(window, "library")).toBeVisible();
 
   await page.locator(".os-start").click();
   await page.getByRole("dialog", { name: "Start menu" }).getByRole("button", { name: "Settings", exact: true }).click();
   const organizer = page.getByRole("region", { name: "Folder organization" });
   await expect(organizer.locator("select")).toHaveCount(0);
   await expect(organizer.getByRole("button", { name: "Move", exact: true })).toHaveCount(0);
-  await organizer.getByLabel("New folder on desktop").fill("From Settings");
-  await organizer.getByRole("button", { name: "Create folder", exact: true }).click();
-  await organizer.getByRole("button", { name: "Open From Settings folder" }).click();
+  await organizer.getByRole("button", { name: "New folder on desktop", exact: true }).click();
+  await page.getByRole("textbox", { name: "Folder name", exact: true }).fill("From Settings");
+  await page.getByRole("textbox", { name: "Folder name", exact: true }).press("Enter");
+  await page.locator(".os-icons").getByRole("button", { name: "From Settings", exact: true }).click();
   await expect(page.getByRole("list", { name: "From Settings apps" })).toBeVisible();
 });
 

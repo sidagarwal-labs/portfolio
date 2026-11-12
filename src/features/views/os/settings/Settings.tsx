@@ -192,7 +192,7 @@ export default function Settings({ actions }: { target?: OsTarget; actions: OsAc
             </div>
           )}
           <div className="os-set__action">
-            <p>Clear the wallpaper, style, clock, motion, icon layout, folders, and welcome note this browser saved for Lab OS.</p>
+            <p>Clear the wallpaper, style, clock, motion, icon layout, folders, Recycle Bin, and welcome note this browser saved for Lab OS.</p>
             <button ref={resetRef} type="button" className="os-button" aria-expanded={confirming} aria-controls={`${id}-confirm`} onClick={() => { setMessage(""); setConfirming(true); }}>
               Reset all Lab OS settings…
             </button>

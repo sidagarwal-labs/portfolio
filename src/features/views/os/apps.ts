@@ -1,4 +1,4 @@
-import { Activity, Blocks, Bomb, BookOpen, BrainCircuit, BriefcaseBusiness, Calculator, ChartCandlestick, Database, FileText, Folder, GitGraph, LibraryBig, ListOrdered, MessageSquareText, Newspaper, NotebookText, Rocket, ScanSearch, Search, Settings, SquareTerminal, Trophy, Worm, type LucideIcon } from "lucide-react";
+import { Activity, Blocks, Bomb, BookOpen, BrainCircuit, BriefcaseBusiness, Calculator, ChartCandlestick, Database, FileText, Folder, GitGraph, LibraryBig, ListOrdered, MessageSquareText, Newspaper, NotebookText, Rocket, ScanSearch, Search, Settings, SquareTerminal, Trash2, Trophy, Worm, type LucideIcon } from "lucide-react";
 import { selectedProjects } from "../../../content/journalContent";
 import type { SiteView } from "../siteViews";
 
@@ -6,7 +6,7 @@ export type AppId =
   | "search" | "library" | "github" | "reader" | "journal" | "forward" | "training" | "terminal"
   | "resume" | "readme" | "designs" | "games" | "markets" | "launches" | "leaderboards"
   | "snake" | "mines" | "rankit" | "nexttoken" | "blocks"
-  | "projects" | "arxiv" | "nvdocs" | "hireme" | "finmodels" | "settings";
+  | "projects" | "arxiv" | "nvdocs" | "hireme" | "finmodels" | "settings" | "recyclebin";
 
 export type AppDef = {
   id: AppId;
@@ -43,6 +43,7 @@ function repoLink(id: AppId, title: string, icon: LucideIcon, tint: string): App
 }
 
 export const apps: Record<AppId, AppDef> = {
+  recyclebin: app({ id: "recyclebin", title: "Recycle Bin", label: "Recycle Bin", blurb: "Restore deleted folders and everything inside them.", icon: Trash2, tint: "linear-gradient(145deg, #7d8b9b, #445365)", kind: "app", size: { w: 600, h: 440 } }),
   search: app({ id: "search", title: "Sid Search", label: "Sid Search", blurb: "Projects, writing, and background as a search engine.", icon: Search, tint: "linear-gradient(145deg, #4c7df0, #2a4fbf)", kind: "site", view: "search", size: "fill" }),
   library: app({ id: "library", title: "Library", label: "Library", blurb: "Books and podcasts I keep coming back to, grouped by topic.", icon: LibraryBig, tint: "linear-gradient(145deg, #d9825b, #9c4a2c)", kind: "app", size: { w: 1060, h: 780 } }),
   github: app({ id: "github", title: "GitHub", label: "GitHub", blurb: "My GitHub year as data: contribution heatmap, stats, and four models of the activity. Look up any user.", icon: GitGraph, tint: "linear-gradient(145deg, #5b6bd6, #2b347f)", kind: "app", size: githubSize }),
@@ -77,7 +78,7 @@ export const desktopRows: AppId[][] = [
   ["forward", "designs"],
   ["games", "markets", "launches", "leaderboards"]
 ];
-export const desktopDocuments: AppId[] = ["resume", "readme"];
+export const desktopDocuments: AppId[] = ["resume", "readme", "recyclebin"];
 export const desktopApps: AppId[] = [...desktopRows.flat(), ...desktopDocuments];
 
 export type MenuSection = { label: string; items: AppId[] };

@@ -1,7 +1,8 @@
-import { Fragment, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { ChevronRight, Folder, FolderOpen } from "lucide-react";
-import { apps, menuSections, type AppId, type MenuSection } from "./apps";
-import { isFolder, orderedRootEntries, type EntryId, type FolderId, type FolderOrganization } from "./folderOrganization";
+import { apps, desktopDocuments, menuSections, type AppId, type MenuSection } from "./apps";
+import { isFolder, orderedRootEntries, type EntryId, type FolderOrganization } from "./folderOrganization";
+import { useFolderActions } from "./FolderActions";
 
 type Open = (id: EntryId) => void;
 type Result = { id: EntryId; path: string[] };
@@ -27,18 +28,15 @@ function entryName(id: EntryId, organization: FolderOrganization) {
   return isFolder(organization, id) ? organization.folders[id].name : apps[id as AppId].label;
 }
 
-function StartMenuApps({ query, open, sections = menuSections, organization, createFolder, error, clearError }: {
+function StartMenuApps({ query, open, sections = menuSections, organization }: {
   query: string;
   open: Open;
   sections?: MenuSection[];
   organization: FolderOrganization;
-  createFolder: (parent: FolderId | null, name: string) => FolderId;
-  error: string;
-  clearError: () => void;
 }) {
   const systemOnly = sections.every((section) => section.label === "System");
   const [expanded, setExpanded] = useState<EntryId[]>([]);
-  const [newName, setNewName] = useState("");
+  const { create } = useFolderActions();
   const needle = query.trim().toLowerCase();
   const searchable = useMemo(() => collectEntries(organization), [organization]);
 
@@ -125,22 +123,13 @@ function StartMenuApps({ query, open, sections = menuSections, organization, cre
   }
 
   const orderedRoot = orderedRootEntries(organization.root);
-  const roots = orderedRoot.filter((id) => apps[id as AppId]?.kind !== "pdf" && apps[id as AppId]?.kind !== "note");
-  const documents = orderedRoot.filter((id) => apps[id as AppId]?.kind === "pdf" || apps[id as AppId]?.kind === "note");
-  const submitFolder = (event: FormEvent) => {
-    event.preventDefault();
-    if (createFolder(null, newName)) setNewName("");
-  };
+  const roots = orderedRoot.filter((id) => !desktopDocuments.includes(id as AppId));
+  const documents = orderedRoot.filter((id) => desktopDocuments.includes(id as AppId));
 
   return (
     <>
       <h2 className="os-menu__heading">Apps</h2>
-      <form className="os-menu__new-folder" onSubmit={submitFolder}>
-        <label className="sr-only" htmlFor="os-menu-new-folder">New folder name</label>
-        <input id="os-menu-new-folder" value={newName} maxLength={32} placeholder="New folder name" onChange={(event) => setNewName(event.target.value)} />
-        <button type="submit" className="os-menu__item" disabled={!newName.trim()}>Create folder</button>
-      </form>
-      {error && <p className="os-menu__empty" role="status">{error} <button type="button" className="os-button" onClick={clearError}>Dismiss</button></p>}
+      <button type="button" className="os-menu__item" onClick={() => create(null)}><Folder size={16} aria-hidden="true" />New folder</button>
       <ul className="os-menu__list" aria-label="Apps">{roots.map((id) => renderEntry(id, []))}</ul>
       {documents.length > 0 && (
         <>
