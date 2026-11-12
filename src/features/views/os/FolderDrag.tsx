@@ -107,15 +107,18 @@ export function FolderDragProvider({ children }: { children: ReactNode }) {
       }
       clearTarget();
       target = targetAt(point);
+      const hit = target;
       const { organization } = current.current;
-      const invalid = target ? folderMoveError(organization, ids, target.parent) : "";
-      target?.element.setAttribute("data-drop-state", invalid ? "invalid" : "valid");
-      const destination = target?.parent == null ? "Desktop" : organization.folders[target.parent]?.name;
+      const invalid = hit ? folderMoveError(organization, ids, hit.parent) : "";
+      hit?.element.setAttribute("data-drop-state", invalid ? "invalid" : "valid");
+      const destination = hit?.parent == null ? "Desktop" : organization.folders[hit.parent]?.name;
+      // Rearranging within the same place needs no caption, just the floating icon.
+      const unchanged = !!hit && !invalid && ids.every((id) => folderParent(organization, id) === hit.parent);
       setPreview({
         ids,
         point,
-        invalid: !target || !!invalid,
-        message: invalid || (target ? `Move to ${destination}` : "Drop on a folder or the desktop")
+        invalid: !hit || !!invalid,
+        message: invalid || (hit ? (unchanged ? "" : `Move to ${destination}`) : "Drop on a folder or the desktop")
       });
     };
     const cleanup = () => {
@@ -220,12 +223,19 @@ export function FolderDragLayer() {
   const first = preview?.ids[0];
   const def = first && !isFolder(organization, first) ? apps[first as AppId] : apps.projects;
   const Icon = first && isFolder(organization, first) ? Folder : def.icon;
+  const count = preview?.ids.length ?? 0;
+  // Near the right edge the caption flips to the cursor's left so it never covers the drop target.
+  const flipped = !!preview && preview.point.x > window.innerWidth - 270;
+  const top = preview ? Math.max(0, Math.min(preview.point.y + 10, window.innerHeight - 64)) : 0;
   return (
     <>
       {preview && first && (
-        <div className={`os-entry-drag${preview.invalid ? " is-invalid" : ""}`} aria-hidden="true" style={{ left: Math.max(0, Math.min(preview.point.x + 14, window.innerWidth - 250)), top: Math.max(0, Math.min(preview.point.y + 14, window.innerHeight - 100)) }}>
-          <span className="os-icon__tile" style={{ "--tint": def.tint } as CSSProperties}><Icon size={24} /></span>
-          <div><strong>{preview.ids.length > 1 ? `${preview.ids.length} items` : entryLabel(organization, first)}</strong><span>{preview.message}</span></div>
+        <div className={`os-entry-drag${preview.invalid ? " is-invalid" : ""}${flipped ? " is-flipped" : ""}`} aria-hidden="true" style={flipped ? { right: window.innerWidth - preview.point.x + 10, top } : { left: preview.point.x + 10, top }}>
+          <span className="os-entry-drag__ghost">
+            <span className="os-icon__tile" style={{ "--tint": def.tint } as CSSProperties}><Icon size={20} /></span>
+            {count > 1 && <span className="os-entry-drag__count">{count}</span>}
+          </span>
+          {preview.message && <span className="os-entry-drag__label">{preview.message}</span>}
         </div>
       )}
       {(error || notice) && (
