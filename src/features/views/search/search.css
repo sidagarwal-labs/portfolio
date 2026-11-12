@@ -450,10 +450,27 @@ html.se-booting { overflow: hidden; }
   .se-top { grid-area: top; }
   .se-rest { grid-area: rest; }
   .se-panel { position: sticky; top: 136px; grid-area: panel; align-self: start; }
+  /* The side panel shows these, so the top result leaves them out. */
+  .se-hero__avatar, .se-hero__actions, .se-hero__facts { display: none; }
 }
 
 @media (min-width: 1080px) and (max-height: 720px) {
   .se-panel { position: static; }
+}
+
+/* Narrower layouts merge the top result and the knowledge panel into one profile card, so nothing repeats. */
+@media not all and (min-width: 1080px) {
+  .se-panel, .se-hero > .se-source, .se-hero__sep, .se-sitelinks > .se-sitelinks__contact { display: none; }
+  .se-hero { padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+  .se-hero__head { display: flex; align-items: center; gap: 16px; }
+  .se-hero__avatar { width: 76px; height: 76px; flex: 0 0 auto; border: 1px solid var(--line); border-radius: 50%; object-fit: cover; }
+  .se-hero h1 { margin: 0; font-size: 24px; }
+  .se-hero h1 > span { display: block; margin-top: 2px; font-size: 14.5px; line-height: 1.4; }
+  .se-hero__snippet { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .se-hero__facts { gap: 6px; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .se-hero__facts div { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 12px; font-size: 14px; }
+  .se-hero__facts dt { color: var(--muted); font-weight: 400; }
+  .se-hero__facts dt::after { content: none; }
 }
 
 @media (max-width: 759px) {
@@ -518,8 +535,9 @@ html.se-booting { overflow: hidden; }
 @media (max-width: 420px) {
   .se-sitelinks { gap: 14px 18px; }
   .se-sitelinks a { font-size: 16px; }
-  .se-panel { padding: 16px; }
-  .se-panel__head img { width: 64px; height: 64px; }
+  .se-panel, .se-hero { padding: 16px; }
+  .se-panel__head img, .se-hero__avatar { width: 64px; height: 64px; }
+  .se-hero__facts div { grid-template-columns: 76px minmax(0, 1fr); gap: 10px; }
 }
 
 /* Boot intro */
