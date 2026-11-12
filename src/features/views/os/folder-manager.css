@@ -31,17 +31,24 @@
 .os-folder .os-icon:focus-visible { outline: 2px solid #2a4fbf; outline-offset: 1px; }
 .os-icon.is-cut { opacity: 0.5; }
 .os-icon[data-entry-dragging="true"] { opacity: 0.35; pointer-events: none; }
-[data-folder-drop][data-drop-state="valid"] { outline: 2px solid #4474ca; outline-offset: -2px; }
-[data-folder-drop][data-drop-state="invalid"] { outline: 2px dashed #bb3030; outline-offset: -2px; }
-.os-icon[data-drop-state="valid"], .os-folder-path button[data-drop-state="valid"] { background: #dce7fa; color: #1f2328; text-shadow: none; }
+/* Drop feedback stays on the folder tile, not the whole icon cell; the desktop itself is never outlined. */
+.os-icon__tile { transition: transform 0.14s ease, box-shadow 0.14s ease, opacity 0.14s ease, filter 0.14s ease; }
+.os-icon[data-drop-state="valid"] .os-icon__tile { transform: scale(1.08); box-shadow: 0 0 0 2px rgba(255,255,255,0.95), 0 0 0 4px #4f7fe0, 0 8px 18px rgba(0,0,0,0.3); }
+.os-icon[data-drop-state="invalid"] .os-icon__tile { opacity: 0.5; filter: grayscale(0.6); }
+.os-folder-window { transition: background-color 0.14s ease, box-shadow 0.14s ease; }
+.os-folder-window[data-drop-state="valid"] { background: #eef3fc; box-shadow: inset 0 0 0 1px rgba(79,127,224,0.45); }
+.os-folder-window[data-drop-state="invalid"] { box-shadow: inset 0 0 0 1px rgba(187,48,48,0.35); }
+:is(.os-folder-path button, .os-win__home)[data-drop-state="valid"] { background: rgba(79,127,224,0.14); box-shadow: inset 0 0 0 1px rgba(79,127,224,0.45); }
+:is(.os-folder-path button, .os-win__home)[data-drop-state="invalid"] { box-shadow: inset 0 0 0 1px rgba(187,48,48,0.35); }
 .os-desktop.is-moving-entry { -webkit-user-select: none; user-select: none; cursor: grabbing; }
 .os-desktop.is-moving-entry :is(iframe, object) { pointer-events: none; }
-.os-entry-drag { position: fixed; z-index: 20; display: flex; align-items: center; gap: 10px; max-width: 250px; padding: 10px; border: 1px solid #8daadc; border-radius: 8px; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.2); color: #1f2328; pointer-events: none; }
-.os-entry-drag .os-icon__tile { width: 36px; height: 36px; border-radius: 8px; }
-.os-entry-drag strong, .os-entry-drag div > span { display: block; overflow-wrap: anywhere; }
-.os-entry-drag strong { font-size: 12px; }
-.os-entry-drag div > span { margin-top: 3px; font-size: 11px; }
-.os-entry-drag.is-invalid { border-color: #bb3030; }
+.os-entry-drag { position: fixed; z-index: 20; display: flex; align-items: center; gap: 6px; pointer-events: none; }
+.os-entry-drag.is-flipped { flex-direction: row-reverse; }
+.os-entry-drag__ghost { position: relative; flex: none; }
+.os-entry-drag__ghost .os-icon__tile { width: 36px; height: 36px; border-radius: 9px; opacity: 0.92; box-shadow: 0 8px 20px rgba(0,0,0,0.32), inset 0 1px rgba(255,255,255,0.25); }
+.os-entry-drag__count { position: absolute; top: -6px; right: -7px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #e5484d; box-shadow: 0 0 0 1.5px #fff; color: #fff; font-size: 10.5px; font-weight: 700; line-height: 18px; text-align: center; }
+.os-entry-drag__label { max-width: 240px; padding: 4px 9px; border-radius: 11px; background: rgba(24,28,38,0.88); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); box-shadow: 0 2px 8px rgba(0,0,0,0.22); color: #fff; font-size: 11.5px; line-height: 1.35; overflow-wrap: anywhere; }
+.os-entry-drag.is-invalid .os-entry-drag__label { background: rgba(150,34,34,0.92); }
 .os-folder-notice { position: absolute; right: 12px; bottom: calc(var(--os-taskbar) + 12px); z-index: 21; display: flex; align-items: center; gap: 10px; max-width: min(340px, calc(100% - 24px)); padding: 10px 12px; border-radius: 6px; background: #202636; color: #fff; font-size: 12px; }
 .os-folder-notice button { flex: none; padding: 4px; border: 0; background: transparent; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
 .os-home__apps { display: grid; gap: 12px; }
@@ -61,10 +68,23 @@
 .os--retro .os-folder-empty { color: #222; }
 .os--retro .os-folder-path { border-bottom-color: #808080; }
 .os--retro .os-folder .os-icon.is-selected { background: #c8d6ed; outline: 1px dotted #000080; }
-.os--retro [data-folder-drop][data-drop-state="valid"] { outline: 1px dotted #000080; }
-.os--retro .os-entry-drag { border-radius: 0; background: #c0c0c0; box-shadow: var(--bevel-out); color: #000; }
+.os--retro .os-icon[data-drop-state="valid"] .os-icon__tile { transform: none; box-shadow: inset 0 0 0 40px rgba(0,0,128,0.45); }
+.os--retro .os-icon[data-drop-state="valid"] .os-icon__label { background: #000080; color: #fff; }
+.os--retro .os-folder-window[data-drop-state] { background: #c0c0c0; box-shadow: none; }
+.os--retro .os-folder-window[data-drop-state="valid"] { outline: 1px dotted #000080; outline-offset: -3px; }
+.os--retro :is(.os-folder-path button, .os-win__home)[data-drop-state] { background: transparent; box-shadow: none; }
+.os--retro :is(.os-folder-path button, .os-win__home)[data-drop-state="valid"] { outline: 1px dotted currentColor; outline-offset: -3px; }
+.os--retro .os-entry-drag__ghost .os-icon__tile { border-radius: 3px; box-shadow: inset -1px -1px rgba(0,0,0,0.45), inset 1px 1px rgba(255,255,255,0.45); }
+.os--retro .os-entry-drag__count { border-radius: 0; background: #000080; box-shadow: none; }
+.os--retro .os-entry-drag__label { border: 1px solid #000; border-radius: 0; background: #ffffe1; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; color: #000; }
+.os--retro .os-entry-drag.is-invalid .os-entry-drag__label { background: #ffffe1; color: #a00000; }
 .os--retro .os-folder-notice { border-radius: 0; background: #ffffe1; box-shadow: var(--bevel-thin-out); color: #000; }
 .os--retro .os-menu__new-folder input { border-radius: 0; background: #fff; color: #000; }
+
+@media (prefers-reduced-motion: reduce) {
+  .os-icon__tile, .os-folder-window { transition: none; }
+  .os-icon[data-drop-state="valid"] .os-icon__tile { transform: none; }
+}
 
 @media (max-width: 760px) {
   .os-folder-toolbar form { align-items: stretch; }

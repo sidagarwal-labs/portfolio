@@ -154,13 +154,35 @@ test("multi-selected desktop and folder items move together", async ({ page }) =
   await folderIcon(window, "library").click({ modifiers: ["Control"] });
   await folderIcon(window, "github").click({ modifiers: ["Control"] });
   await startDrag(page, folderIcon(window, "library"), window.getByRole("button", { name: "Desktop", exact: true }));
-  await expect(page.locator(".os-entry-drag")).toContainText("2 items");
+  await expect(page.locator(".os-entry-drag__count")).toHaveText("2");
+  await expect(page.locator(".os-entry-drag__label")).toHaveText("Move to Desktop");
   await page.mouse.up();
   await expect(folderIcon(window, "library")).toHaveCount(0);
   await expect(folderIcon(window, "github")).toHaveCount(0);
   await expect(desktopIcon(page, "library")).toBeVisible();
   await expect(desktopIcon(page, "github")).toBeVisible();
   await expect(page.locator('.os-win[data-app="library"], .os-win[data-app="github"]')).toHaveCount(0);
+});
+
+test("drop feedback stays on the folder tile and is quiet while rearranging", async ({ page }) => {
+  const id = await createFolder(page, "Sleek");
+  const target = desktopIcon(page, id);
+  await startDrag(page, desktopIcon(page, "library"), target);
+  await expect(target).toHaveAttribute("data-drop-state", "valid");
+  await expect(page.locator(".os-entry-drag__label")).toHaveText("Move to Sleek");
+  await expect(page.locator(".os-entry-drag__count")).toHaveCount(0);
+  await expect(target).toHaveCSS("outline-style", "none");
+  await expect(target).not.toHaveCSS("background-color", "rgb(220, 231, 250)");
+  await expect(target.locator(".os-icon__tile")).toHaveCSS("box-shadow", /79, 127, 224/);
+  await page.keyboard.press("Escape");
+  await page.mouse.up();
+
+  await startDrag(page, desktopIcon(page, "library"), { x: 1510, y: 820 });
+  await expect(page.locator(".os-desktop")).toHaveAttribute("data-drop-state", "valid");
+  await expect(page.locator(".os-desktop")).toHaveCSS("outline-style", "none");
+  await expect(page.locator(".os-entry-drag__label")).toHaveCount(0);
+  await page.mouse.up();
+  await expect(page.locator(".os-entry-drag")).toHaveCount(0);
 });
 
 test("invalid descendants, Escape, pointer cancellation, and unrelated windows do not move or open items", async ({ page }) => {
