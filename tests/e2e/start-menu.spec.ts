@@ -4,7 +4,7 @@ const topLevel = ["Sid Search", "Library", "GitHub", "arXiv Search", "Forward pa
 const folders = ["Projects", "Other designs", "Games"];
 const designs = ["Training run", "Terminal", "Journal"];
 const games = ["Snake", "Mines", "Blocks", "Rank It", "Next Token"];
-const documents = ["Resume.pdf", "README.txt"];
+const documents = ["Resume.pdf", "README.txt", "Recycle Bin"];
 
 test.beforeEach(async ({ page }) => {
   await page.route("https://finnhub.io/api/v1/quote?*", (route) => route.fulfill({ json: { c: 230.36, dp: 0.84, t: 1788552000 } }));

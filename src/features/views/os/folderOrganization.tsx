@@ -4,7 +4,8 @@ import { apps, desktopApps, desktopDocuments, desktopRows, menuSections, type Ap
 export type FolderId = string;
 export type EntryId = AppId | FolderId;
 export type FolderContents = { name: string; items: EntryId[] };
-export type FolderOrganization = { root: EntryId[]; folders: Record<FolderId, FolderContents> };
+type RecycledFolder = { id: FolderId; parent: FolderId | null; index: number };
+export type FolderOrganization = { root: EntryId[]; folders: Record<FolderId, FolderContents>; trash: RecycledFolder[] };
 
 const storageKey = "lab-os-folders-v1";
 const maximumFolders = 40;
@@ -17,6 +18,7 @@ const menuEntryOrder = menuSections.flatMap((section) => section.label === "Syst
 const hasOwn = (record: object, key: PropertyKey) => Object.prototype.hasOwnProperty.call(record, key);
 const defaultOrganization: FolderOrganization = {
   root: [...desktopApps],
+  trash: [],
   folders: Object.fromEntries(folderIds.map((id) => {
     const def = apps[id];
     return [id, { name: def.label, items: def.kind === "folder" ? [...def.children] : [] }];
@@ -26,9 +28,10 @@ const defaultOrganization: FolderOrganization = {
 export type FolderOrganizationApi = {
   organization: FolderOrganization;
   saved: boolean;
-  createFolder: (parent: FolderId | null, name: string) => FolderId;
+  createFolder: (parent: FolderId | null, name?: string) => FolderId;
   renameFolder: (id: FolderId, name: string) => boolean;
   deleteFolder: (id: FolderId) => void;
+  restoreFolder: (id: FolderId) => { name: string; destination: string } | undefined;
   moveEntries: (ids: EntryId[], parent: FolderId | null) => boolean;
   restoreDefaults: () => void;
   error: string;
@@ -46,18 +49,34 @@ function validName(value: string) {
   return name.length > 0 && name.length <= maximumNameLength ? name : undefined;
 }
 
+function isEntries(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((id) => typeof id === "string");
+}
+
 function validateOrganization(value: unknown): FolderOrganization {
-  if (!isRecord(value) || !Array.isArray(value.root) || !isRecord(value.folders)) throw new Error("Saved folders are malformed.");
+  if (!isRecord(value) || !isEntries(value.root) || !isRecord(value.folders)) throw new Error("Saved folders are malformed.");
   const folders: FolderOrganization["folders"] = {};
   const rawFolders = value.folders;
   const ids = Object.keys(rawFolders);
   if (ids.length > maximumFolders + folderIds.length) throw new Error("Too many saved folders.");
   for (const id of ids) {
+    if (!id.startsWith("custom-folder-") && !folderIds.includes(id as AppId)) throw new Error("Saved folder ID is invalid.");
     const folder = rawFolders[id];
-    if (!isRecord(folder) || typeof folder.name !== "string" || !Array.isArray(folder.items)) throw new Error("Saved folder is malformed.");
+    if (!isRecord(folder) || typeof folder.name !== "string" || !isEntries(folder.items)) throw new Error("Saved folder is malformed.");
     const name = validName(folder.name);
-    if (!name || folder.items.some((item) => typeof item !== "string")) throw new Error("Saved folder contents are malformed.");
-    folders[id] = { name, items: folder.items as string[] };
+    if (!name) throw new Error("Saved folder name is malformed.");
+    folders[id] = { name, items: folder.items };
+  }
+  const trash: RecycledFolder[] = [];
+  if (value.trash !== undefined) {
+    if (!Array.isArray(value.trash)) throw new Error("Saved Recycle Bin is malformed.");
+    for (const item of value.trash) {
+      if (!isRecord(item) || typeof item.id !== "string" || !item.id.startsWith("custom-folder-") || !hasOwn(folders, item.id)
+        || (item.parent !== null && typeof item.parent !== "string") || typeof item.index !== "number" || !Number.isInteger(item.index) || item.index < 0) {
+        throw new Error("Saved Recycle Bin entry is malformed.");
+      }
+      trash.push({ id: item.id, parent: item.parent, index: item.index });
+    }
   }
   const seen = new Set<string>();
   const visit = (entries: string[], depth: number) => {
@@ -72,12 +91,17 @@ function validateOrganization(value: unknown): FolderOrganization {
       }
     }
   };
-  visit(value.root as string[], 0);
+  const root = [...value.root];
+  visit(root, 0);
+  for (const item of trash) visit([item.id], 0);
+  // Add the new system shortcut to layouts saved before the Recycle Bin existed.
+  if (!seen.has("recyclebin")) { root.push("recyclebin"); seen.add("recyclebin"); }
+  if (!root.includes("recyclebin")) throw new Error("Recycle Bin must remain on the desktop.");
   if (seen.size !== availableApps.length + ids.length || availableApps.some((id) => !seen.has(id)) || ids.some((id) => !seen.has(id))) {
     throw new Error("Saved folders must contain every app exactly once.");
   }
   for (const id of folderIds) if (!hasOwn(folders, id)) throw new Error(`Default folder "${id}" is missing.`);
-  return { root: value.root as string[], folders };
+  return { root, folders, trash };
 }
 
 function readOrganization(): FolderOrganization {
@@ -119,6 +143,19 @@ function siblingHasName(organization: FolderOrganization, parent: FolderId | nul
   return siblings.some((id) => id !== except && hasOwn(organization.folders, id) && organization.folders[id].name.toLowerCase() === name.toLowerCase());
 }
 
+function unusedName(organization: FolderOrganization, parent: FolderId | null, name: string) {
+  let candidate = name;
+  for (let suffix = 2; siblingHasName(organization, parent, candidate); suffix += 1) {
+    const tail = ` (${suffix})`;
+    candidate = `${name.slice(0, maximumNameLength - tail.length)}${tail}`;
+  }
+  return candidate;
+}
+
+export function isRecycled(organization: FolderOrganization, id: EntryId): boolean {
+  return organization.trash.some((item) => item.id === id || folderDescendants(organization, item.id).includes(id));
+}
+
 export function folderParent(organization: FolderOrganization, id: EntryId): FolderId | null {
   return Object.entries(organization.folders).find(([, folder]) => folder.items.includes(id))?.[0] ?? null;
 }
@@ -141,6 +178,8 @@ export function folderMoveError(organization: FolderOrganization, ids: EntryId[]
   if (!ids.length || ids.some((id) => !hasOwn(organization.folders, id) && !availableApps.includes(id as AppId))) {
     return "Choose apps or folders that still exist.";
   }
+  if (ids.some((id) => isRecycled(organization, id)) || (parent !== null && isRecycled(organization, parent))) return "Restore items from the Recycle Bin before moving them.";
+  if (parent !== null && ids.includes("recyclebin")) return "Recycle Bin stays on the desktop.";
   if (parent !== null && !hasOwn(organization.folders, parent)) return "The destination folder no longer exists.";
   const movingFolders = ids.filter((id) => isFolder(organization, id));
   if (parent !== null && movingFolders.some((id) => containsFolder(organization, id, parent))) {
@@ -175,13 +214,13 @@ export function FolderOrganizationProvider({ children }: { children: ReactNode }
     }
   }, []);
 
-  const createFolder = useCallback((parent: FolderId | null, requestedName: string) => {
+  const createFolder = useCallback((parent: FolderId | null, requestedName?: string) => {
     const current = organizationRef.current;
-    const name = validName(requestedName);
+    const name = requestedName === undefined ? unusedName(current, parent, "New folder") : validName(requestedName);
     if (!name) { setError(`Folder names must be 1–${maximumNameLength} characters.`); return ""; }
-    if (parent !== null && !current.folders[parent]) { setError("Choose an existing folder."); return ""; }
+    if (parent !== null && (!current.folders[parent] || isRecycled(current, parent))) { setError("Choose an existing folder."); return ""; }
     if (nestingDepth(current, parent) >= maximumDepth) { setError(`Folders can be nested up to ${maximumDepth} levels.`); return ""; }
-    if (Object.keys(current.folders).length >= maximumFolders + folderIds.length) { setError(`You can create up to ${maximumFolders} custom folders.`); return ""; }
+    if (Object.keys(current.folders).length >= maximumFolders + folderIds.length) { setError(`You can create up to ${maximumFolders} custom folders, including those in the Recycle Bin.`); return ""; }
     if (siblingHasName(current, parent, name)) { setError("A folder with that name already exists here."); return ""; }
     idSequence += 1;
     const id = `custom-folder-${crypto.randomUUID?.() ?? `${Date.now()}-${idSequence}`}`;
@@ -198,7 +237,7 @@ export function FolderOrganizationProvider({ children }: { children: ReactNode }
     const current = organizationRef.current;
     const folder = current.folders[id];
     const name = validName(requestedName);
-    if (!folder) { setError("That folder no longer exists."); return false; }
+    if (!folder || isRecycled(current, id)) { setError("Restore that folder before renaming it."); return false; }
     if (!name) { setError(`Folder names must be 1–${maximumNameLength} characters.`); return false; }
     const parent = Object.entries(current.folders).find(([, entry]) => entry.items.includes(id))?.[0] ?? null;
     if (siblingHasName(current, parent, name, id)) { setError("A folder with that name already exists here."); return false; }
@@ -209,16 +248,35 @@ export function FolderOrganizationProvider({ children }: { children: ReactNode }
   const deleteFolder = useCallback((id: FolderId) => {
     const current = organizationRef.current;
     if (!id.startsWith("custom-folder-") || !current.folders[id]) { setError("Only custom folders can be deleted."); return; }
+    if (isRecycled(current, id)) { setError("That folder is already in the Recycle Bin."); return; }
     const parent = Object.entries(current.folders).find(([, entry]) => entry.items.includes(id))?.[0] ?? null;
     const siblings = parentEntries(current, parent);
     if (!siblings) { setError("The destination folder no longer exists."); return; }
-    const nextFolders = { ...current.folders };
-    delete nextFolders[id];
-    const items = [...siblings.slice(0, siblings.indexOf(id)), ...current.folders[id].items, ...siblings.slice(siblings.indexOf(id) + 1)];
-    commit({ root: parent === null ? items : current.root, folders: parent === null ? nextFolders : {
-      ...nextFolders,
-      [parent]: { ...current.folders[parent], items }
-    } });
+    const index = siblings.indexOf(id);
+    const items = siblings.filter((entry) => entry !== id);
+    commit({
+      ...current,
+      root: parent === null ? items : current.root,
+      folders: parent === null ? current.folders : { ...current.folders, [parent]: { ...current.folders[parent], items } },
+      trash: [...current.trash, { id, parent, index }]
+    });
+  }, [commit]);
+
+  const restoreFolder = useCallback((id: FolderId) => {
+    const current = organizationRef.current;
+    const item = current.trash.find((entry) => entry.id === id);
+    if (!item) { setError("That folder is no longer in the Recycle Bin."); return; }
+    const parent = item.parent !== null && current.folders[item.parent] && !isRecycled(current, item.parent)
+      && nestingDepth(current, item.parent) + subTreeHeight(current, id) <= maximumDepth ? item.parent : null;
+    const name = unusedName(current, parent, current.folders[id].name);
+    const items = [...(parentEntries(current, parent) ?? [])];
+    items.splice(Math.min(item.index, items.length), 0, id);
+    commit({
+      root: parent === null ? items : current.root,
+      folders: { ...current.folders, [id]: { ...current.folders[id], name }, ...(parent === null ? {} : { [parent]: { ...current.folders[parent], items } }) },
+      trash: current.trash.filter((entry) => entry.id !== id)
+    });
+    return { name, destination: parent === null ? "Desktop" : current.folders[parent].name };
   }, [commit]);
 
   const moveEntries = useCallback((ids: EntryId[], parent: FolderId | null) => {
@@ -241,7 +299,7 @@ export function FolderOrganizationProvider({ children }: { children: ReactNode }
     }
     if (parent === null) root = [...root, ...moving];
     else folders[parent] = { ...folders[parent], items: [...folders[parent].items, ...moving] };
-    commit({ root, folders });
+    commit({ ...current, root, folders });
     return true;
   }, [commit]);
 
@@ -259,8 +317,8 @@ export function FolderOrganizationProvider({ children }: { children: ReactNode }
     }
   }, []);
   const clearError = useCallback(() => setError(""), []);
-  const value = useMemo(() => ({ organization, saved, createFolder, renameFolder, deleteFolder, moveEntries, restoreDefaults, error, clearError }),
-    [organization, saved, createFolder, renameFolder, deleteFolder, moveEntries, restoreDefaults, error, clearError]);
+  const value = useMemo(() => ({ organization, saved, createFolder, renameFolder, deleteFolder, restoreFolder, moveEntries, restoreDefaults, error, clearError }),
+    [organization, saved, createFolder, renameFolder, deleteFolder, restoreFolder, moveEntries, restoreDefaults, error, clearError]);
 
   return <FolderOrganizationContext.Provider value={value}>{children}</FolderOrganizationContext.Provider>;
 }

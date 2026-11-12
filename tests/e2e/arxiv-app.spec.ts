@@ -70,7 +70,7 @@ const iconLabels = {
   search: "Sid Search", projects: "Projects", arxiv: "arXiv Search", library: "Library", github: "GitHub",
   forward: "Forward pass", designs: "Other designs",
   games: "Games", markets: "Markets", launches: "Launches", leaderboards: "AI leaderboards",
-  resume: "Resume.pdf", readme: "README.txt"
+  resume: "Resume.pdf", readme: "README.txt", recyclebin: "Recycle Bin"
 };
 type IconId = keyof typeof iconLabels;
 type Layout = Partial<Record<IconId, { col: number; row: number }>>;
@@ -164,7 +164,7 @@ test("arXiv Search is a top-level app in the Start menu and on the phone home sc
   await page.goto("./?view=os");
   const home = page.locator(".os-home").getByRole("list", { name: "Apps", exact: true });
   await expect(home.locator(".os-icon__label").nth(3)).toHaveText("arXiv Search");
-  await expect(home.locator(".os-icon")).toHaveCount(14);
+  await expect(home.locator(".os-icon")).toHaveCount(15);
   await expect(home.locator(".os-icon", { hasText: "Reader" })).toHaveCount(0);
   await home.locator(".os-icon", { hasText: "Projects" }).click();
   const phoneFolder = page.getByRole("list", { name: "Projects apps", exact: true });
@@ -189,7 +189,7 @@ test("a desktop arrangement saved before arXiv Search had an icon puts it beside
   await openSavedDesktop(page, saved);
   const { cells } = await desktopCells(page);
   expect(cells, "arXiv Search sits right of Projects; Library and GitHub move one column right; nothing else moves").toEqual({
-    ...saved, arxiv: { col: 2, row: 0 }, library: { col: 3, row: 0 }, github: { col: 4, row: 0 }
+    ...saved, arxiv: { col: 2, row: 0 }, library: { col: 3, row: 0 }, github: { col: 4, row: 0 }, recyclebin: { col: 2, row: 8 }
   });
   expectNoOverlap(cells);
 
@@ -203,7 +203,7 @@ test("a desktop arrangement saved before arXiv Search had an icon puts it beside
   await page.setViewportSize({ width: 390, height: 844 });
   const home = page.locator(".os-home").getByRole("list", { name: "Apps", exact: true });
   await expect(home.locator(".os-icon__label").nth(3)).toHaveText("arXiv Search");
-  await expect(home.locator(".os-icon")).toHaveCount(14);
+  await expect(home.locator(".os-icon")).toHaveCount(15);
 });
 
 test("when the shift does not fit a full row, arXiv Search takes the nearest free slot in that row", async ({ page }) => {
@@ -218,7 +218,7 @@ test("when the shift does not fit a full row, arXiv Search takes the nearest fre
   await openSavedDesktop(page, saved, { width: 800, height: 600 });
   const { cells, columns } = await desktopCells(page);
   expect(columns, "the narrowest desktop has eight columns, so row 0 is full from Projects on").toBe(8);
-  expect(cells, "saved icons keep their places; arXiv Search takes the gap left of Projects, not a new row").toEqual({ ...saved, arxiv: { col: 1, row: 0 } });
+  expect(cells, "saved icons keep their places; arXiv Search takes the gap left of Projects, not a new row").toEqual({ ...saved, arxiv: { col: 1, row: 0 }, recyclebin: { col: 2, row: 4 } });
   expectNoOverlap(cells);
 });
 
@@ -231,7 +231,7 @@ test("arXiv Search goes beside Projects where the user moved it", async ({ page 
   };
   await openSavedDesktop(page, saved);
   const { cells } = await desktopCells(page);
-  expect(cells).toEqual({ ...saved, arxiv: { col: 3, row: 1 } });
+  expect(cells).toEqual({ ...saved, arxiv: { col: 3, row: 1 }, recyclebin: { col: 2, row: 8 } });
   expectNoOverlap(cells);
 });
 
@@ -244,7 +244,7 @@ test("a saved arXiv Search position is kept", async ({ page }) => {
   };
   await openSavedDesktop(page, saved);
   const { cells } = await desktopCells(page);
-  expect(cells, "no icon moves into arXiv Search's default slot, and arXiv Search stays where it was saved").toEqual(saved);
+  expect(cells, "no icon moves into arXiv Search's default slot, and arXiv Search stays where it was saved").toEqual({ ...saved, recyclebin: { col: 2, row: 8 } });
 });
 
 test("NVDocs RAG, HireMe.AI, and Financial models open their repositories in GitHub, and Reader opens from the folder", async ({ page }) => {
