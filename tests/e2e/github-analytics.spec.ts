@@ -5,23 +5,31 @@ import {
   addDays,
   assessTrainingData,
   buildCalendar,
+  buildContributionMix,
+  buildLanguageTimeline,
   buildLaunch,
   buildMarket,
+  buildMomentum,
   buildRepoLab,
+  buildRhythm,
   computeStats,
   createTrainer,
+  detectSprints,
   ema,
   gini,
   jacobiEigen,
+  languageShares,
   macd,
   momentumTest,
   mulberry32,
+  OTHER_LANGUAGES,
   pelt,
   poissonSegmentCost,
   principalComponents,
   rsi,
   samplePoisson,
   sma,
+  UNKNOWN_LANGUAGE,
   weekdayOf,
   type RepoLab,
   type TrainingResult
@@ -633,12 +641,275 @@ test.describe("market", () => {
   });
 });
 
+const sumOf = (values: number[]) => values.reduce((s, v) => s + v, 0);
+const activity = (entries: [string, number][]) => entries.map(([date, count]) => ({ date, count }));
+
+test.describe("insights: momentum", () => {
+  test("empty, single-day, and all-zero ranges", () => {
+    const empty = buildMomentum([]);
+    expect(empty).toMatchObject({ weeks: [], periodDays: 0, recent: null, prior: null, change: null, trend: "insufficient", peak: null });
+
+    const single = buildMomentum(makeDays([5], "2025-01-01"));
+    expect(single.weeks).toEqual([{ start: "2024-12-29", days: 1, total: 5, rolling: null }]);
+    expect(single.trend).toBe("insufficient");
+    expect(single.peak?.total).toBe(5);
+
+    const zero = buildMomentum(makeDays(new Array(60).fill(0)));
+    expect(zero.trend).toBe("quiet");
+    expect(zero.peak).toBeNull();
+    expect(zero.change).toBeNull();
+    expect(zero.weeks.slice(3).every((w) => w.rolling === 0)).toBe(true);
+  });
+
+  test("weeks start on Sunday across a year boundary and partial weeks scale to a 7-day rate", () => {
+    const days = makeDays(new Array(40).fill(1), "2025-12-17"); // a Wednesday; runs into January 2026
+    const m = buildMomentum(days);
+    expect(m.weeks.every((w) => weekdayOf(w.start) === 0)).toBe(true);
+    expect(m.weeks[0]).toMatchObject({ start: "2025-12-14", days: 4, total: 4 });
+    expect(m.weeks.map((w) => w.start)).toContain("2025-12-28");
+    expect(sumOf(m.weeks.map((w) => w.days))).toBe(40);
+    expect(sumOf(m.weeks.map((w) => w.total))).toBe(40);
+    expect(m.weeks.slice(0, 3).every((w) => w.rolling === null)).toBe(true);
+    // A constant one per day is 7 per week, partial weeks included.
+    for (const w of m.weeks.slice(3)) expect(w.rolling).toBeCloseTo(7, 10);
+    expect(m.peak?.start).toBe(m.weeks.find((w) => w.days === 7)!.start); // earliest full week on ties
+  });
+
+  test("compares the last 4 weeks with the 4 before: rising, cooling, steady, and small changes", () => {
+    const trend = (prior: number[], recent: number[]) => buildMomentum(makeDays([...prior, ...recent])).trend;
+    const flat = (n: number, value: number) => new Array(n).fill(value);
+    expect(trend(flat(28, 1), flat(28, 2))).toBe("rising");
+    expect(trend(flat(28, 2), flat(28, 1))).toBe("cooling");
+    expect(trend(flat(28, 1), [...flat(26, 1), 2, 2])).toBe("steady"); // +7%
+    expect(trend([1, ...flat(27, 0)], [1, 1, ...flat(26, 0)])).toBe("steady"); // +100% but only 1 apart
+    expect(trend(flat(28, 0), [3, ...flat(27, 0)])).toBe("rising"); // from nothing
+    expect(trend(flat(28, 0), [1, ...flat(27, 0)])).toBe("steady");
+
+    const m = buildMomentum(makeDays([...flat(30, 9), ...flat(28, 1), ...flat(28, 2)], "2025-11-20"));
+    expect(m.periodDays).toBe(28);
+    expect(m.recent).toEqual({ from: "2026-01-17", to: "2026-02-13", total: 56 });
+    expect(m.prior).toEqual({ from: "2025-12-20", to: "2026-01-16", total: 28 });
+    expect(m.change).toBeCloseTo(1, 10);
+  });
+
+  test("short ranges compare halves, and under two weeks there is nothing to compare", () => {
+    expect(buildMomentum(makeDays(new Array(20).fill(1))).periodDays).toBe(10);
+    expect(buildMomentum(makeDays(new Array(13).fill(1))).trend).toBe("insufficient");
+  });
+});
+
+test.describe("insights: weekly rhythm", () => {
+  test("empty and all-zero ranges have no strongest day", () => {
+    const empty = buildRhythm([]);
+    expect(empty).toMatchObject({ total: 0, strongest: null, mostConsistent: null, weekendShare: 0 });
+    expect(empty.days.map((d) => d.occurrences)).toEqual([0, 0, 0, 0, 0, 0, 0]);
+    const zero = buildRhythm(makeDays(new Array(14).fill(0)));
+    expect(zero.strongest).toBeNull();
+    expect(zero.days.every((d) => d.occurrences === 2 && d.activeRate === 0)).toBe(true);
+  });
+
+  test("a single day is the strongest and most consistent", () => {
+    const r = buildRhythm(makeDays([5], "2025-01-01")); // Wednesday
+    expect(r.strongest).toBe(3);
+    expect(r.mostConsistent).toBe(3);
+    expect(r.days[3]).toEqual({ weekday: 3, total: 5, activeDays: 1, occurrences: 1, activeRate: 1, share: 1 });
+  });
+
+  test("ties on total go to the higher active rate; shares and weekend share add up", () => {
+    // Two weeks from Sunday 2025-01-05: Monday has 4 once; Tuesday 2 twice; Saturday 1 once.
+    const counts = new Array(14).fill(0);
+    counts[1] = 4;
+    counts[2] = 2;
+    counts[9] = 2;
+    counts[6] = 1;
+    const r = buildRhythm(makeDays(counts, "2025-01-05"));
+    expect(r.days[1].total).toBe(r.days[2].total);
+    expect(r.strongest).toBe(2);
+    expect(r.mostConsistent).toBe(2);
+    expect(r.days[1].activeRate).toBe(0.5);
+    expect(sumOf(r.days.map((d) => d.share))).toBeCloseTo(1, 10);
+    expect(r.weekendShare).toBeCloseTo(1 / 9, 10);
+  });
+
+  test("weekdays stay right across a year boundary", () => {
+    const r = buildRhythm(makeDays([0, 3, 0], "2025-12-30")); // Tue, Wed, Thu (2026-01-01)
+    expect(r.strongest).toBe(3);
+    expect(r.days.filter((d) => d.occurrences).map((d) => d.weekday)).toEqual([2, 3, 4]);
+  });
+});
+
+test.describe("insights: sprints", () => {
+  test("empty, all-zero, and single-day ranges have no sprints unless one active day is enough", () => {
+    expect(detectSprints([], [])).toMatchObject({ sprints: [], found: 0, coverage: 0, maxGap: 1, minActiveDays: 3 });
+    expect(detectSprints(makeDays(new Array(30).fill(0)), []).sprints).toEqual([]);
+    expect(detectSprints(makeDays([4]), []).sprints).toEqual([]);
+    const one = detectSprints(makeDays([4], "2026-02-01"), [], { minActiveDays: 1 });
+    expect(one.sprints).toHaveLength(1);
+    expect(one.sprints[0]).toMatchObject({ start: "2026-02-01", end: "2026-02-01", length: 1, activeDays: 1, total: 4, share: 1, daily: [4] });
+  });
+
+  test("bridges at most maxGap quiet days, starts and ends on active days, and ranks by total", () => {
+    const days = makeDays([0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 0]);
+    const report = detectSprints(days, []);
+    expect(report.sprints.map((s) => [s.start, s.end, s.activeDays, s.total])).toEqual([
+      // Equal totals and active days: the more recent first.
+      ["2025-01-08", "2025-01-10", 3, 3],
+      ["2025-01-02", "2025-01-05", 3, 3]
+    ]);
+    expect(report.coverage).toBe(1);
+    expect(report.sprints[1].daily).toEqual([1, 1, 0, 1]);
+    expect(detectSprints(days, [], { maxGap: 0 }).sprints.map((s) => s.start)).toEqual(["2025-01-08"]);
+    const wide = detectSprints(days, [], { maxGap: 2 });
+    expect(wide.sprints).toHaveLength(1);
+    expect(wide.sprints[0]).toMatchObject({ start: "2025-01-02", end: "2025-01-10", length: 9, activeDays: 6, total: 6 });
+
+    const ranked = detectSprints(makeDays([1, 1, 1, 0, 0, 0, 5, 5, 5, 0, 0, 0, 2, 2, 2, 2]), []);
+    expect(ranked.sprints.map((s) => s.total)).toEqual([15, 8, 3]);
+    expect(ranked.sprints[0].peak).toEqual({ date: "2025-01-07", count: 5 }); // earliest on ties
+  });
+
+  test("limit keeps the largest, while found and coverage count every sprint", () => {
+    const counts = Array.from({ length: 40 }, (_, i) => (i % 8 < 3 ? 1 + Math.floor(i / 8) : 0));
+    const report = detectSprints(makeDays(counts), [], { limit: 2 });
+    expect(report.found).toBe(5);
+    expect(report.sprints.map((s) => s.total)).toEqual([15, 12]);
+    expect(report.coverage).toBe(1);
+    expect(detectSprints(makeDays(counts), [], { limit: 0 }).sprints).toEqual([]);
+  });
+
+  test("names only repositories with activity inside the sprint, most active first, across a year boundary", () => {
+    const days = makeDays([0, 3, 4, 2, 5, 0, 0, 0], "2025-12-29");
+    const repos = [
+      repo("zeta", { activity: activity([["2025-12-31", 2], ["2026-01-01", 1]]) }),
+      repo("alpha", { activity: activity([["2025-12-30", 3]]) }),
+      repo("outside", { activity: activity([["2025-12-29", 9], ["2026-01-04", 9]]) }),
+      repo("quiet", { activity: activity([["2025-12-31", 0]]) })
+    ];
+    const [sprint] = detectSprints(days, repos).sprints;
+    expect(sprint).toMatchObject({ start: "2025-12-30", end: "2026-01-02", length: 4, total: 14, unattributed: 8 });
+    expect(sprint.repos.map((r) => [r.name, r.count])).toEqual([["alpha", 3], ["zeta", 3]]);
+    expect(sprint.repos[0].url).toBe("https://github.com/synthetic/alpha");
+  });
+
+  test("unattributed never goes negative when repository activity exceeds the calendar", () => {
+    const [sprint] = detectSprints(makeDays([1, 1, 1]), [repo("big", { activity: makeDays([5, 5, 5]) })]).sprints;
+    expect(sprint.unattributed).toBe(0);
+  });
+});
+
+test.describe("insights: languages over time", () => {
+  test("no days or no repository activity gives an empty, honest timeline", () => {
+    expect(buildLanguageTimeline({ days: [], repos: [] })).toEqual({ months: [], series: [], monthTotals: [], attributed: 0, total: 0, basis: "none", shift: null });
+    const quiet = buildLanguageTimeline({ days: makeDays([0, 2, 0]), repos: [repo("idle")] });
+    expect(quiet).toMatchObject({ months: ["2025-01"], series: [], attributed: 0, total: 2, basis: "none" });
+  });
+
+  test("splits by language bytes, or by primary language when there are no sizes", () => {
+    expect(languageShares(repo("a", { languages: [{ name: "TypeScript", size: 300 }, { name: "CSS", size: 100 }, { name: "Shell", size: 0 }] }))).toEqual({
+      shares: [["TypeScript", 0.75], ["CSS", 0.25]],
+      basis: "bytes"
+    });
+    expect(languageShares(repo("b", { primaryLanguage: "Go", languages: [{ name: "Go", size: 0 }] }))).toEqual({ shares: [["Go", 1]], basis: "primary" });
+    expect(languageShares(repo("c", { primaryLanguage: null, languages: [] })).shares).toEqual([[UNKNOWN_LANGUAGE, 1]]);
+
+    const days = makeDays(new Array(10).fill(1), "2025-03-01");
+    const bytes = buildLanguageTimeline({ days, repos: [repo("web", { languages: [{ name: "TypeScript", size: 300 }, { name: "CSS", size: 100 }], activity: activity([["2025-03-02", 4]]) })] });
+    expect(bytes.basis).toBe("bytes");
+    expect(bytes.series.map((s) => [s.name, s.values])).toEqual([["TypeScript", [3]], ["CSS", [1]]]);
+    expect(bytes.attributed).toBe(4);
+    expect(bytes.total).toBe(10);
+
+    const python = repo("py", { primaryLanguage: "Python", languages: [{ name: "Python", size: 0 }], activity: activity([["2025-03-02", 2]]) });
+    expect(buildLanguageTimeline({ days, repos: [python] }).basis).toBe("primary");
+    const typescript = repo("web", { languages: [{ name: "TypeScript", size: 10 }], activity: activity([["2025-03-03", 1]]) });
+    expect(buildLanguageTimeline({ days, repos: [python, typescript] }).basis).toBe("mixed");
+  });
+
+  test("months follow the range across a year boundary and ignore activity outside it", () => {
+    const days = makeDays(new Array(40).fill(1), "2025-12-15");
+    const t = buildLanguageTimeline({
+      days,
+      repos: [repo("r", { activity: activity([["2025-12-01", 50], ["2025-12-20", 2], ["2026-01-05", 3], ["2026-02-01", 50]]) })]
+    });
+    expect(t.months).toEqual(["2025-12", "2026-01"]);
+    expect(t.series).toEqual([{ name: "Python", values: [2, 3], total: 5, share: 1 }]);
+    expect(t.monthTotals).toEqual([2, 3]);
+    expect(t.attributed).toBe(5);
+  });
+
+  test("keeps the top 5 and folds the rest into Other, but never folds a single language", () => {
+    const days = makeDays(new Array(5).fill(1));
+    const repos = (n: number) => Array.from({ length: n }, (_, i) => repo(`r${i}`, { primaryLanguage: `L${i}`, activity: activity([["2025-01-02", 10 - i]]) }));
+    const seven = buildLanguageTimeline({ days, repos: repos(7) });
+    expect(seven.series.map((s) => s.name)).toEqual(["L0", "L1", "L2", "L3", "L4", OTHER_LANGUAGES]);
+    expect(seven.series.at(-1)!.total).toBe(5 + 4);
+    expect(sumOf(seven.series.map((s) => s.share))).toBeCloseTo(1, 10);
+    const six = buildLanguageTimeline({ days, repos: repos(6) });
+    expect(six.series.map((s) => s.name)).toEqual(["L0", "L1", "L2", "L3", "L4", "L5"]);
+  });
+
+  test("reports the language whose share moved most between the earlier and later months", () => {
+    const days = makeDays(new Array(150).fill(1), "2025-01-01"); // Jan–May: the middle month (March) is left out
+    const shifting = buildLanguageTimeline({
+      days,
+      repos: [
+        repo("py", { primaryLanguage: "Python", activity: activity([["2025-01-10", 9], ["2025-02-10", 9], ["2025-03-10", 50], ["2025-04-10", 1], ["2025-05-10", 1]]) }),
+        repo("ts", { primaryLanguage: "TypeScript", activity: activity([["2025-01-10", 1], ["2025-02-10", 1], ["2025-04-10", 9], ["2025-05-10", 9]]) })
+      ]
+    });
+    expect(shifting.shift?.name).toBe("Python");
+    expect(shifting.shift?.from).toBeCloseTo(0.9, 10);
+    expect(shifting.shift?.to).toBeCloseTo(0.1, 10);
+    const steady = buildLanguageTimeline({ days, repos: [repo("py", { activity: makeDays(new Array(150).fill(1), "2025-01-01") })] });
+    expect(steady.shift).toBeNull();
+    expect(buildLanguageTimeline({ days: makeDays([1]), repos: [repo("one", { activity: makeDays([1]) })] }).shift).toBeNull();
+  });
+});
+
+test.describe("insights: contribution mix", () => {
+  const totals = (fields: Partial<GitHubInsights["totals"]>): GitHubInsights["totals"] => ({ contributions: 0, commits: 0, pullRequests: 0, reviews: 0, issues: 0, repositories: 0, restricted: 0, ...fields });
+
+  test("all-zero totals have no dominant kind and no Other", () => {
+    const mix = buildContributionMix({ source: "graphql", totals: totals({}) });
+    expect(mix).toMatchObject({ total: 0, typed: 0, other: 0, dominant: null });
+    expect(mix.items.map((i) => [i.kind, i.share])).toEqual([["commits", 0], ["pullRequests", 0], ["issues", 0], ["reviews", 0]]);
+  });
+
+  test("commits, pull requests, issues, and reviews, with Other for untyped contributions", () => {
+    const mix = buildContributionMix({ source: "graphql", totals: totals({ contributions: 478, commits: 368, pullRequests: 8, issues: 7, repositories: 12, restricted: 83 }) });
+    expect(mix.items.map((i) => [i.kind, i.count])).toEqual([["commits", 368], ["pullRequests", 8], ["issues", 7], ["reviews", 0], ["other", 95]]);
+    expect(mix).toMatchObject({ total: 478, typed: 383, other: 95, dominant: "commits" });
+    expect(sumOf(mix.items.map((i) => i.share))).toBeCloseTo(1, 10);
+  });
+
+  test("inconsistent totals never make Other negative; ties go to the earlier kind", () => {
+    const mix = buildContributionMix({ source: "graphql", totals: totals({ contributions: 3, commits: 4, pullRequests: 4, reviews: -2 }) });
+    expect(mix).toMatchObject({ total: 8, typed: 8, other: 0, dominant: "commits" });
+    expect(mix.items.map((i) => i.kind)).not.toContain("other");
+    expect(mix.items.find((i) => i.kind === "reviews")!.count).toBe(0);
+  });
+
+  test("rest-events keeps its source so the app can relabel pushes and other public events", () => {
+    const mix = buildContributionMix({ source: "rest-events", totals: totals({ contributions: 50, commits: 30, pullRequests: 5, issues: 1 }) });
+    expect(mix.source).toBe("rest-events");
+    expect(mix.other).toBe(14);
+    expect(mix.dominant).toBe("commits");
+  });
+});
+
 test("a 90-day rest-events window is handled by every module", () => {
   const days = makeDays(burstySeries(90, 31), "2026-08-13");
   const insights = { ...makeInsights(days, syntheticRepos()), source: "rest-events" as const };
   expectAllFinite(computeStats(insights));
   expectAllFinite(buildCalendar(days));
   expectAllFinite(buildLaunch(insights));
+  expectAllFinite(buildMomentum(days));
+  expectAllFinite(buildRhythm(days));
+  expectAllFinite(detectSprints(days, insights.repos));
+  expectAllFinite(buildLanguageTimeline(insights));
+  expectAllFinite(buildContributionMix(insights));
+  expect(buildMomentum(days).periodDays).toBe(28);
+  expect(buildLanguageTimeline(insights).months).toEqual(["2026-08", "2026-09", "2026-10", "2026-11"]);
   const market = buildMarket(days);
   expect(market).not.toHaveProperty("insufficient");
   expectAllFinite({ ...market, indicators: null });
@@ -674,6 +945,17 @@ test("real snapshot: every module runs and yields finite numbers", () => {
   const insights = JSON.parse(readFileSync(SNAPSHOT_URL, "utf8")) as GitHubInsights;
   expectAllFinite(computeStats(insights));
   expectAllFinite(buildCalendar(insights.days));
+  expectAllFinite(buildMomentum(insights.days));
+  expectAllFinite(buildRhythm(insights.days));
+  expectAllFinite(buildContributionMix(insights));
+  const timeline = buildLanguageTimeline(insights);
+  expectAllFinite(timeline);
+  expect(timeline.attributed).toBeLessThanOrEqual(insights.repos.reduce((s, r) => s + r.activity.reduce((t, a) => t + a.count, 0), 0));
+  const sprints = detectSprints(insights.days, insights.repos);
+  expectAllFinite(sprints);
+  // Sprints only ever name repositories from the (all-public) snapshot.
+  const names = new Set(insights.repos.map((r) => r.name));
+  expect(sprints.sprints.flatMap((s) => s.repos.map((r) => r.name)).every((name) => names.has(name))).toBe(true);
   const launch = buildLaunch(insights);
   expect(launch.trajectory.at(-1)?.altitude ?? 0).toBe(insights.days.reduce((s, d) => s + d.count, 0));
   expectAllFinite(launch);

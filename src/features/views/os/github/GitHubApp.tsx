@@ -8,6 +8,7 @@ import { parseFileTarget, type GitHubFile } from "./fileTarget";
 import { FileView } from "./ui/FileView";
 import { fmtDate, fmtRange, fmtResetAt } from "./ui/format";
 import { Heatmap } from "./ui/Heatmap";
+import { Insights } from "./ui/Insights";
 import { Labs } from "./ui/Labs";
 import { Highlights, Languages, StatsStrip, TopRepos, TotalsLine, type RepoFocus } from "./ui/Overview";
 import "./github.css";
@@ -119,15 +120,24 @@ function Profile({ insights, focus, own }: { insights: GitHubInsights; focus: Re
         </div>
       )}
 
-      <section className="gh-section" aria-labelledby="gh-activity-heading">
+      <section className="gh-section gh-glance" aria-labelledby="gh-activity-heading">
         <div className="gh-section__head">
-          <h3 id="gh-activity-heading">{rest ? "Public activity" : "Contributions"}</h3>
+          <h3 id="gh-activity-heading">At a glance</h3>
           <p className="gh-muted">{fmtRange(insights.range.from, insights.range.to)}</p>
         </div>
-        <Heatmap insights={insights} calendar={calendar} stats={stats} unit={unit} />
-        <StatsStrip insights={insights} stats={stats} unit={unit} />
-        <TotalsLine insights={insights} />
+        <div className="gh-glance__grid">
+          <div className="gh-glance__stats">
+            <StatsStrip insights={insights} stats={stats} unit={unit} />
+            <TotalsLine insights={insights} />
+          </div>
+          <div className="gh-glance__calendar">
+            <h4 className="gh-glance__label">{rest ? "Public activity" : "Contribution calendar"}</h4>
+            <Heatmap insights={insights} calendar={calendar} stats={stats} unit={unit} />
+          </div>
+        </div>
       </section>
+
+      <Insights insights={insights} unit={unit} />
 
       <div className="gh-cols">
         <section className="gh-section" aria-labelledby="gh-highlights-heading">

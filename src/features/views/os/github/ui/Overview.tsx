@@ -198,7 +198,7 @@ const LANGUAGE_COLORS: Record<string, string> = {
   SCSS: "#c6538c"
 };
 const FALLBACK_COLORS = ["#6b7383", "#8a6d1f", "#3f8f74", "#a66bf0", "#c83d42", "#5f8fb4"];
-const languageColor = (name: string, i: number) => LANGUAGE_COLORS[name] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length];
+export const languageColor = (name: string, i: number) => LANGUAGE_COLORS[name] ?? FALLBACK_COLORS[i % FALLBACK_COLORS.length];
 
 export function Languages({ insights, stats }: { insights: GitHubInsights; stats: ActivityStats }) {
   const bySize = stats.languages.some((l) => l.bytes > 0);

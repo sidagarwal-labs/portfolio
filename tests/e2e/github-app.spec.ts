@@ -1,9 +1,20 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Locator, type Page, type Route } from "@playwright/test";
-import { buildLaunch, buildMarket, buildRepoLab, computeStats, createTrainer } from "../../src/features/views/os/github/analytics";
+import {
+  buildContributionMix,
+  buildLanguageTimeline,
+  buildLaunch,
+  buildMarket,
+  buildMomentum,
+  buildRepoLab,
+  buildRhythm,
+  computeStats,
+  createTrainer,
+  detectSprints
+} from "../../src/features/views/os/github/analytics";
 import { curateOwnInsights } from "../../src/features/views/os/github/client";
 import { OWN_HIDDEN_REPOS, type GitHubInsights } from "../../src/features/views/os/github/contract";
-import { fmtDate, fmtInt, fmtNum, fmtP, fmtPct, fmtRange, plural } from "../../src/features/views/os/github/ui/format";
+import { fmtDate, fmtInt, fmtNum, fmtP, fmtPct, fmtRange, plural, WEEKDAYS } from "../../src/features/views/os/github/ui/format";
 
 const rawSnapshot = JSON.parse(readFileSync(new URL("../../src/content/generated/github-insights.json", import.meta.url), "utf8")) as GitHubInsights;
 // The app shows the owner's snapshot with tutorial repositories removed.
@@ -51,6 +62,7 @@ const quiet: RestFixture = {
   repos: [restRepo("quiet", "solo", "Python", 400)],
   events: [3, 10, 40].map((day) => restEvent("PushEvent", day, "quiet/solo"))
 };
+const idle: RestFixture = { user: restUser("idle", "Idle Person"), repos: [restRepo("idle", "dormant", "Go", 500)], events: [] };
 
 async function blockExternal(page: Page) {
   // Registered first so the GitHub mocks registered later take precedence.
@@ -90,12 +102,22 @@ async function openGitHub(page: Page, { reducedMotion = true, url = "./?view=os"
 
 const stat = (win: Locator, id: string) => win.locator(`[data-stat="${id}"] .gh-stat__value`);
 const metric = (scope: Locator, id: string) => scope.locator(`[data-metric="${id}"] .gh-metric__value`);
+const insight = (win: Locator, id: string) => win.locator(`[data-insight="${id}"]`);
+const INSIGHTS = ["momentum", "rhythm", "mix", "languages", "sprints"];
+/** Every geometry attribute drawn by the insight charts, so a NaN or Infinity anywhere fails. */
+const insightGeometry = (win: Locator) =>
+  win.locator("[data-insight] svg *").evaluateAll((els) =>
+    els.flatMap((el) => ["d", "x", "y", "width", "height", "cx", "cy", "r", "stroke-dasharray", "stroke-dashoffset"].map((name) => el.getAttribute(name) ?? ""))
+  );
+/** Sprint repository names, without their counts. */
+const sprintRepos = (win: Locator) =>
+  insight(win, "sprints").locator(".gh-sprint__repos li:not(.is-more)").evaluateAll((items) => items.map((li) => li.firstChild?.textContent?.trim() ?? ""));
 
 test.beforeEach(async ({ page }) => {
   await blockExternal(page);
 });
 
-test("opens from the desktop on the owner's snapshot with an accessible heatmap and computed stats", async ({ page }) => {
+test("opens from the desktop on the owner's snapshot with a compact, accessible calendar and computed stats", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const win = await openGitHub(page);
 
@@ -132,7 +154,91 @@ test("opens from the desktop on the owner's snapshot with an accessible heatmap 
     expect(repoNames.has(name)).toBe(true);
     expect(hidden.has(name.toLowerCase()), `${name} should be hidden`).toBe(false);
   }
-  await expect(win.locator(".gh-langs li").first()).toContainText(stats.languages[0].name);
+  await expect(win.getByRole("region", { name: "Languages", exact: true }).locator(".gh-langs li").first()).toContainText(stats.languages[0].name);
+});
+
+test("puts the compact calendar beside the key stats, then our own insights", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const win = await openGitHub(page);
+
+  // At a glance: stats and a compact calendar side by side, ahead of the insights and the rest of the profile.
+  const glance = win.getByRole("region", { name: "At a glance" });
+  await expect(glance.getByRole("heading", { level: 4, name: "Contribution calendar" })).toBeVisible();
+  await expect(win.locator("rect.gh-cell").first()).toHaveAttribute("width", "8");
+  const [statsBox, calendarBox, svgBox] = await Promise.all(
+    [".gh-glance__stats", ".gh-glance__calendar", ".gh-heat__svg"].map(async (selector) => (await glance.locator(selector).boundingBox())!)
+  );
+  expect(calendarBox.x).toBeGreaterThanOrEqual(statsBox.x + statsBox.width);
+  expect(Math.abs(calendarBox.y - statsBox.y)).toBeLessThan(2);
+  expect(svgBox.width).toBeLessThan(600);
+  // The card hugs the whole calendar: no scrolling and no squeezed card on a wide window.
+  expect(calendarBox.width).toBeGreaterThan(svgBox.width);
+  expect(calendarBox.width).toBeLessThan(svgBox.width + 40);
+  expect(await glance.locator(".gh-heat__scroll").evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0);
+  const tops = await Promise.all(["#gh-activity-heading", "#gh-insights-heading", "#gh-highlights-heading"].map(async (id) => (await win.locator(id).boundingBox())!.y));
+  expect(tops).toEqual([...tops].sort((a, b) => a - b));
+
+  await expect(win.locator("[data-insight]")).toHaveCount(INSIGHTS.length);
+  expect(await win.locator("[data-insight]").evaluateAll((cards) => cards.map((card) => card.getAttribute("data-insight")))).toEqual(INSIGHTS);
+  expect((await insightGeometry(win)).filter((value) => /NaN|Infinity/.test(value))).toEqual([]);
+
+  const momentum = buildMomentum(snapshot.days);
+  const mo = insight(win, "momentum");
+  await expect(mo.locator(".gh-trend")).toHaveAttribute("data-trend", momentum.trend);
+  await expect(mo.getByRole("img", { name: /^Weekly contributions as bars with a 4-week average line/ })).toBeVisible();
+  await expect(mo.getByRole("table", { name: "Weekly contributions" }).locator("tbody tr")).toHaveCount(momentum.weeks.length);
+  await expect(mo.locator("rect.gh-mo__bar")).toHaveCount(momentum.weeks.length);
+
+  const rhythm = buildRhythm(snapshot.days);
+  const strongest = rhythm.days[rhythm.strongest!];
+  const rh = insight(win, "rhythm");
+  await expect(rh.getByRole("img", { name: new RegExp(`^Radial chart of contributions by weekday\\. Busiest: ${WEEKDAYS[strongest.weekday]}s`) })).toBeVisible();
+  await expect(rh.locator('[data-fact="busiest"] dd')).toContainText(`${WEEKDAYS[strongest.weekday]} · ${fmtInt(strongest.total)}`);
+  await expect(rh.locator(".gh-rose__petal.is-strongest")).toHaveCount(1);
+  await expect(rh.getByRole("table", { name: "contributions by weekday" }).locator("tbody tr")).toHaveCount(7);
+
+  const mix = buildContributionMix(snapshot);
+  const mixItems = insight(win, "mix").locator(".gh-mix__list li");
+  await expect(insight(win, "mix").getByRole("heading", { level: 4 })).toHaveText("Contribution mix");
+  await expect(mixItems).toHaveCount(mix.items.length);
+  for (const [i, item] of mix.items.entries()) {
+    await expect(mixItems.nth(i)).toHaveAttribute("data-kind", item.kind);
+    await expect(mixItems.nth(i).locator(".gh-mix__value")).toContainText(new RegExp(`^${fmtInt(item.count)} `));
+  }
+  await expect(mixItems.first()).toContainText("Commits");
+
+  const timeline = buildLanguageTimeline(snapshot);
+  const lt = insight(win, "languages");
+  await expect(lt.locator(".gh-badge")).toHaveText("Estimate");
+  await expect(lt.locator("path.gh-lt__layer")).toHaveCount(timeline.series.length);
+  await expect(lt.getByRole("table", { name: "Estimated contributions by language and month" }).locator("tbody tr")).toHaveCount(timeline.months.length);
+  await expect(lt).toContainText(`Covers ${fmtInt(timeline.attributed)} of ${fmtInt(timeline.total)} contributions`);
+
+  const report = detectSprints(snapshot.days, snapshot.repos);
+  const sp = insight(win, "sprints");
+  await expect(sp.locator(".gh-sprint")).toHaveCount(report.sprints.length);
+  await expect(sp.locator(".gh-card__lead")).toContainText(`${plural(report.found, "sprint")} hold`);
+  await expect(sp.locator(".gh-sprint__dates").first()).toContainText(fmtRange(report.sprints[0].start, report.sprints[0].end));
+  // Sprints only ever name the snapshot's public repositories, never hidden ones.
+  const repoNames = new Set(snapshot.repos.map((repo) => repo.name));
+  const hidden = new Set(OWN_HIDDEN_REPOS.map((name) => name.toLowerCase()));
+  const named = await sprintRepos(win);
+  expect(named.length).toBeGreaterThan(0);
+  for (const name of named) {
+    expect(repoNames.has(name), `${name} should be a snapshot repository`).toBe(true);
+    expect(hidden.has(name.toLowerCase()), `${name} should be hidden`).toBe(false);
+  }
+});
+
+test("insight charts animate only when motion is allowed", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  let win = await openGitHub(page, { reducedMotion: true });
+  for (const selector of [".gh-mo__line", ".gh-mo__bar", ".gh-rose__petal", ".gh-lt__layer"]) {
+    await expect(win.locator(selector).first()).toHaveCSS("animation-name", "none");
+  }
+  win = await openGitHub(page, { reducedMotion: false });
+  await expect(win.locator(".gh-mo__line")).toHaveCSS("animation-name", "gh-draw");
+  await expect(win.locator(".gh-rose__petal").first()).toHaveCSS("animation-name", "gh-bloom");
 });
 
 test("labels the repository counts and says when the owner's snapshot refreshes", async ({ page }) => {
@@ -369,6 +475,24 @@ test("looks up another user through the REST fallback, then returns to the owner
   await expect(win.locator(".gh-repo__total")).toHaveCount(0);
   await expect(win.locator(".gh-repos__note")).toHaveCount(0);
 
+  // Insights say what public events can: pushes rather than commits, primary languages rather than bytes.
+  await expect(win.getByRole("region", { name: "At a glance" }).getByRole("heading", { level: 4, name: "Public activity" })).toBeVisible();
+  await expect(win.locator("[data-insight]")).toHaveCount(INSIGHTS.length);
+  expect((await insightGeometry(win)).filter((value) => /NaN|Infinity/.test(value))).toEqual([]);
+  await expect(insight(win, "momentum").getByRole("table", { name: "Weekly events" })).toHaveCount(1);
+  await expect(insight(win, "rhythm").getByRole("table", { name: "events by weekday" }).locator("tbody tr")).toHaveCount(7);
+  const mix = insight(win, "mix");
+  await expect(mix.getByRole("heading", { level: 4 })).toHaveText("Public event mix");
+  await expect(mix.locator(".gh-mix__label")).toHaveText(["Pushes", "Pull requests opened", "Issues opened", "Reviews"]);
+  const pushes = octo.events.filter((event) => event.type === "PushEvent").length;
+  await expect(mix.locator(".gh-mix__value").first()).toContainText(new RegExp(`^${pushes} `));
+  await expect(mix.locator(".gh-mix__value").nth(1)).toContainText(new RegExp(`^${octo.events.length - pushes} `));
+  await expect(mix).toContainText("Pushes, not commits");
+  await expect(insight(win, "languages")).toContainText("primary language");
+  await expect(insight(win, "sprints").locator(".gh-sprint").first()).toBeVisible();
+  const named = await sprintRepos(win);
+  expect(named.length).toBeGreaterThan(0);
+  for (const name of named) expect(OCTO_REPOS).toContain(name);
   for (const name of ["Training run", "Market", "Launch", "Data science lab"]) {
     await win.getByRole("tab", { name, exact: true }).click();
     const panel = win.getByRole("tabpanel", { name, exact: true });
@@ -395,6 +519,28 @@ test("models that refuse sparse data explain why instead of crashing", async ({ 
   await expect(win.getByRole("tabpanel", { name: "Training run" }).locator(".gh-guard")).toContainText("Needs at least 12 active days");
   await win.getByRole("tab", { name: "Data science lab" }).click();
   await expect(win.getByRole("tabpanel", { name: "Data science lab" }).locator(".gh-guard")).toContainText("Clustering needs at least 4 repositories; found 1.");
+  // Three scattered pushes make no sprint, and the card says why.
+  await expect(insight(win, "sprints").locator(".gh-card__lead")).toContainText("No sprints in this range. A sprint is a run of at least 3 active days");
+  await expect(insight(win, "sprints").locator(".gh-sprint")).toHaveCount(0);
+  await expect(insight(win, "rhythm").locator('[data-fact="busiest"]')).toBeVisible();
+});
+
+test("insights fall back to plain empty states when there is no public activity", async ({ page }) => {
+  await mockGitHub(page, { idle });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const win = await openGitHub(page);
+  await win.getByRole("searchbox", { name: "GitHub username" }).fill("idle");
+  await win.getByRole("button", { name: "Look up" }).click();
+  await expect(win.getByRole("heading", { level: 3, name: "Idle Person" })).toBeVisible();
+  await expect(win.locator("rect.gh-cell")).toHaveCount(90);
+  await expect(win.locator("[data-insight]")).toHaveCount(INSIGHTS.length);
+  for (const id of ["momentum", "rhythm", "mix", "languages"]) {
+    await expect(insight(win, id).locator(".gh-card__empty")).toBeVisible();
+    await expect(insight(win, id).locator("svg")).toHaveCount(0);
+  }
+  await expect(insight(win, "momentum").locator(".gh-trend")).toHaveCount(0);
+  await expect(insight(win, "sprints").locator(".gh-card__lead")).toContainText("No sprints in this range.");
+  await expect(insight(win, "languages").locator(".gh-badge")).toHaveText("Estimate");
 });
 
 test("lookup errors: invalid, not found, rate limited, and a superseded slow lookup", async ({ page }) => {
@@ -465,6 +611,14 @@ test("fits a phone without horizontal overflow", async ({ page }) => {
   expect(await overflow()).toEqual({ page: 0, body: 0 });
   const box = (await win.locator(".gh-stats").boundingBox())!;
   expect(box.width).toBeLessThanOrEqual(390);
+  // The compact calendar keeps its cell size and scrolls inside its own card; the insights stack to the phone's width.
+  const calendar = (await win.locator(".gh-glance__calendar").boundingBox())!;
+  expect(calendar.x + calendar.width).toBeLessThanOrEqual(390);
+  await expect(win.locator("rect.gh-cell").first()).toHaveAttribute("width", "8");
+  for (const id of INSIGHTS) {
+    const card = (await insight(win, id).boundingBox())!;
+    expect(card.x + card.width, id).toBeLessThanOrEqual(390);
+  }
   // On a phone the all-time count sits beside the bar, under the 12-month count.
   const row = win.locator(".gh-repo.has-total").first();
   const [rowBox, barBox, valueBox, totalBox] = await Promise.all(
@@ -488,6 +642,30 @@ test("fits a phone without horizontal overflow", async ({ page }) => {
   }
 });
 
+for (const style of ["modern", "retro"]) {
+  test(`fits a 320px phone in the ${style} style, insights included`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width: 320, height: 700 });
+    await page.goto(`./?view=os&style=${style}`);
+    await page.locator(".os-home .os-icon", { hasText: "GitHub" }).click();
+    const win = page.locator(githubWin);
+    await expect(win.getByRole("heading", { level: 3, name: snapshot.name! })).toBeVisible();
+    await expect(win.locator("[data-insight]")).toHaveCount(INSIGHTS.length);
+    const overflow = () =>
+      page.evaluate((selector) => {
+        const body = document.querySelector(`${selector} .os-win__body`)!;
+        const wide = [...body.querySelectorAll("[data-insight], .gh-glance__stats, .gh-glance__calendar")]
+          .filter((el) => el.getBoundingClientRect().right > body.getBoundingClientRect().right + 0.5)
+          .map((el) => el.getAttribute("data-insight") ?? el.className);
+        return { page: document.documentElement.scrollWidth - window.innerWidth, body: body.scrollWidth - body.clientWidth, wide };
+      }, githubWin);
+    expect(await overflow()).toEqual({ page: 0, body: 0, wide: [] });
+    // Linux CI falls back to wider fonts than Windows; a wide font catches overflow either way.
+    await page.addStyleTag({ content: "*, *::before, *::after { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }" });
+    expect(await overflow()).toEqual({ page: 0, body: 0, wide: [] });
+  });
+}
+
 test("renders in the retro style", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const win = await openGitHub(page, { url: "./?view=os&style=retro" });
@@ -495,4 +673,10 @@ test("renders in the retro style", async ({ page }) => {
   await expect(win.locator("rect.gh-cell")).toHaveCount(snapshot.days.length);
   await expect(win.getByRole("tab", { name: "Training run" })).toHaveCSS("background-color", "rgb(0, 0, 128)");
   await expect(stat(win, "total")).toHaveText(fmtInt(stats.total));
+  // Insight cards get the same navy title bars and square corners.
+  for (const id of INSIGHTS) {
+    await expect(insight(win, id).locator(".gh-card__head")).toHaveCSS("background-color", "rgb(0, 0, 128)");
+    await expect(insight(win, id)).toHaveCSS("border-radius", "0px");
+  }
+  expect((await insightGeometry(win)).filter((value) => /NaN|Infinity/.test(value))).toEqual([]);
 });

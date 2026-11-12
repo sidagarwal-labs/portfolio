@@ -50,23 +50,30 @@
 .gh-section__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
 .gh-section__head h3 { font-size: 15px; }
 
-/* Heatmap */
-.gh-heat { display: grid; gap: 8px; min-width: 0; margin: 0; }
-.gh-heat__scroll { min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 4px; }
-/* The calendar grows with the window up to 1.5x, and scrolls instead of shrinking below its natural size. */
-.gh-heat__svg { display: block; width: 100%; height: auto; }
-.gh-heat__month, .gh-heat__weekday { fill: #6b7383; font-size: 10px; }
+/* Heatmap: compact, at its natural size; scrolls (starting at the latest weeks) when the window is narrower. */
+.gh-heat { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; margin: 0; }
+.gh-heat__scroll { min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 2px; }
+.gh-heat__svg { display: block; flex: none; }
+.gh-heat__month, .gh-heat__weekday { fill: #6b7383; font-size: 9px; }
 .gh-cell, .gh-swatch { fill: #ebedf0; stroke: rgba(27, 31, 35, 0.06); stroke-width: 1; }
 .gh-cell[data-level="1"], .gh-swatch[data-level="1"] { fill: #9be9a8; }
 .gh-cell[data-level="2"], .gh-swatch[data-level="2"] { fill: #40c463; }
 .gh-cell[data-level="3"], .gh-swatch[data-level="3"] { fill: #30a14e; }
 .gh-cell[data-level="4"], .gh-swatch[data-level="4"] { fill: #216e39; }
 .gh-cell:hover { stroke: #1f2328; stroke-width: 1.5; }
-.gh-heat__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px; color: #6b7383; font-size: 12px; }
+.gh-heat__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 12px; color: #6b7383; font-size: 11.5px; }
 .gh-heat__readout { min-width: 0; color: #4f5664; font-variant-numeric: tabular-nums; }
 .gh-heat__legend { display: inline-flex; align-items: center; gap: 3px; }
 .gh-legend__cell { display: block; }
 .gh-heat__scale { flex-basis: 100%; }
+
+/* At a glance: the key stats beside the compact calendar on wide windows, stacked on narrow ones */
+.gh-glance__grid { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 12px 20px; }
+.gh-glance__stats { display: grid; gap: 10px; min-width: 0; }
+.gh-glance__calendar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; justify-self: start; width: fit-content; min-width: 0; max-width: 100%; padding: 10px 12px 8px; border: 1px solid #e3e6eb; border-radius: 8px; background: #fafbfc; }
+/* The card hugs the calendar itself; the legend and notes wrap to its width instead of widening it. */
+.gh-glance__calendar .gh-heat__foot { contain: inline-size; }
+.gh-glance__label { color: #4f5664; font-size: 12px !important; font-weight: 650; }
 
 /* Stats */
 .gh-stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin: 0; }
@@ -100,6 +107,121 @@
 .gh-langs { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
 .gh-langs li { display: inline-flex; align-items: center; gap: 6px; }
 .gh-dot { display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 50%; }
+
+/* Insights: our own views of the same data, as a grid of cards under the at-a-glance area */
+.gh-insights { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.gh-card { --gh-card-y: 12px; --gh-card-x: 14px; display: grid; align-content: start; gap: 8px; min-width: 0; padding: var(--gh-card-y) var(--gh-card-x) 14px; border: 1px solid #e3e6eb; border-radius: 10px; background: #fff; }
+.gh-card__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; }
+.gh-card__head h4 { font-size: 14px; }
+.gh-card__lead { color: #3b4250; font-size: 13px; overflow-wrap: anywhere; }
+.gh-card__empty { padding: 14px 0; font-size: 13px; }
+.gh-badge, .gh-trend { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 650; line-height: 1.5; white-space: nowrap; }
+.gh-badge { border: 1px solid #d0d5dd; color: #4f5664; }
+.gh-trend { background: #eef1f5; color: #4f5664; }
+.gh-trend[data-trend="rising"] { background: #e6f6ec; color: #1d6b3f; }
+.gh-trend[data-trend="cooling"] { background: #fdf0e6; color: #8a4b0f; }
+.gh-hits rect, .gh-rose__hit { fill: transparent; }
+.gh-key.gh-key--dot { width: 8px; height: 8px; border-radius: 50%; }
+
+.gh-mo__bar { fill: #c7d2ee; }
+.gh-mo__bar[data-partial] { opacity: 0.5; }
+.gh-mo__area { fill: rgba(42, 79, 191, 0.08); }
+.gh-mo__line { fill: none; stroke: #2a4fbf; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.gh-mo__peak { fill: #d1495b; stroke: #fff; stroke-width: 1.5; }
+.gh-key.gh-key--mo-bar { background: #c7d2ee; }
+.gh-key.gh-key--mo-line { border-color: #2a4fbf; }
+.gh-key.gh-key--mo-peak { background: #d1495b; }
+
+.gh-rhythm { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.gh-rose { display: block; flex: none; width: min(100%, 180px); height: auto; overflow: visible; }
+.gh-rose__track { fill: #f3f5f8; }
+.gh-rose__petal { fill: #9fb3e6; }
+.gh-rose__petal.is-strongest { fill: #2a4fbf; }
+.gh-rose__ring-track, .gh-rose__ring { fill: none; stroke-width: 5; stroke-linecap: round; }
+.gh-rose__ring-track { stroke: #eef1f5; }
+.gh-rose__ring { stroke: #2e9e6b; }
+.gh-rose__label { fill: #6b7383; font-size: 11px; }
+.gh-rose__label.is-strongest { fill: #1f2328; font-weight: 700; }
+.gh-rose__center { fill: #1f2328; font-size: 13px; font-weight: 700; }
+.gh-rose__center-note { fill: #6b7383; font-size: 9px; }
+.gh-rose__day:hover .gh-rose__track { fill: #e8ecf3; }
+.gh-rhythm__side { display: grid; flex: 1 1 136px; gap: 10px; min-width: 0; }
+.gh-facts { display: grid; gap: 6px; margin: 0; }
+.gh-facts dt { color: #6b7383; font-size: 12px; }
+.gh-facts dd { margin: 0; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
+.gh-key.gh-key--petal { background: #9fb3e6; }
+.gh-key.gh-key--ring { border-top-width: 3px; border-color: #2e9e6b; }
+
+.gh-mix { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.gh-donut { display: block; flex: none; width: 112px; height: 112px; }
+.gh-donut__track, .gh-donut__seg { fill: none; stroke-width: 16; }
+.gh-donut__track { stroke: #eef1f5; }
+.gh-donut__value { fill: #1f2328; font-size: 17px; font-weight: 700; }
+.gh-donut__note { fill: #6b7383; font-size: 10px; }
+.gh-mix__list { display: grid; flex: 1 1 180px; gap: 5px; min-width: 0; margin: 0; padding: 0; list-style: none; font-size: 13px; }
+.gh-mix__list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.gh-mix__swatch { width: 10px; height: 10px; border-radius: 2px; }
+.gh-mix__label { overflow-wrap: anywhere; }
+.gh-mix__value { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.gh-donut__seg[data-kind="commits"] { stroke: #2a4fbf; }
+.gh-donut__seg[data-kind="pullRequests"] { stroke: #7b4fbf; }
+.gh-donut__seg[data-kind="issues"] { stroke: #2e9e6b; }
+.gh-donut__seg[data-kind="reviews"] { stroke: #c98a12; }
+.gh-donut__seg[data-kind="other"] { stroke: #c9ced6; }
+.gh-mix__swatch[data-kind="commits"] { background: #2a4fbf; }
+.gh-mix__swatch[data-kind="pullRequests"] { background: #7b4fbf; }
+.gh-mix__swatch[data-kind="issues"] { background: #2e9e6b; }
+.gh-mix__swatch[data-kind="reviews"] { background: #c98a12; }
+.gh-mix__swatch[data-kind="other"] { background: #c9ced6; }
+
+.gh-lt__layer { stroke: #fff; stroke-width: 0.75; stroke-opacity: 0.8; }
+.gh-lt__legend { font-size: 12.5px; }
+
+.gh-sprints__strip { display: grid; gap: 2px; }
+.gh-sprints__track { position: relative; height: 14px; overflow: hidden; border-radius: 4px; background: #eef1f5; }
+.gh-sprints__seg { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: #40c463; }
+.gh-sprints__seg[data-rank="1"] { background: #216e39; }
+.gh-sprints__ranks { position: relative; height: 15px; color: #4f5664; font-size: 10.5px; font-weight: 650; }
+.gh-sprints__ranks span { position: absolute; top: 0; transform: translateX(-50%); }
+.gh-sprints__ends { display: flex; justify-content: space-between; gap: 8px; color: #6b7383; font-size: 11px; }
+.gh-sprints { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.gh-sprint { display: grid; align-content: start; gap: 5px; min-width: 0; padding: 10px 12px; border: 1px solid #e3e6eb; border-radius: 8px; background: #fafbfc; }
+.gh-sprint__head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.gh-sprint__rank { display: inline-grid; flex: none; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #eaf0ff; color: #2a4fbf; font-size: 11.5px; font-weight: 700; }
+.gh-sprint[data-rank="1"] .gh-sprint__rank { background: #2a4fbf; color: #fff; }
+.gh-sprint__dates { min-width: 0; font-weight: 650; overflow-wrap: anywhere; }
+.gh-sprint__meta { color: #4f5664; font-size: 12.5px; overflow-wrap: anywhere; }
+.gh-sprint__spark { display: block; width: 100%; height: 22px; }
+.gh-sprint__spark rect { fill: #40c463; }
+.gh-sprint__repos { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 12px; }
+.gh-sprint__repos li { max-width: 100%; padding: 1px 7px; border: 1px solid #e3e6eb; border-radius: 999px; background: #fff; overflow-wrap: anywhere; }
+.gh-sprint__repos li.is-more { border-style: dashed; color: #6b7383; }
+
+@container (min-width: 761px) {
+  .gh-insights { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gh-card--momentum, .gh-card--languages, .gh-card--sprints { grid-column: span 2; }
+}
+
+@container (min-width: 1040px) {
+  .gh-glance__grid { grid-template-columns: minmax(0, 1fr) auto; }
+  .gh-glance__stats .gh-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .gh-insights { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .gh-card--momentum, .gh-card--languages { grid-column: span 2; }
+  .gh-card--rhythm, .gh-card--mix { grid-column: span 1; }
+  .gh-card--sprints { grid-column: 1 / -1; }
+}
+
+/* Charts draw in once; nothing moves for people who ask for reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .gh-mo__bar { transform-box: fill-box; transform-origin: 50% 100%; animation: gh-grow 0.5s ease-out both; }
+  .gh-mo__line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: gh-draw 0.9s ease-out 0.15s forwards; }
+  .gh-rose__petal { transform-origin: 50% 50%; animation: gh-bloom 0.55s ease-out both; }
+  .gh-mo__area, .gh-mo__peak, .gh-lt__layer, .gh-donut__seg, .gh-rose__ring, .gh-sprints__seg, .gh-sprint__spark { animation: gh-fade 0.6s ease-out both; }
+}
+@keyframes gh-grow { from { transform: scaleY(0); } }
+@keyframes gh-draw { to { stroke-dashoffset: 0; } }
+@keyframes gh-bloom { from { opacity: 0; transform: scale(0.4); } }
+@keyframes gh-fade { from { opacity: 0; } }
 
 /* Labs and tabs */
 .gh-labs { display: grid; gap: 12px; min-width: 0; padding-top: 18px; border-top: 1px solid #e3e6eb; }
@@ -281,6 +403,8 @@
   .gh-repo.has-total .gh-repo__bar { grid-column: 1; }
   .gh-repo__total { grid-column: 2; }
   .gh-tabs { justify-self: stretch; }
+  .gh-card { --gh-card-y: 10px; --gh-card-x: 12px; padding-bottom: 12px; }
+  .gh-glance__calendar { padding: 8px 10px 6px; }
 }
 
 @container (min-width: 761px) and (max-width: 980px) {
@@ -303,6 +427,40 @@
 .os--retro .gh-repo.is-highlighted { background: #000080; box-shadow: none; }
 .os--retro .gh-repo.is-highlighted a, .os--retro .gh-repo.is-highlighted .gh-repo__value, .os--retro .gh-repo.is-highlighted .gh-muted, .os--retro .gh-repo.is-highlighted .gh-repo__total { color: #fff; }
 .os--retro .gh-stat, .os--retro .gh-metric, .os--retro .gh-stage { background: #fff; border-color: #808080; }
+.os--retro .gh-card, .os--retro .gh-glance__calendar, .os--retro .gh-sprint, .os--retro .gh-sprint__repos li, .os--retro .gh-badge, .os--retro .gh-trend, .os--retro .gh-sprints__track, .os--retro .gh-sprints__seg, .os--retro .gh-mix__swatch, .os--retro .gh-sprint__rank, .os--retro .gh-cell, .os--retro .gh-swatch { border-radius: 0; }
+.os--retro .gh-card, .os--retro .gh-glance__calendar, .os--retro .gh-sprint { border-color: #808080; background: #fff; }
+.os--retro .gh-card__head { margin: calc(-1 * var(--gh-card-y)) calc(-1 * var(--gh-card-x)) 0; padding: 3px 8px; background: #000080; }
+.os--retro .gh-card__head h4 { color: #fff; font-size: 13px; }
+.os--retro .gh-badge, .os--retro .gh-trend { border: 1px solid #808080; background: #c0c0c0; color: #000; }
+.os--retro .gh-trend[data-trend="rising"] { background: #008000; color: #fff; }
+.os--retro .gh-trend[data-trend="cooling"] { background: #808000; color: #fff; }
+.os--retro .gh-mo__bar, .os--retro .gh-key.gh-key--mo-bar { fill: #a0a0c8; background: #a0a0c8; }
+.os--retro .gh-mo__line { stroke: #000080; }
+.os--retro .gh-key.gh-key--mo-line { border-color: #000080; }
+.os--retro .gh-mo__area { fill: rgba(0, 0, 128, 0.08); }
+.os--retro .gh-mo__peak, .os--retro .gh-key.gh-key--mo-peak { fill: #800000; background: #800000; }
+.os--retro .gh-rose__petal, .os--retro .gh-key.gh-key--petal { fill: #8080c0; background: #8080c0; }
+.os--retro .gh-rose__petal.is-strongest { fill: #000080; }
+.os--retro .gh-rose__ring-track, .os--retro .gh-rose__ring { stroke-linecap: butt; }
+.os--retro .gh-rose__ring { stroke: #008080; }
+.os--retro .gh-key.gh-key--ring { border-color: #008080; }
+.os--retro .gh-rose__track { fill: #f0f0f0; }
+.os--retro .gh-donut__seg[data-kind="commits"] { stroke: #000080; }
+.os--retro .gh-donut__seg[data-kind="pullRequests"] { stroke: #800080; }
+.os--retro .gh-donut__seg[data-kind="issues"] { stroke: #008080; }
+.os--retro .gh-donut__seg[data-kind="reviews"] { stroke: #808000; }
+.os--retro .gh-donut__seg[data-kind="other"] { stroke: #c0c0c0; }
+.os--retro .gh-mix__swatch[data-kind="commits"] { background: #000080; }
+.os--retro .gh-mix__swatch[data-kind="pullRequests"] { background: #800080; }
+.os--retro .gh-mix__swatch[data-kind="issues"] { background: #008080; }
+.os--retro .gh-mix__swatch[data-kind="reviews"] { background: #808000; }
+.os--retro .gh-mix__swatch[data-kind="other"] { background: #c0c0c0; }
+.os--retro .gh-sprints__track { border: 1px solid #808080; background: #fff; }
+.os--retro .gh-sprints__seg, .os--retro .gh-sprint__spark rect { background: #008000; fill: #008000; }
+.os--retro .gh-sprints__seg[data-rank="1"] { background: #000080; }
+.os--retro .gh-sprint__rank { border: 1px solid #808080; background: #c0c0c0; color: #000; }
+.os--retro .gh-sprint[data-rank="1"] .gh-sprint__rank { background: #000080; color: #fff; }
+.os--retro .gh-sprint__repos li { border-color: #808080; }
 
 /* File view: a Markdown file from one of the owner's repositories, laid out like GitHub's file page */
 .gh .gh-pane:focus { outline: none; }
