@@ -518,7 +518,7 @@ function CapexVsCap({ rows, prices }: { rows: AiStackRow[]; prices: string }) {
 /* ---------- Market-cap treemap ---------- */
 
 const changeColor = (change: number | null) => {
-  if (change === null) return "#e4e7e4";
+  if (change === null) return "var(--market-flat, #e4e7e4)";
   const strength = Math.min(1, Math.abs(change) / 5);
   const mix = Math.round(18 + strength * 62);
   return `color-mix(in srgb, ${change >= 0 ? "var(--market-up, #1f8a55)" : "var(--market-down, #c23b3b)"} ${mix}%, var(--market-flat, #f4f6f3))`;

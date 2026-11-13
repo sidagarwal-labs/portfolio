@@ -190,6 +190,37 @@ test("blocked storage still themes existing and new frames, and reports save/res
 });
 
 for (const style of ["modern", "retro"]) {
+  test(`${style}: market-cap tiles with missing, positive, and negative changes stay readable`, async ({ page }) => {
+    const sheet = [
+      "Stock,Area,Layer,Level,Price,MCAP (b),Daily Price Change",
+      "MISSING,Designing,Chips,1,$100.00,$1000,#N/A",
+      "UP,Designing,Chips,1,$100.00,$1000,5.00%",
+      "DOWN,Designing,Chips,1,$100.00,$1000,-5.00%"
+    ].join("\n");
+    await page.route("https://docs.google.com/spreadsheets/**", (route) => route.fulfill({
+      body: sheet, contentType: "text/csv", headers: { "access-control-allow-origin": "*" }
+    }));
+    await desktop(page, style);
+    await launch(page, "Markets", "markets");
+    const frame = siteFrame(page, "markets");
+    await expect(frame.locator(".mk-status")).toHaveAttribute("data-source", "live");
+    await frame.getByRole("tab", { name: "Insights", exact: true }).click();
+    const tiles = frame.locator(".mk-treemap__tile");
+    const missingTile = frame.locator('.mk-treemap__tile[data-symbol="MISSING"]');
+    await expect(tiles).toHaveCount(3);
+    await expect(missingTile.locator(".mk-treemap__chg")).toHaveText("—");
+    await expect(missingTile).toHaveCSS("background-color", "rgb(228, 231, 228)");
+    await choose(page, "Dark");
+    await expect(missingTile).toHaveCSS("background-color", "rgb(46, 46, 46)");
+    for (const symbol of ["MISSING", "UP", "DOWN"]) {
+      const tile = frame.locator(`.mk-treemap__tile[data-symbol="${symbol}"]`);
+      await readable(tile.locator(".mk-treemap__sym"));
+      await readable(tile.locator(".mk-treemap__chg"));
+    }
+    await choose(page, "Light");
+    await expect(missingTile).toHaveCSS("background-color", "rgb(228, 231, 228)");
+  });
+
   test(`${style}: native apps, chrome, dialogs, and chart labels have real dark surfaces and readable text`, async ({ page }) => {
     test.setTimeout(90_000);
     await desktop(page, style);
