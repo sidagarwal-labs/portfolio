@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { Check } from "lucide-react";
+import type { Appearance } from "../../../../lib/appearance";
 import { siteViews } from "../../siteViews";
 import { apps } from "../apps";
 import FolderManager from "../FolderManager";
@@ -8,6 +9,7 @@ import { clockFormat, currentWallpaper, labOsStorage, useOsSettings, wallpapers,
 import "./settings.css";
 
 const installedApps = Object.values(apps).filter((app) => app.kind === "app" || app.kind === "game" || app.kind === "site").length;
+const appearances: { id: Appearance; label: string }[] = [{ id: "light", label: "Light" }, { id: "dark", label: "Dark" }, { id: "system", label: "System" }];
 const styles: { id: OsStyle; label: string }[] = [{ id: "modern", label: "Modern" }, { id: "retro", label: "Retro" }];
 const clocks: { id: ClockHours; label: string }[] = [{ id: "12", label: "12-hour" }, { id: "24", label: "24-hour" }];
 const motions: { id: Motion; label: string }[] = [{ id: "system", label: "System" }, { id: "reduce", label: "On" }, { id: "full", label: "Off" }];
@@ -63,6 +65,18 @@ export default function Settings({ actions }: { target?: OsTarget; actions: OsAc
       <div className="os-set__page">
         <section className="os-set__section">
           <h2>Personalization</h2>
+          <fieldset className="os-set__group" aria-describedby={`${id}-appearance-hint`}>
+            <legend>Appearance</legend>
+            <div className="os-set__choices">
+              {appearances.map((option) => (
+                <label key={option.id} className="os-set-choice">
+                  <input type="radio" name={`${id}-appearance`} value={option.id} checked={settings.appearance === option.id} onChange={() => update({ appearance: option.id })} />
+                  {option.label}
+                </label>
+              ))}
+            </div>
+            <p id={`${id}-appearance-hint`} className="os-set__hint">System follows your device’s light or dark appearance. Applies to both styles and portfolio apps; external websites and PDFs keep their own colors.</p>
+          </fieldset>
           <fieldset className="os-set__group">
             <legend>Wallpaper</legend>
             <div className="os-set__walls">
@@ -192,7 +206,7 @@ export default function Settings({ actions }: { target?: OsTarget; actions: OsAc
             </div>
           )}
           <div className="os-set__action">
-            <p>Clear the wallpaper, style, clock, motion, icon layout, folders, Recycle Bin, and welcome note this browser saved for Lab OS.</p>
+            <p>Restore Light appearance and clear the wallpaper, style, clock, motion, icon layout, folders, Recycle Bin, and welcome note this browser saved for Lab OS.</p>
             <button ref={resetRef} type="button" className="os-button" aria-expanded={confirming} aria-controls={`${id}-confirm`} onClick={() => { setMessage(""); setConfirming(true); }}>
               Reset all Lab OS settings…
             </button>
@@ -221,6 +235,7 @@ export default function Settings({ actions }: { target?: OsTarget; actions: OsAc
           <dl className="os-set__specs">
             <div><dt>Operating system</dt><dd>Lab OS</dd></div>
             <div><dt>Style</dt><dd>{style === "retro" ? "Retro" : "Modern"}</dd></div>
+            <div><dt>Appearance</dt><dd>{appearances.find((option) => option.id === settings.appearance)?.label}</dd></div>
             <div><dt>Wallpaper</dt><dd>{wall.label}</dd></div>
             <div><dt>Installed apps</dt><dd>{installedApps}</dd></div>
             <div><dt>Storage used</dt><dd>{storage ? `${formatBytes(storage.bytes)} in ${storage.keys} ${storage.keys === 1 ? "key" : "keys"}` : "Unavailable"}</dd></div>

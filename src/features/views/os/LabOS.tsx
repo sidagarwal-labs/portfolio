@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Briefcase, CodeXml, FileText, Mail, MessageSquare, Monitor, Palette, Power, RotateCcw, Search, Settings as Gear, Wifi, WifiOff } from "lucide-react";
 import { profileContent } from "../../../content/siteContent";
 import { ReducedMotionOverride, usePrefersReducedMotion } from "../../../hooks/usePrefersReducedMotion";
+import { setAppearance } from "../../../lib/appearance";
 import BootSequence, { labLogo } from "../search/BootSequence";
 import { hasBooted, rememberBoot } from "../search/bootState";
 import { useSiteView } from "../SiteViewContext";
@@ -28,6 +29,7 @@ import "../search/search.css";
 import "./os.css";
 import "./folder-manager.css";
 import "./welcome-note.css";
+import "./appearance.css";
 
 const phoneQuery = "(max-width: 760px), (max-height: 500px)";
 const dayFormat = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
@@ -139,6 +141,7 @@ function DesktopShell() {
   const [saved, setSaved] = useState(true);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+  useLayoutEffect(() => setAppearance(settings.appearance), [settings.appearance]);
   const still = settings.motion === "reduce" || (settings.motion === "system" && deviceReducedMotion);
   const [booting, setBooting] = useState(() => !still && !hasBooted());
   const [style, setStyle] = useState<OsStyle>(() => readStyle(location.search));
