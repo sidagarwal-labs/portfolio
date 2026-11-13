@@ -25,8 +25,8 @@ export type AppDef = {
   size: { w: number; h: number } | "fill";
 } & (
   | { kind: "folder"; children: AppId[] }
-  /* "link": a shortcut with no window of its own; it opens another app on a target, like a repository in GitHub. */
-  | { kind: "link"; opens: { app: AppId; target: string } }
+  /* "link": a shortcut that opens its destination in a new browser tab, with no OS window of its own. */
+  | { kind: "link"; href: string }
   /* "app": a native React app inside the OS (no iframe), which links can open on a specific item. */
   | { kind: "site" | "pdf" | "note" | "game" | "app" }
 );
@@ -35,11 +35,11 @@ const app = (def: AppDef) => def;
 
 const githubSize = { w: 1180, h: 820 };
 
-/* A selected project from the Journal, as a shortcut to its repository in the GitHub app. */
+/* A selected project from the Journal, as a shortcut to its repository on GitHub. */
 function repoLink(id: AppId, title: string, icon: LucideIcon, tint: string): AppDef {
   const project = selectedProjects.find((item) => item.title === title);
-  const repo = project ? new URL(project.href).pathname.replace(/^\/|\/$/g, "") : "";
-  return { id, title, label: title, blurb: project?.description ?? "", icon, tint, kind: "link", opens: { app: "github", target: repo }, size: githubSize };
+  if (!project) throw new Error(`Missing selected project for shortcut: ${title}`);
+  return { id, title, label: title, blurb: project.description, icon, tint, kind: "link", href: project.href, size: githubSize };
 }
 
 export const apps: Record<AppId, AppDef> = {

@@ -9,7 +9,7 @@ const embedded = embeddedView !== undefined;
 /* How long a window waits for the OS to confirm it opened a page app before showing the page itself. */
 const confirmMs = 500;
 
-/* Runs inside a Lab OS window. Outside links to books, podcasts, Microsoft pages, Sid's GitHub, and the arXiv Search
+/* Runs inside a Lab OS window. Outside links to books, podcasts, Microsoft pages, Sid's GitHub profile/notes, and the arXiv Search
    site open in the OS's Library, Reader, GitHub, and arXiv Search apps; other outside sites open in a new tab (most
    refuse to load in frames). The decision is made here, during the click, so the new-tab fallback keeps the user
    gesture popup blockers require. The resume opens in the OS's PDF window, and links to Markets, Launches, or AI

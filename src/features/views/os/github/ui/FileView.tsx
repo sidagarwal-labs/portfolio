@@ -76,11 +76,10 @@ type FileViewProps = {
   description?: string | null;
   onOpenFile: (file: GitHubFile) => void;
   onOpenOwner: () => void;
-  onOpenRepo: (repo: string) => void;
 };
 
 /** A Markdown file in one of the owner's repositories, laid out like GitHub's file page. */
-export function FileView({ file, seq, description, onOpenFile, onOpenOwner, onOpenRepo }: FileViewProps) {
+export function FileView({ file, seq, description, onOpenFile, onOpenOwner }: FileViewProps) {
   const rawUrl = fileRawUrl(file);
   const blobUrl = fileBlobUrl(file, true);
   const note = notesByUrl.get(fileBlobUrl(file).toLowerCase());
@@ -213,7 +212,7 @@ export function FileView({ file, seq, description, onOpenFile, onOpenOwner, onOp
             </li>
             <li>
               <span className="gh-crumbs__sep" aria-hidden="true">/</span>
-              <a className="gh-crumbs__repo" href={repoUrl(file)} onClick={inApp(() => onOpenRepo(file.repo))}>
+              <a className="gh-crumbs__repo" href={repoUrl(file)} target="_blank" rel="noopener noreferrer">
                 {file.repo}
               </a>
             </li>

@@ -1,6 +1,43 @@
-import { expect, test, type FrameLocator, type Page } from "@playwright/test";
+import { expect, test, type FrameLocator, type Locator, type Page } from "@playwright/test";
 
 const searchWin = '.os-win[data-app="search"]';
+
+test("repository paths and profile tabs open their exact GitHub URL instead of analytics", async ({ page }) => {
+  await page.context().route(/^https:\/\/(www\.)?github\.com\//, (route) => route.fulfill({ contentType: "text/html", body: "<p>Repository</p>" }));
+  const frame = await openSearch(page);
+  for (const href of [
+    "https://github.com/sidagarwal-labs/models",
+    "https://www.github.com/SidAgarwal-Labs/models/",
+    "https://github.com/sidagarwal-labs/arxiv-search?tab=readme-ov-file#readme",
+    "https://github.com/sidagarwal-labs?tab=repositories",
+    "https://github.com/sidagarwal-labs#readme",
+    "https://github.com/sidagarwal-labs/models/tree/main/notes",
+    "https://github.com/other-owner/repo"
+  ]) {
+    await frame.locator("body").evaluate((body, url) => {
+      body.querySelector("[data-repo-test]")?.remove();
+      const link = Object.assign(document.createElement("a"), { href: url, textContent: "Repository link", target: "_blank", rel: "noopener noreferrer" });
+      link.dataset.repoTest = "";
+      link.style.cssText = "position: fixed; top: 8px; left: 8px; z-index: 99999; background: #fff;";
+      body.append(link);
+    }, href);
+    await expectExternalLink(page, frame.getByRole("link", { name: "Repository link", exact: true }), href);
+    await expect(page.locator('.os-win[data-app="github"]')).toHaveCount(0);
+    await expect(page.locator(searchWin)).toHaveClass(/is-active/);
+  }
+});
+
+async function expectExternalLink(page: Page, link: Locator, href: string) {
+  await expect(link).toHaveAttribute("href", href);
+  await expect(link).toHaveAttribute("target", "_blank");
+  await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  const opened = page.context().waitForEvent("page");
+  await link.click();
+  const tab = await opened;
+  await expect(tab).toHaveURL(href);
+  expect(await tab.evaluate(() => window.opener === null)).toBe(true);
+  await tab.close();
+}
 
 /* Records every new tab or window, so routed links can prove they stayed inside Lab OS. */
 function trackNewTabs(page: Page) {
@@ -123,7 +160,7 @@ test("Sid Search's Library filters in place and opens its titles and the app in 
   expect(opened).toEqual([]);
 });
 
-test("links to Sid's GitHub open the GitHub app, research notes open in its file view, and other pages open a new tab", async ({ page }) => {
+test("profile links open analytics, research notes open the reader, and repository links open GitHub", async ({ page }) => {
   await page.context().route(/^https:\/\/(www\.linkedin\.com|github\.com)\//, (route) => route.fulfill({ contentType: "text/html", body: "<p>Outside site</p>" }));
   await page.route("https://raw.githubusercontent.com/**", (route) =>
     route.fulfill({ contentType: "text/plain; charset=utf-8", headers: { "access-control-allow-origin": "*" }, body: "# Routed Note\n\nFrom Sid Search.\n" })
@@ -138,12 +175,14 @@ test("links to Sid's GitHub open the GitHub app, research notes open in its file
   await expect(github).toHaveCount(0);
 
   await bringSearchForward(page);
-  await frame.getByRole("link", { name: "arXiv Search on GitHub" }).first().click();
-  await expect(github).toHaveClass(/is-active/);
-  const repo = github.locator('.gh-repo[data-repo="arxiv-search"]');
-  await expect(repo).toHaveClass(/is-highlighted/);
-  await expect(repo).toHaveAttribute("aria-current", "true");
-  await page.getByRole("button", { name: "Close GitHub" }).click();
+  await expectExternalLink(page, frame.getByRole("link", { name: "arXiv Search on GitHub" }).first(), "https://github.com/sidagarwal-labs/arxiv-search");
+  await expect(github).toHaveCount(0);
+  await expect(page.locator(searchWin)).toHaveClass(/is-active/);
+
+  await frame.locator("#se-query").fill("NVDocs RAG");
+  await expectExternalLink(page, frame.locator(".se-matches").getByRole("link", { name: "NVDocs RAG", exact: true }), "https://github.com/sidagarwal-labs/NVDocs_RAG");
+  await expect(github).toHaveCount(0);
+  await frame.locator("#se-query").fill("");
 
   await page.locator(".os-quick").getByRole("link", { name: "GitHub", exact: true }).click();
   await expect(github).toHaveClass(/is-active/);
@@ -296,6 +335,53 @@ async function openFromStart(page: Page, app: "forward" | keyof typeof designApp
 }
 
 const trackerLink = (frame: FrameLocator) => frame.locator("#writing").getByRole("link", { name: "AI / LLM Stack Tracker", exact: true });
+
+for (const style of ["modern", "retro"]) {
+  test(`repository links in every ${style} portfolio window open GitHub without opening analytics`, async ({ page }) => {
+    await page.context().route("https://github.com/**", (route) => route.fulfill({ contentType: "text/html", body: "<p>Repository</p>" }));
+    await blockLiveData(page);
+    await openSearch(page, `./?view=os&style=${style}`);
+    for (const app of ["search", "forward", "journal", "training", "terminal"] as const) {
+      const { win, frame } = app === "search"
+        ? { win: page.locator(searchWin), frame: page.frameLocator(`${searchWin} iframe`) }
+        : await openFromStart(page, app);
+      const url = await win.locator(".os-address__text").textContent();
+      await expectExternalLink(page, frame.locator("#lab").getByRole("link", { name: "NVDocs RAG", exact: true }), "https://github.com/sidagarwal-labs/NVDocs_RAG");
+      await expectExternalLink(page, frame.getByRole("link", { name: "All repositories on GitHub", exact: true }), "https://github.com/sidagarwal-labs?tab=repositories");
+      await expect(win).toHaveClass(/is-active/);
+      await expect(win.locator(".os-address__text")).toHaveText(url!);
+      await expect(page.locator('.os-win[data-app="github"]')).toHaveCount(0);
+    }
+  });
+}
+
+for (const view of ["journal", "search", "forward", "training", "terminal"]) {
+  test(`outside Lab OS, ${view} repository and archive links open GitHub in new tabs`, async ({ page }) => {
+    await page.context().route("https://github.com/**", (route) => route.fulfill({ contentType: "text/html", body: "<p>Repository</p>" }));
+    await blockLiveData(page);
+    await page.route("https://api.github.com/**", (route) => route.abort());
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto(`./?view=${view}`);
+    const original = page.url();
+    const projects = page.locator("#lab");
+    await expect(projects).toBeVisible();
+    const repoLinks = projects.locator('a[href^="https://github.com/"]');
+    expect(await repoLinks.count()).toBeGreaterThan(4);
+    for (const link of await repoLinks.all()) {
+      await expect(link).toHaveAttribute("target", "_blank");
+      await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    }
+    await expectExternalLink(page, projects.getByRole("link", { name: "NVDocs RAG", exact: true }), "https://github.com/sidagarwal-labs/NVDocs_RAG");
+    await projects.locator(".project-archive summary").click();
+    await expectExternalLink(page, projects.getByRole("link", { name: "Text Analytics", exact: true }), "https://github.com/sidagarwal-labs/DSBA-6188-Text-Analytics");
+    await expectExternalLink(page, projects.getByRole("link", { name: "All repositories on GitHub", exact: true }), "https://github.com/sidagarwal-labs?tab=repositories");
+    if (view === "search") {
+      await page.getByLabel("Search Sid's work").fill("NVDocs RAG");
+      await expectExternalLink(page, page.locator(".se-matches").getByRole("link", { name: "NVDocs RAG", exact: true }), "https://github.com/sidagarwal-labs/NVDocs_RAG");
+    }
+    await expect(page).toHaveURL(original);
+  });
+}
 
 test("a Lab OS window still opens Markets when the OS does not answer the tracker link", async ({ page }) => {
   await blockLiveData(page);

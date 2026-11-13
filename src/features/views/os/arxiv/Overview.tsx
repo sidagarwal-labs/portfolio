@@ -4,6 +4,7 @@ import {
   arxivMilestones,
   arxivSearchHref,
   arxivSearchRepo,
+  arxivSearchRepoHref,
   arxivSearchSource,
   arxivSearchStats,
   arxivStages,
@@ -24,12 +25,15 @@ const stageRange = (stage: 1 | 2) => {
 const latest = arxivMilestones[arxivMilestones.length - 1];
 const previous = arxivMilestones[arxivMilestones.length - 2];
 
-type Card = { app: AppId; eyebrow: string; title: string; blurb: string; action: string; open: (actions: OsActions) => void };
+type Card = { app: AppId; eyebrow: string; title: string; blurb: string; action: string } & (
+  | { href: string }
+  | { open: (actions: OsActions) => void }
+);
 
 const cards: Card[] = [
   { app: "rankit", eyebrow: "Game", title: "Rank It", blurb: "Rank real papers for a query and get scored with nDCG on arXiv Search's graded relevance labels.", action: "Play Rank It", open: (actions) => actions.open("rankit") },
-  { app: "github", eyebrow: "Source", title: arxivSearchRepo, blurb: "The code, evaluation scripts, and the chart notes these numbers come from.", action: "Open in GitHub", open: (actions) => actions.open("github", arxivSearchRepo) },
-  { app: "nvdocs", eyebrow: "Related project", title: apps.nvdocs.title, blurb: apps.nvdocs.blurb, action: "Open NVDocs RAG in GitHub", open: (actions) => actions.open("nvdocs") }
+  { app: "github", eyebrow: "Source", title: arxivSearchRepo, blurb: "The code, evaluation scripts, and the chart notes these numbers come from.", action: "Open on GitHub", href: arxivSearchRepoHref },
+  { app: "nvdocs", eyebrow: "Related project", title: apps.nvdocs.title, blurb: apps.nvdocs.blurb, action: "Open NVDocs RAG on GitHub", open: (actions) => actions.open("nvdocs") }
 ];
 
 export function Overview({ actions, onTryLive }: { actions: OsActions; onTryLive?: () => void }) {
@@ -54,10 +58,10 @@ export function Overview({ actions, onTryLive }: { actions: OsActions; onTryLive
               Try it here
             </button>
           )}
-          <button type="button" className="os-button" onClick={() => actions.open("github", arxivSearchRepo)}>
+          <a className="os-button" href={arxivSearchRepoHref} target="_blank" rel="noopener noreferrer">
             <apps.github.icon size={15} strokeWidth={2} aria-hidden="true" />
             Code on GitHub
-          </button>
+          </a>
         </div>
       </section>
 
@@ -142,7 +146,9 @@ export function Overview({ actions, onTryLive }: { actions: OsActions; onTryLive
                   <h4>{card.title}</h4>
                   <p>{card.blurb}</p>
                 </div>
-                <button type="button" className="os-button" onClick={() => card.open(actions)}>{card.action}</button>
+                {"href" in card
+                  ? <a className="os-button" href={card.href} target="_blank" rel="noopener noreferrer">{card.action}</a>
+                  : <button type="button" className="os-button" onClick={() => card.open(actions)}>{card.action}</button>}
               </li>
             );
           })}

@@ -210,8 +210,8 @@ function TrainingRunPage() {
                 <span className="tr-df__index" aria-hidden="true">{index}</span>
                 <div>
                   <div className="tr-df__head">
-                    <a className="project-title" href={project.websiteHref ?? project.href}>{project.title}</a>
-                    {project.websiteHref && <a className="project-github" href={project.href} aria-label={`${project.title} on GitHub`}>GitHub</a>}
+                    <a className="project-title" href={project.websiteHref ?? project.href} target={project.websiteHref ? undefined : "_blank"} rel={project.websiteHref ? undefined : "noopener noreferrer"}>{project.title}</a>
+                    {project.websiteHref && <a className="project-github" href={project.href} target="_blank" rel="noopener noreferrer" aria-label={`${project.title} on GitHub`}>GitHub</a>}
                   </div>
                   <p>{project.description}</p>
                   <p className="tr-df__stack"><span>stack</span> {project.stack.join(" · ")}</p>
@@ -223,12 +223,12 @@ function TrainingRunPage() {
             <summary>Earlier projects</summary>
             <ul>
               {courseworkProjects.map((project) => (
-                <li key={project.href}><a href={project.href}>{project.title}</a><span className="project-archive__note"> &middot; {project.note}</span></li>
+                <li key={project.href}><a href={project.href} target="_blank" rel="noopener noreferrer">{project.title}</a><span className="project-archive__note"> &middot; {project.note}</span></li>
               ))}
-              {earlierProjects.map((project) => <li key={project.slug}><a href={project.href}>{project.title}</a></li>)}
+              {earlierProjects.map((project) => <li key={project.slug}><a href={project.href} target="_blank" rel="noopener noreferrer">{project.title}</a></li>)}
             </ul>
           </details>
-          <a className="small-link" href="https://github.com/sidagarwal-labs?tab=repositories">All repositories on GitHub</a>
+          <a className="small-link" href="https://github.com/sidagarwal-labs?tab=repositories" target="_blank" rel="noopener noreferrer">All repositories on GitHub</a>
         </Cell>
 
         <Cell id="writing" code={cells[2].code} run={runs.writing} selected={selectedId === "writing"}>

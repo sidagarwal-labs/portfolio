@@ -258,9 +258,12 @@ function DesktopShell() {
       openFolder(requested);
       return;
     }
-    /* Shortcuts (such as a project's repository) open the app they point to. */
-    const app = shortcut.kind === "link" ? shortcut.opens.app : requested;
-    const targetValue = shortcut.kind === "link" ? shortcut.opens.target : requestedTarget;
+    if (shortcut.kind === "link") {
+      openInNewTab(shortcut.href);
+      return;
+    }
+    const app = requested;
+    const targetValue = requestedTarget;
     if (app === "resume" && onPhone) {
       openInNewTab(profileContent.resumeHref);
       return;
