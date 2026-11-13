@@ -379,11 +379,12 @@ function DesktopShell() {
     if (!live.current.phone || initialHash.current) open("search");
   }, [open]);
 
+  /* Apps wait for the intro: Chromium won't wheel-scroll a frame that loaded under the inert boot screen until it repaints. */
   useEffect(() => {
-    if (launched.current || desk.w === 0) return;
+    if (launched.current || booting || off || desk.w === 0) return;
     launched.current = true;
     launch();
-  }, [desk.w, launch]);
+  }, [desk.w, booting, off, launch]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -544,7 +545,9 @@ function DesktopShell() {
     setCalendarOpen(false);
     setDesktopWindows([]);
     setOff(false);
-    launch();
+    live.current.windows = [];
+    setWindows([]);
+    launched.current = false;
     setBooting(!still);
   };
 
