@@ -89,9 +89,8 @@ async function expectNote(win: Locator, slug: string, anchor?: string) {
   await expect(open).toHaveAttribute("href", anchor ? `${noteUrl(slug)}#${anchor}` : noteUrl(slug));
   await expect(open).toHaveAttribute("target", "_blank");
   await expect(open).toHaveAttribute("rel", "noopener noreferrer");
-  // Never the profile or a repository standing in for the note.
+  // Never the analytics profile standing in for the note.
   await expect(win.locator(".gh-pane")).toBeHidden();
-  await expect(win.locator(".gh-repo.is-highlighted")).toBeHidden();
 }
 
 /* Adds a link to a window's page, as the Insights tab (#39) links to a section of a note. */
@@ -130,7 +129,7 @@ test("every research note in Sid Search opens that note, also when the GitHub wi
   await page.locator(".os-start").click();
   await page.getByRole("dialog", { name: "Start menu" }).getByRole("button", { name: "GitHub", exact: true }).click();
   const win = page.locator(githubWin);
-  await expect(win.getByRole("heading", { level: 3, name: "Top repositories" })).toBeVisible();
+  await expect(win.getByRole("heading", { level: 3, name: "Insights", exact: true })).toBeVisible();
 
   for (const note of researchNotes) {
     await bringSearchForward(page);
@@ -140,7 +139,7 @@ test("every research note in Sid Search opens that note, also when the GitHub wi
   await expect(win).toHaveCount(1);
 
   await win.getByRole("button", { name: /^Back to / }).click();
-  await expect(win.getByRole("heading", { level: 3, name: "Top repositories" })).toBeVisible();
+  await expect(win.getByRole("heading", { level: 3, name: "Insights", exact: true })).toBeVisible();
   expect(opened).toEqual([]);
 });
 
@@ -313,6 +312,9 @@ test("a GitHub page the app cannot show is offered on GitHub, never as the profi
   const notice = win.locator(".gh-away").getByRole("alert");
 
   for (const [target, href] of [
+    ["sidagarwal-labs/models", "https://github.com/sidagarwal-labs/models"],
+    ["https://github.com/sidagarwal-labs/arxiv-search?tab=readme-ov-file#readme", "https://github.com/sidagarwal-labs/arxiv-search?tab=readme-ov-file#readme"],
+    ["https://github.com/sidagarwal-labs?tab=repositories", "https://github.com/sidagarwal-labs?tab=repositories"],
     ["sidagarwal-labs/models/blob/main/notes/data.csv", "https://github.com/sidagarwal-labs/models/blob/main/notes/data.csv"],
     ["https://github.com/sidagarwal-labs/models/tree/main/notes", "https://github.com/sidagarwal-labs/models/tree/main/notes"],
     ["sidagarwal-labs/models/blob/main/notes/memory-storage.md?plain=1", "https://github.com/sidagarwal-labs/models/blob/main/notes/memory-storage.md?plain=1"],
@@ -330,7 +332,7 @@ test("a GitHub page the app cannot show is offered on GitHub, never as the profi
     await expect(win.locator(".gh-file__box")).toHaveCount(0);
   }
 
-  // A note after the notice shows the note; a repository still shows the profile with that repository.
+  // A note after the notice still shows the note, and Back returns to the analytics profile.
   await post("sidagarwal-labs/models/blob/main/notes/ai-capex.md");
   await expectNote(win, "ai-capex");
   await expect(win.locator(".gh-away")).toHaveCount(0);
@@ -338,7 +340,7 @@ test("a GitHub page the app cannot show is offered on GitHub, never as the profi
   await expect(notice).toBeVisible();
   await win.getByRole("button", { name: /^Back to / }).click();
   await expect(win.locator(".gh-away")).toHaveCount(0);
-  await expect(win.getByRole("heading", { level: 3, name: "Top repositories" })).toBeVisible();
+  await expect(win.getByRole("heading", { level: 3, name: "Insights", exact: true })).toBeVisible();
   expect(opened).toEqual([]);
 });
 

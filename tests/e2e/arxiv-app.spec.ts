@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 const arxivWin = '.os-win[data-app="arxiv"]';
 const githubWin = '.os-win[data-app="github"]';
@@ -25,6 +25,7 @@ async function mockArxiv(page: Page, ready: boolean) {
 }
 
 async function blockOutside(page: Page) {
+  await page.context().route("https://github.com/**", (route) => route.fulfill({ contentType: "text/html", body: "<p>Repository</p>" }));
   await page.route("https://api.github.com/**", (route) => route.abort());
   await page.route("https://finnhub.io/**", (route) => route.abort());
   await page.route(/^https:\/\/(i\.scdn\.co|m\.media-amazon\.com|avatars\.githubusercontent\.com|s3\.tradingview\.com|datasets-server\.huggingface\.co)\//, (route) => route.abort());
@@ -108,12 +109,14 @@ function expectNoOverlap(cells: Layout) {
   expect(new Set(slots).size, "no two icons share a slot").toBe(slots.length);
 }
 
-async function expectRepoInGitHub(page: Page, repo: string) {
-  const github = page.locator(githubWin);
-  await expect(github).toHaveClass(/is-active/);
-  const card = github.locator(`.gh-repo[data-repo="${repo.toLowerCase()}"]`);
-  await expect(card).toHaveClass(/is-highlighted/);
-  await expect(card).toHaveAttribute("aria-current", "true");
+async function expectRepoOnGitHub(page: Page, link: Locator, repo: string) {
+  const opened = page.context().waitForEvent("page");
+  await link.click();
+  const tab = await opened;
+  await expect(tab).toHaveURL(`https://github.com/sidagarwal-labs/${repo}`);
+  expect(await tab.evaluate(() => window.opener === null)).toBe(true);
+  await tab.close();
+  await expect(page.locator(githubWin)).toHaveCount(0);
 }
 
 test("the desktop shows arXiv Search right after the Projects folder, which lists the other four projects", async ({ page }) => {
@@ -247,23 +250,51 @@ test("a saved arXiv Search position is kept", async ({ page }) => {
   expect(cells, "no icon moves into arXiv Search's default slot, and arXiv Search stays where it was saved").toEqual({ ...saved, recyclebin: { col: 2, row: 8 } });
 });
 
-test("NVDocs RAG, HireMe.AI, and Financial models open their repositories in GitHub, and Reader opens from the folder", async ({ page }) => {
-  await openDesktop(page);
-  for (const [title, repo] of [["NVDocs RAG", "NVDocs_RAG"], ["HireMe.AI", "HireMe-AI"], ["Financial models", "models"]]) {
+for (const style of ["modern", "retro"]) {
+  test(`project shortcuts open actual repositories in new tabs in ${style}, while Reader stays native`, async ({ page }) => {
+    await openDesktop(page, style);
+    for (const [title, repo] of [["NVDocs RAG", "NVDocs_RAG"], ["HireMe.AI", "HireMe-AI"], ["Financial models", "models"]]) {
+      await showDesktop(page);
+      const folder = await openProjectsFolder(page);
+      await expectRepoOnGitHub(page, folder.locator(".os-icon", { hasText: title }), repo);
+      await expect(folder).toBeVisible();
+    }
+    await expect(page.locator('.os-win[data-app="nvdocs"], .os-win[data-app="hireme"], .os-win[data-app="finmodels"]')).toHaveCount(0);
+
     await showDesktop(page);
     const folder = await openProjectsFolder(page);
-    await folder.locator(".os-icon", { hasText: title }).click();
-    await expectRepoInGitHub(page, repo);
-    await expect(page.locator(githubWin)).toHaveCount(1);
-  }
-  await expect(page.locator('.os-win[data-app="nvdocs"], .os-win[data-app="hireme"], .os-win[data-app="finmodels"]')).toHaveCount(0);
+    await folder.locator(".os-icon", { hasText: "Reader" }).click();
+    const reader = page.locator('.os-win[data-app="reader"]');
+    await expect(reader).toHaveClass(/is-active/);
+    await expect(reader.getByRole("article", { name: "Microsoft 365 Copilot", exact: true })).toBeVisible();
+  });
 
-  await showDesktop(page);
-  const folder = await openProjectsFolder(page);
-  await folder.locator(".os-icon", { hasText: "Reader" }).click();
-  const reader = page.locator('.os-win[data-app="reader"]');
-  await expect(reader).toHaveClass(/is-active/);
-  await expect(reader.getByRole("article", { name: "Microsoft 365 Copilot", exact: true })).toBeVisible();
+  test(`phone project shortcuts open GitHub in new tabs without replacing the ${style} folder`, async ({ page }) => {
+    await blockOutside(page);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`./?view=os&style=${style}`);
+    await page.locator(".os-home").getByRole("button", { name: "Projects", exact: true }).click();
+    const folder = page.getByRole("list", { name: "Projects apps", exact: true });
+    for (const [title, repo] of [["NVDocs RAG", "NVDocs_RAG"], ["HireMe.AI", "HireMe-AI"], ["Financial models", "models"]]) {
+      await expectRepoOnGitHub(page, folder.getByRole("button", { name: title, exact: true }), repo);
+      await expect(folder).toBeVisible();
+    }
+  });
+}
+
+test("Start folders and Start search open repository shortcuts in new tabs", async ({ page }) => {
+  await openDesktop(page);
+  await page.locator(".os-start").click();
+  const menu = page.getByRole("dialog", { name: "Start menu" });
+  await menu.getByRole("button", { name: "Projects", exact: true }).click();
+  await expectRepoOnGitHub(page, menu.getByRole("list", { name: "Projects", exact: true }).getByRole("button", { name: "NVDocs RAG", exact: true }), "NVDocs_RAG");
+  await expect(menu).toHaveCount(0);
+
+  await page.locator(".os-start").click();
+  await menu.getByRole("searchbox", { name: "Search apps" }).fill("Financial models");
+  await expectRepoOnGitHub(page, menu.getByRole("list", { name: "Search results", exact: true }).getByRole("button", { name: "Financial models", exact: true }), "models");
+  await expect(menu).toHaveCount(0);
 });
 
 test("the arXiv Search overview shows the headline metrics, the hill-climbing chart, and its data table", async ({ page }) => {
@@ -306,17 +337,17 @@ test("the arXiv Search overview shows the headline metrics, the hill-climbing ch
   await expect(win.getByRole("link", { name: "Open live site" })).toHaveAttribute("target", "_blank");
   expect(site.requests, "the live site only loads once Try it live opens").toEqual([]);
 
-  await win.getByRole("button", { name: "Code on GitHub" }).click();
-  await expectRepoInGitHub(page, "arxiv-search");
+  const codeLink = win.getByRole("link", { name: "Code on GitHub" });
+  await expect(codeLink).toHaveAttribute("target", "_blank");
+  await expectRepoOnGitHub(page, codeLink, "arxiv-search");
+  await expectRepoOnGitHub(page, win.locator('.ax-card[data-card="github"]').getByRole("link", { name: "Open on GitHub" }), "arxiv-search");
 
-  await page.locator(".os-task", { hasText: "arXiv Search" }).click();
-  await win.locator('.ax-card[data-card="nvdocs"]').getByRole("button", { name: "Open NVDocs RAG in GitHub" }).click();
-  await expectRepoInGitHub(page, "NVDocs_RAG");
+  await expectRepoOnGitHub(page, win.locator('.ax-card[data-card="nvdocs"]').getByRole("button", { name: "Open NVDocs RAG on GitHub" }), "NVDocs_RAG");
+  await expect(win).toHaveClass(/is-active/);
 
-  await page.locator(".os-task", { hasText: "arXiv Search" }).click();
   await win.locator('.ax-card[data-card="rankit"]').getByRole("button", { name: "Play Rank It" }).click();
   await expect(page.locator('.os-win[data-app="rankit"]')).toHaveClass(/is-active/);
-  expect(opened).toEqual([]);
+  expect(opened).toHaveLength(3);
 });
 
 test("Try it live shows the site once it reports ready", async ({ page }) => {
@@ -428,12 +459,10 @@ test("links to arxiv.agarwal-labs.com in Sid Search open the arXiv Search app in
 
   await page.locator(".os-task", { hasText: "Sid Search" }).click();
   await expect(page.locator(searchWin)).toHaveClass(/is-active/);
-  await project.getByRole("link", { name: "arXiv Search on GitHub" }).click();
-  await expectRepoInGitHub(page, "arxiv-search");
+  await expectRepoOnGitHub(page, project.getByRole("link", { name: "arXiv Search on GitHub" }), "arxiv-search");
 
   // A link to a page on the site opens it in Try it live, in the same window.
   const deepLink = "https://arxiv.agarwal-labs.com/?q=dense%20retrieval";
-  await page.locator(".os-task", { hasText: "Sid Search" }).click();
   await expect(page.locator(searchWin)).toHaveClass(/is-active/);
   await frame.locator("body").evaluate((body, href) => {
     const link = Object.assign(document.createElement("a"), { href, textContent: "Dense retrieval papers" });
@@ -449,7 +478,7 @@ test("links to arxiv.agarwal-labs.com in Sid Search open the arXiv Search app in
   await expect(win.locator(".ax-live")).toHaveAttribute("data-phase", "ready");
   await expect(page.frameLocator(`${arxivWin} iframe.ax-live__frame`).locator("#where")).toHaveText("/?q=dense%20retrieval");
   expect(site.requests.map(({ url }) => url)).toEqual([deepLink]);
-  expect(opened).toEqual([]);
+  expect(opened).toHaveLength(1);
 });
 
 test("Sid Search shows arXiv Search as a regular project and links to the live site outside Lab OS", async ({ page }) => {

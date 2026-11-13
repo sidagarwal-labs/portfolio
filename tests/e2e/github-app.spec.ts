@@ -104,6 +104,13 @@ const stat = (win: Locator, id: string) => win.locator(`[data-stat="${id}"] .gh-
 const metric = (scope: Locator, id: string) => scope.locator(`[data-metric="${id}"] .gh-metric__value`);
 const insight = (win: Locator, id: string) => win.locator(`[data-insight="${id}"]`);
 const INSIGHTS = ["momentum", "rhythm", "mix", "languages", "sprints"];
+async function expectCurrentSections(win: Locator) {
+  await expect(win.getByRole("heading", { name: /^(Highlights|Top repositories|Languages)$/ })).toHaveCount(0);
+  await expect(win.getByRole("heading", { name: "Languages over time", exact: true })).toBeVisible();
+  await expect(win.getByRole("region", { name: "Insights", exact: true })).toBeVisible();
+  await expect(win.getByRole("region", { name: "Labs", exact: true })).toBeVisible();
+  await expect(win.locator(".gh-main > .gh-section + .gh-labs")).toHaveCount(1);
+}
 /** Every geometry attribute drawn by the insight charts, so a NaN or Infinity anywhere fails. */
 const insightGeometry = (win: Locator) =>
   win.locator("[data-insight] svg *").evaluateAll((els) =>
@@ -143,18 +150,7 @@ test("opens from the desktop on the owner's snapshot with a compact, accessible 
   await expect(stat(win, "busiest-week")).toHaveText(fmtInt(stats.busiestWeek!.total));
   await expect(stat(win, "concentration")).toHaveText(fmtNum(stats.giniConcentration));
 
-  await expect(win.locator(".gh-repo__name")).toHaveText(stats.topRepos.slice(0, 8).map((repo) => repo.name));
-  if (stats.topRepos.length > 8) {
-    await win.getByRole("button", { name: `Show all ${stats.topRepos.length}` }).click();
-    await expect(win.locator(".gh-repo__name")).toHaveCount(stats.topRepos.length);
-  }
-  const repoNames = new Set(snapshot.repos.map((repo) => repo.name));
-  const hidden = new Set(OWN_HIDDEN_REPOS.map((name) => name.toLowerCase()));
-  for (const name of await win.locator(".gh-repo__name").allTextContents()) {
-    expect(repoNames.has(name)).toBe(true);
-    expect(hidden.has(name.toLowerCase()), `${name} should be hidden`).toBe(false);
-  }
-  await expect(win.getByRole("region", { name: "Languages", exact: true }).locator(".gh-langs li").first()).toContainText(stats.languages[0].name);
+  await expectCurrentSections(win);
 });
 
 test("puts the compact calendar beside the key stats, then our own insights", async ({ page }) => {
@@ -175,7 +171,7 @@ test("puts the compact calendar beside the key stats, then our own insights", as
   expect(calendarBox.width).toBeGreaterThan(svgBox.width);
   expect(calendarBox.width).toBeLessThan(svgBox.width + 40);
   expect(await glance.locator(".gh-heat__scroll").evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0);
-  const tops = await Promise.all(["#gh-activity-heading", "#gh-insights-heading", "#gh-highlights-heading"].map(async (id) => (await win.locator(id).boundingBox())!.y));
+  const tops = await Promise.all(["#gh-activity-heading", "#gh-insights-heading", ".gh-labs h3"].map(async (selector) => (await win.locator(selector).boundingBox())!.y));
   expect(tops).toEqual([...tops].sort((a, b) => a - b));
 
   await expect(win.locator("[data-insight]")).toHaveCount(INSIGHTS.length);
@@ -241,7 +237,7 @@ test("insight charts animate only when motion is allowed", async ({ page }) => {
   await expect(win.locator(".gh-rose__petal").first()).toHaveCSS("animation-name", "gh-bloom");
 });
 
-test("labels the repository counts and says when the owner's snapshot refreshes", async ({ page }) => {
+test("says when the owner's snapshot refreshes", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const win = await openGitHub(page);
 
@@ -249,33 +245,6 @@ test("labels the repository counts and says when the owner's snapshot refreshes"
   await expect(fresh).toHaveText(`Data as of ${fmtDate(snapshot.generatedAt)} · refreshed on each deploy and daily`);
   await expect(fresh.locator("time")).toHaveAttribute("datetime", snapshot.generatedAt);
   await expect(win.locator(".gh-head__meta").first()).toHaveText(`${fmtRange(snapshot.range.from, snapshot.range.to)} · contribution calendar`);
-
-  const legend = "Commits in the last 12 months · share of all repository commits · active days.";
-  await expect(win.locator(".gh-repos__legend")).toHaveText(`${legend} All-time: every commit by @${snapshot.login} on the default branch.`);
-  await expect(win.locator(".gh-repos")).toHaveAccessibleDescription(new RegExp(`^${legend.replace(/[.]/g, "\\.")}`));
-
-  // Every repository with commits in the year has an all-time count in the committed snapshot.
-  expect(stats.topRepos.length).toBeGreaterThan(0);
-  expect(stats.topRepos.every((repo) => repo.allTimeCommits !== undefined)).toBe(true);
-  if (stats.topRepos.length > 8) await win.getByRole("button", { name: `Show all ${stats.topRepos.length}` }).click();
-  const rows = win.locator(".gh-repo");
-  await expect(rows).toHaveCount(stats.topRepos.length);
-  for (const [i, repo] of stats.topRepos.entries()) {
-    const row = rows.nth(i);
-    await expect(row.locator(".gh-repo__name")).toHaveText(repo.name);
-    // The unit is spoken with each count; the share and active days follow the legend's order.
-    await expect(row.locator(".gh-repo__value")).toHaveText(
-      `${fmtInt(repo.total)} commits in the last 12 months · ${fmtPct(repo.share)} · ${plural(repo.activeDays, "day")}`
-    );
-    await expect(row.locator(".gh-repo__total")).toHaveText(`${fmtInt(repo.allTimeCommits!)} all-time`);
-    await expect(row.locator(".gh-repo__total")).toBeVisible();
-  }
-
-  const note = win.locator(".gh-repos__note");
-  await expect(note).toContainText("Only default-branch commits count, and a squash-merged pull request counts as one.");
-  const above = stats.topRepos.filter((repo) => repo.total > repo.allTimeCommits!);
-  if (above.length) await expect(note).toContainText("A 12-month count above the all-time one means GitHub still credits commits that are no longer on the branch");
-  else await expect(note).not.toContainText("12-month count above");
 });
 
 test("lab tabs follow the ARIA tabs pattern and show model output", async ({ page }) => {
@@ -466,14 +435,11 @@ test("looks up another user through the REST fallback, then returns to the owner
   await expect(win.locator('[data-stat="total"] .gh-stat__label')).toHaveText("Public events");
   await expect(stat(win, "total")).toHaveText(String(octo.events.length));
   await expect(win.locator(".gh-totals")).toContainText("pushes");
-  await expect(win.locator(".gh-repo__name").first()).toHaveAttribute("href", /^https:\/\/github\.com\/Octo\//);
-  // Lookups are fetched live, and public events are not commits: no all-time counts or commit notes.
+  await expect(win.getByRole("link", { name: "Open on GitHub" }).first()).toHaveAttribute("href", "https://github.com/Octo");
+  await expectCurrentSections(win);
+  // Lookups are fetched live, and public events are not commits.
   await expect(win.locator(".gh-head__fresh")).toHaveText(/^Fetched live · data as of \w{3} \d{1,2}, \d{4}$/);
   await expect(win.locator(".gh-head__meta").first()).toContainText("public events from the GitHub REST API");
-  await expect(win.locator(".gh-repos__legend")).toHaveText("Public events in the last 90 days · share of all repository events · active days.");
-  await expect(win.locator(".gh-repo__value").first()).toContainText(/^\d+ public events in the last 90 days · \d+% · \d+ days?$/);
-  await expect(win.locator(".gh-repo__total")).toHaveCount(0);
-  await expect(win.locator(".gh-repos__note")).toHaveCount(0);
 
   // Insights say what public events can: pushes rather than commits, primary languages rather than bytes.
   await expect(win.getByRole("region", { name: "At a glance" }).getByRole("heading", { level: 4, name: "Public activity" })).toBeVisible();
@@ -505,7 +471,7 @@ test("looks up another user through the REST fallback, then returns to the owner
   await expect(win.getByRole("heading", { level: 3, name: snapshot.name! })).toBeVisible();
   await expect(win.getByRole("note")).toHaveCount(0);
   await expect(win.locator(".gh-head__fresh")).toContainText("refreshed on each deploy and daily");
-  await expect(win.locator(".gh-repo__total").first()).toBeVisible();
+  await expectCurrentSections(win);
   await expect(win.locator("rect.gh-cell")).toHaveCount(snapshot.days.length);
 });
 
@@ -619,15 +585,7 @@ test("fits a phone without horizontal overflow", async ({ page }) => {
     const card = (await insight(win, id).boundingBox())!;
     expect(card.x + card.width, id).toBeLessThanOrEqual(390);
   }
-  // On a phone the all-time count sits beside the bar, under the 12-month count.
-  const row = win.locator(".gh-repo.has-total").first();
-  const [rowBox, barBox, valueBox, totalBox] = await Promise.all(
-    [row, row.locator(".gh-repo__bar"), row.locator(".gh-repo__value"), row.locator(".gh-repo__total")].map(async (part) => (await part.boundingBox())!)
-  );
-  expect(totalBox.x).toBeGreaterThan(barBox.x + barBox.width);
-  expect(totalBox.x + totalBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width);
-  expect(totalBox.y).toBeGreaterThanOrEqual(valueBox.y + valueBox.height - 1);
-  expect(Math.abs(totalBox.y + totalBox.height / 2 - (barBox.y + barBox.height / 2))).toBeLessThan(totalBox.height);
+  await expectCurrentSections(win);
 
   // Linux CI falls back to wider fonts than Windows; a wide font catches overflow either way.
   await page.addStyleTag({ content: "*, *::before, *::after { font-family: Verdana, 'DejaVu Sans', sans-serif !important; }" });
@@ -651,6 +609,7 @@ for (const style of ["modern", "retro"]) {
     const win = page.locator(githubWin);
     await expect(win.getByRole("heading", { level: 3, name: snapshot.name! })).toBeVisible();
     await expect(win.locator("[data-insight]")).toHaveCount(INSIGHTS.length);
+    await expectCurrentSections(win);
     const overflow = () =>
       page.evaluate((selector) => {
         const body = document.querySelector(`${selector} .os-win__body`)!;
@@ -673,6 +632,7 @@ test("renders in the retro style", async ({ page }) => {
   await expect(win.locator("rect.gh-cell")).toHaveCount(snapshot.days.length);
   await expect(win.getByRole("tab", { name: "Training run" })).toHaveCSS("background-color", "rgb(0, 0, 128)");
   await expect(stat(win, "total")).toHaveText(fmtInt(stats.total));
+  await expectCurrentSections(win);
   // Insight cards get the same navy title bars and square corners.
   for (const id of INSIGHTS) {
     await expect(insight(win, id).locator(".gh-card__head")).toHaveCSS("background-color", "rgb(0, 0, 128)");

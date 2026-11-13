@@ -68,10 +68,8 @@ function ProfileActions({ className }: { className: string }) {
 
 function DocLink({ doc, className, children }: { doc: SearchDoc; className?: string; children: ReactNode }) {
   if (doc.route) return <Link className={className} to={doc.href}>{children}</Link>;
-  /* Research notes live on GitHub and open in a new tab, as in the notes list. */
-  return doc.kind === "Research note"
-    ? <a className={className} href={doc.href} target="_blank" rel="noopener noreferrer">{children}</a>
-    : <a className={className} href={doc.href}>{children}</a>;
+  const github = /^https:\/\/(?:www\.)?github\.com\//i.test(doc.href);
+  return <a className={className} href={doc.href} target={github ? "_blank" : undefined} rel={github ? "noopener noreferrer" : undefined}>{children}</a>;
 }
 
 function Highlight({ text, terms, prefix }: { text: string; terms: string[]; prefix?: string }) {
@@ -323,8 +321,8 @@ function SearchPage() {
                     <li className="se-result" key={project.href}>
                       <Source href={project.websiteHref ?? project.href} />
                       <div className="se-result__head">
-                        <h3><a className="se-result__title project-title" href={project.websiteHref ?? project.href}>{project.title}</a></h3>
-                        {project.websiteHref && <a className="project-github" href={project.href} aria-label={`${project.title} on GitHub`}>GitHub</a>}
+                        <h3><a className="se-result__title project-title" href={project.websiteHref ?? project.href} target={project.websiteHref ? undefined : "_blank"} rel={project.websiteHref ? undefined : "noopener noreferrer"}>{project.title}</a></h3>
+                        {project.websiteHref && <a className="project-github" href={project.href} target="_blank" rel="noopener noreferrer" aria-label={`${project.title} on GitHub`}>GitHub</a>}
                       </div>
                       <p className="se-result__snippet">{project.description}</p>
                       <ul className="se-chips" aria-label={`${project.title} stack`}>
@@ -337,12 +335,12 @@ function SearchPage() {
                   <summary>Earlier projects</summary>
                   <ul>
                     {courseworkProjects.map((project) => (
-                      <li key={project.href}><a href={project.href}>{project.title}</a><span className="project-archive__note"> &middot; {project.note}</span></li>
+                      <li key={project.href}><a href={project.href} target="_blank" rel="noopener noreferrer">{project.title}</a><span className="project-archive__note"> &middot; {project.note}</span></li>
                     ))}
-                    {earlierProjects.map((project) => <li key={project.slug}><a href={project.href}>{project.title}</a></li>)}
+                    {earlierProjects.map((project) => <li key={project.slug}><a href={project.href} target="_blank" rel="noopener noreferrer">{project.title}</a></li>)}
                   </ul>
                 </details>
-                <a className="small-link" href="https://github.com/sidagarwal-labs?tab=repositories">All repositories on GitHub</a>
+                <a className="small-link" href="https://github.com/sidagarwal-labs?tab=repositories" target="_blank" rel="noopener noreferrer">All repositories on GitHub</a>
               </section>
 
               <section className="se-section" id="writing" aria-labelledby="se-writing-heading">

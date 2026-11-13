@@ -10,7 +10,7 @@ import { fmtDate, fmtRange, fmtResetAt } from "./ui/format";
 import { Heatmap } from "./ui/Heatmap";
 import { Insights } from "./ui/Insights";
 import { Labs } from "./ui/Labs";
-import { Highlights, Languages, StatsStrip, TopRepos, TotalsLine, type RepoFocus } from "./ui/Overview";
+import { StatsStrip, TotalsLine } from "./ui/Overview";
 import "./github.css";
 
 type Lookup =
@@ -19,20 +19,17 @@ type Lookup =
   | { status: "error"; login: string; kind: GitHubLookupErrorKind; message: string; resetAt?: string };
 
 const OWN = OWN_GITHUB_LOGIN.toLowerCase();
-const REPO_PATTERN = /^[A-Za-z0-9._-]{1,100}$/;
 
-/** "login", "login/repo", "@login" or a github.com URL of either; logins are case-insensitive. Anything else is null. */
-function parseGitHubTarget(value: string): { login: string; repo?: string } | null {
+/** A username or profile URL; repository targets belong on GitHub, not in this analytics view. */
+function parseGitHubTarget(value: string): { login: string } | null {
+  if (/[?#]/.test(value)) return null;
   const path = value
     .trim()
-    .replace(/[?#].*$/, "")
     .replace(/^(?:https?:\/\/)?(?:www\.)?github\.com\//i, "")
     .replace(/^@/, "");
   const parts = path.split("/").filter(Boolean);
-  if (parts.length === 0 || parts.length > 2 || !isValidLogin(normalizeLogin(parts[0]))) return null;
-  const [first, second] = parts;
-  const repo = second && REPO_PATTERN.test(second) ? second.replace(/\.git$/i, "") : undefined;
-  return { login: normalizeLogin(first), repo };
+  if (parts.length !== 1 || !isValidLogin(normalizeLogin(parts[0]))) return null;
+  return { login: normalizeLogin(parts[0]) };
 }
 
 /** The github.com page for a target this app cannot show, or the owner's profile when it is not one. */
@@ -80,12 +77,11 @@ function Avatar({ insights }: { insights: GitHubInsights }) {
   );
 }
 
-function Profile({ insights, focus, own }: { insights: GitHubInsights; focus: RepoFocus | null; own: boolean }) {
+function Profile({ insights, own }: { insights: GitHubInsights; own: boolean }) {
   const calendar = useMemo(() => buildCalendar(insights.days), [insights]);
   const stats = useMemo(() => computeStats(insights), [insights]);
   const rest = insights.source === "rest-events";
   const unit = rest ? "events" : "contributions";
-  const repoFocus = focus && focus.login.toLowerCase() === insights.login.toLowerCase() ? focus : null;
   const sourceLabel = rest ? "public events from the GitHub REST API" : own ? "contribution calendar" : "contribution calendar from the GitHub GraphQL API";
   const asOf = <time dateTime={insights.generatedAt}>{fmtDate(insights.generatedAt)}</time>;
 
@@ -139,23 +135,6 @@ function Profile({ insights, focus, own }: { insights: GitHubInsights; focus: Re
 
       <Insights insights={insights} unit={unit} />
 
-      <div className="gh-cols">
-        <section className="gh-section" aria-labelledby="gh-highlights-heading">
-          <h3 id="gh-highlights-heading">Highlights</h3>
-          <Highlights insights={insights} stats={stats} unit={unit} />
-        </section>
-        <div className="gh-section">
-          <section className="gh-section" aria-labelledby="gh-repos-heading">
-            <h3 id="gh-repos-heading">Top repositories</h3>
-            <TopRepos insights={insights} stats={stats} focus={repoFocus} unit={unit} />
-          </section>
-          <section className="gh-section" aria-labelledby="gh-langs-heading">
-            <h3 id="gh-langs-heading">Languages</h3>
-            <Languages insights={insights} stats={stats} />
-          </section>
-        </div>
-      </div>
-
       <Labs key={`${insights.login}:${insights.generatedAt}`} insights={insights} unit={unit} />
     </div>
   );
@@ -173,7 +152,7 @@ function ElsewhereView({ href, seq }: { href: string; seq: number }) {
     <div className="gh-file gh-away" ref={ref} tabIndex={-1} role="group" aria-label="GitHub page">
       <div className="gh-notice" role="alert">
         <Info size={16} strokeWidth={2} aria-hidden="true" />
-        <p>This GitHub page can't be shown here. It opens on GitHub in a new tab.</p>
+        <p>This GitHub page can't be shown here. Open it on GitHub in a new tab.</p>
         <a className="os-button" href={href} target="_blank" rel="noopener noreferrer">
           Open on GitHub
           <ExternalLink size={14} strokeWidth={2} aria-hidden="true" />
@@ -190,13 +169,11 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
   const [other, setOther] = useState<GitHubInsights | null>(null);
   const [lookup, setLookup] = useState<Lookup>({ status: "idle" });
   const [query, setQuery] = useState("");
-  const [focus, setFocus] = useState<RepoFocus | null>(null);
   const [file, setFile] = useState<{ file: GitHubFile; seq: number } | null>(null);
   /* A GitHub page a link asked for that this app cannot show; it offers the page on GitHub instead. */
   const [elsewhere, setElsewhere] = useState<{ href: string; seq: number } | null>(null);
   const controller = useRef<AbortController | null>(null);
   const otherLogin = useRef<string | null>(null);
-  const focusSeq = useRef(0);
   const fileSeq = useRef(0);
   const paneRef = useRef<HTMLDivElement>(null);
   const fileOpen = useRef(false);
@@ -222,8 +199,6 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
     if (body) body.scrollTop = 0;
   }, [scrollBody]);
 
-  const focusRepo = useCallback((login: string, repo?: string) => setFocus(repo ? { login, repo, seq: ++focusSeq.current } : null), []);
-
   const closeFile = useCallback((restoreProfile = false) => {
     if (!restoreProfile) profileScroll.current = null;
     setFile(null);
@@ -231,23 +206,22 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
   }, []);
 
   const showOwn = useCallback(
-    (repo?: string) => {
+    () => {
       controller.current?.abort();
       controller.current = null;
       setOther(null);
       setLookup({ status: "idle" });
       closeFile();
-      focusRepo(OWN, repo);
     },
-    [focusRepo, closeFile]
+    [closeFile]
   );
 
   const runLookup = useCallback(
-    (input: string, repo?: string) => {
+    (input: string) => {
       const login = normalizeLogin(input);
       if (!login) return;
       if (login === OWN) {
-        showOwn(repo);
+        showOwn();
         scrollTop();
         return;
       }
@@ -260,7 +234,6 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
       }
       if (otherLogin.current === login) {
         setLookup({ status: "idle" });
-        focusRepo(login, repo);
         return;
       }
       const ctrl = new AbortController();
@@ -272,7 +245,6 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
           controller.current = null;
           setLookup({ status: "idle" });
           setOther(insights.login.toLowerCase() === OWN ? null : insights);
-          focusRepo(insights.login, repo);
           scrollTop();
         },
         (error: unknown) => {
@@ -283,7 +255,7 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
         }
       );
     },
-    [focusRepo, scrollTop, showOwn, closeFile]
+    [scrollTop, showOwn, closeFile]
   );
 
   /* Opening a file keeps the profile (and its labs) mounted underneath, and cancels a lookup in flight. */
@@ -327,8 +299,8 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
     if (!document.activeElement || document.activeElement === document.body) paneRef.current?.focus({ preventScroll: true });
   }, [away, scrollBody]);
 
-  /* A link asked for a Markdown file, "login" or "login/repo"; a new seq re-applies the same request. Anything else
-     (another kind of GitHub page, or a target from a newer build) offers that page on GitHub. */
+  /* A new seq re-applies a file or profile request. Legacy repository targets and other pages offer GitHub
+     instead of substituting an unrelated analytics view. */
   const targetSeq = target?.seq;
   const targetValue = target?.value;
   useEffect(() => {
@@ -344,7 +316,7 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
       return;
     }
     setQuery(parsed.login === OWN ? "" : parsed.login);
-    runLookup(parsed.login, parsed.repo);
+    runLookup(parsed.login);
   }, [targetSeq, targetValue, runLookup, openFile, openElsewhere]);
 
   const onSubmit = (event: FormEvent) => {
@@ -420,13 +392,12 @@ export default function GitHubApp({ target }: { target?: OsTarget; actions: OsAc
           description={own?.repos.find((repo) => repo.name.toLowerCase() === file.file.repo.toLowerCase())?.description}
           onOpenFile={openFile}
           onOpenOwner={backToOwn}
-          onOpenRepo={(repo) => runLookup(OWN, repo)}
         />
       )}
       {elsewhere && <ElsewhereView href={elsewhere.href} seq={elsewhere.seq} />}
       <div className="gh-pane" ref={paneRef} tabIndex={-1} hidden={away}>
         {insights ? (
-          <Profile insights={insights} focus={focus} own={!other} />
+          <Profile insights={insights} own={!other} />
         ) : ownError ? (
           <div className="gh-alert" role="alert">
             <TriangleAlert size={16} strokeWidth={2} aria-hidden="true" />

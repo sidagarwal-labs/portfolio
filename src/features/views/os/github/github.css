@@ -84,26 +84,9 @@
 .gh-stat__note { color: #6b7383; font-size: 12px; overflow-wrap: anywhere; }
 .gh-totals { color: #4f5664; font-size: 13px; }
 
-.gh-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; }
-.gh-highlights { display: grid; gap: 6px; margin: 0; padding-left: 18px; }
-.gh-highlights li { overflow-wrap: anywhere; }
-
-.gh-repos { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
-.gh-repo { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(40px, 1fr) auto; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 6px; scroll-margin: 80px; }
-.gh-repo.is-highlighted { background: #eaf0ff; box-shadow: inset 3px 0 0 #2a4fbf; }
-.gh-repo__name { min-width: 0; overflow: hidden; font-weight: 600; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
-.gh-repo__bar { height: 8px; overflow: hidden; border-radius: 4px; background: #eef1f5; }
-.gh-repo__bar span { display: block; height: 100%; border-radius: 4px; background: #40c463; }
-.gh-repo__value { font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.gh-repo.has-total { row-gap: 0; }
-.gh-repo__total { grid-column: 3; grid-row: 2; color: #6b7383; font-size: 12px; font-variant-numeric: tabular-nums; line-height: 1.4; white-space: nowrap; }
 .gh-link-button { justify-self: start; padding: 2px 0; border: 0; background: none; color: #2a4fbf; font: inherit; font-size: 13px; cursor: pointer; }
 .gh-link-button:hover { text-decoration: underline; }
-.gh-note { padding: 8px 10px; border: 1px solid #d0d5dd; border-radius: 8px; background: #f3f5f8; font-size: 13px; overflow-wrap: anywhere; }
-.gh-note a { display: inline-flex; align-items: center; gap: 4px; }
 
-.gh-langbar { display: flex; height: 10px; overflow: hidden; border-radius: 5px; background: #eef1f5; }
-.gh-langbar span { display: block; height: 100%; }
 .gh-langs { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
 .gh-langs li { display: inline-flex; align-items: center; gap: 6px; }
 .gh-dot { display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 50%; }
@@ -396,12 +379,7 @@
   .gh-avatar { width: 56px; height: 56px; font-size: 22px; }
   .gh-head__open { grid-column: 1 / -1; justify-self: start; }
   .gh-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .gh-cols, .gh-grid2 { grid-template-columns: minmax(0, 1fr); }
-  .gh-repo { grid-template-columns: minmax(0, 1fr) auto; }
-  .gh-repo__bar { grid-column: 1 / -1; grid-row: 2; }
-  .gh-repo.has-total { row-gap: 4px; }
-  .gh-repo.has-total .gh-repo__bar { grid-column: 1; }
-  .gh-repo__total { grid-column: 2; }
+  .gh-grid2 { grid-template-columns: minmax(0, 1fr); }
   .gh-tabs { justify-self: stretch; }
   .gh-card { --gh-card-y: 10px; --gh-card-x: 12px; padding-bottom: 12px; }
   .gh-glance__calendar { padding: 8px 10px 6px; }
@@ -420,12 +398,10 @@
 /* Retro (Windows 95) style */
 .os--retro .gh, .os--retro .gh input, .os--retro .gh button { font-family: var(--os-retro-font); }
 .os--retro .gh-toolbar { background: #c0c0c0; border-bottom: 1px solid #808080; }
-.os--retro .gh-search__field, .os--retro .gh-tabs, .os--retro .gh-tab, .os--retro .gh-stat, .os--retro .gh-metric, .os--retro .gh-stage, .os--retro .gh-notice, .os--retro .gh-guard, .os--retro .gh-alert, .os--retro .gh-note, .os--retro .gh-avatar, .os--retro .gh-repo, .os--retro .gh-langbar, .os--retro .gh-repo__bar, .os--retro .gh-repo__bar span { border-radius: 0; }
+.os--retro .gh-search__field, .os--retro .gh-tabs, .os--retro .gh-tab, .os--retro .gh-stat, .os--retro .gh-metric, .os--retro .gh-stage, .os--retro .gh-notice, .os--retro .gh-guard, .os--retro .gh-alert, .os--retro .gh-avatar { border-radius: 0; }
 .os--retro .gh-search__field { border-color: #808080 #fff #fff #808080; box-shadow: none; }
 .os--retro .gh-tabs { background: #c0c0c0; }
 .os--retro .gh-tab[aria-selected="true"] { background: #000080; color: #fff; box-shadow: none; }
-.os--retro .gh-repo.is-highlighted { background: #000080; box-shadow: none; }
-.os--retro .gh-repo.is-highlighted a, .os--retro .gh-repo.is-highlighted .gh-repo__value, .os--retro .gh-repo.is-highlighted .gh-muted, .os--retro .gh-repo.is-highlighted .gh-repo__total { color: #fff; }
 .os--retro .gh-stat, .os--retro .gh-metric, .os--retro .gh-stage { background: #fff; border-color: #808080; }
 .os--retro .gh-card, .os--retro .gh-glance__calendar, .os--retro .gh-sprint, .os--retro .gh-sprint__repos li, .os--retro .gh-badge, .os--retro .gh-trend, .os--retro .gh-sprints__track, .os--retro .gh-sprints__seg, .os--retro .gh-mix__swatch, .os--retro .gh-sprint__rank, .os--retro .gh-cell, .os--retro .gh-swatch { border-radius: 0; }
 .os--retro .gh-card, .os--retro .gh-glance__calendar, .os--retro .gh-sprint { border-color: #808080; background: #fff; }

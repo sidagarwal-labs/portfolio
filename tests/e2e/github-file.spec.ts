@@ -1,15 +1,8 @@
-import { readFileSync } from "node:fs";
 import { expect, test, type Page, type Route } from "@playwright/test";
-import { computeStats } from "../../src/features/views/os/github/analytics";
-import { curateOwnInsights } from "../../src/features/views/os/github/client";
-import type { GitHubInsights } from "../../src/features/views/os/github/contract";
 import {
   fileBlobUrl, fileRawUrl, fileTargetFromUrl, formatFileTarget, parseFileTarget, resolveImage, resolveLink, MAX_FILE_TARGET_LENGTH, type GitHubFile
 } from "../../src/features/views/os/github/fileTarget";
 import { parseMarkdown, plainText, type Block } from "../../src/features/views/os/github/markdown";
-
-const snapshot = JSON.parse(readFileSync(new URL("../../src/content/generated/github-insights.json", import.meta.url), "utf8")) as GitHubInsights;
-const topRepos = computeStats(curateOwnInsights(snapshot)).topRepos;
 
 const githubWin = '.os-win[data-app="github"]';
 const searchWin = '.os-win[data-app="search"]';
@@ -352,7 +345,8 @@ test("a research note link in Sid Search opens the GitHub app's file view with r
   expect(opened).toEqual([]);
 });
 
-test("links between notes and to sections stay in the viewer, and Back returns to the profile", async ({ page }) => {
+test("note links stay in the viewer, Back returns to the profile, and the repository crumb opens GitHub", async ({ page }) => {
+  await page.context().route("https://github.com/**", (route) => route.fulfill({ contentType: "text/html", body: "<p>Repository</p>" }));
   const opened = trackNewTabs(page);
   const { win, requests } = await openNote(page, { "notes/ai-capex.md": TEST_NOTE, "notes/other-note.md": OTHER_NOTE });
   const body = win.locator(".os-win__body");
@@ -392,21 +386,24 @@ test("links between notes and to sections stay in the viewer, and Back returns t
   await expect(win.getByRole("heading", { level: 3, name: "Sid Agarwal" })).toBeVisible();
   await expect(win.getByRole("button", { name: /^Back to / })).toHaveCount(0);
 
-  // The repository crumb shows the repository on the profile.
+  expect(opened).toEqual([]);
+
+  // The repository crumb opens the actual repository without replacing the note.
   await bringSearchForward(page);
   await clickNote(page, "ai-capex");
   await expect(win.getByRole("article", { name: "Test Note" })).toBeVisible();
-  await win.getByRole("navigation", { name: "File path" }).getByRole("link", { name: "models" }).click();
-  await expect(win.locator(".gh-file")).toHaveCount(0);
-  await expect(win.getByRole("heading", { level: 3, name: "Top repositories" })).toBeVisible();
-  if (topRepos.some((repo) => repo.name.toLowerCase() === "models")) {
-    const row = win.locator('.gh-repo[data-repo="models"]');
-    await expect(row).toHaveClass(/is-highlighted/);
-    await expect(row).toHaveAttribute("aria-current", "true");
-  } else {
-    await expect(win.locator(".gh-note")).toContainText(/^models (has no recorded activity|is not among)/);
-  }
-  expect(opened).toEqual([]);
+  const crumb = win.getByRole("navigation", { name: "File path" }).getByRole("link", { name: "models" });
+  await expect(crumb).toHaveAttribute("target", "_blank");
+  await expect(crumb).toHaveAttribute("rel", "noopener noreferrer");
+  const tabOpened = page.context().waitForEvent("page");
+  await crumb.click();
+  const tab = await tabOpened;
+  await expect(tab).toHaveURL("https://github.com/sidagarwal-labs/models");
+  expect(await tab.evaluate(() => window.opener === null)).toBe(true);
+  await tab.close();
+  await expect(article).toHaveAccessibleName("Test Note");
+  await expect(win.locator(".gh-pane")).toBeHidden();
+  expect(opened).toHaveLength(1);
 });
 
 test("a hostile note cannot run script or produce unsafe links", async ({ page }) => {

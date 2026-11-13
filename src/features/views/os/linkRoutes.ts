@@ -21,15 +21,15 @@ export function pageApp(path: string): PageApp | undefined {
   return pageApps.get(path.split(/[?#]/)[0].replace(/(.)\/+$/, "$1"));
 }
 
-/* The profile, repository home pages, and Markdown files (research notes) open the GitHub app. Other deep
-   pages (code, commits, folders) are what the reader asked to see, so they still open on GitHub. */
+/* Only the plain profile and readable Markdown files open the GitHub app. Repository pages and profile
+   tabs need GitHub itself, not the analytics view. */
 export function githubTarget(url: URL): string | undefined {
   if (url.hostname !== "github.com" && url.hostname !== "www.github.com") return undefined;
   const file = fileTargetFromUrl(url);
   if (file) return file;
-  const [login, repo, ...rest] = url.pathname.split("/").filter(Boolean);
-  if (login?.toLowerCase() !== OWN_GITHUB_LOGIN || rest.length > 0) return undefined;
-  return repo ? `${OWN_GITHUB_LOGIN}/${repo}` : OWN_GITHUB_LOGIN;
+  const [login, ...rest] = url.pathname.split("/").filter(Boolean);
+  if (login?.toLowerCase() !== OWN_GITHUB_LOGIN || rest.length > 0 || url.search || url.hash) return undefined;
+  return OWN_GITHUB_LOGIN;
 }
 
 export function routeLink(href: string): LinkRoute | undefined {

@@ -172,9 +172,9 @@ function AttentionProjects() {
             <span className="fp-project__bar" aria-hidden="true"><span /></span>
             <div className="fp-project__body">
               <div className="fp-project__head">
-                <a className="project-title" href={project.websiteHref ?? project.href}>{project.title}</a>
+                <a className="project-title" href={project.websiteHref ?? project.href} target={project.websiteHref ? undefined : "_blank"} rel={project.websiteHref ? undefined : "noopener noreferrer"}>{project.title}</a>
                 {project.websiteHref && (
-                  <a className="project-github" href={project.href} aria-label={`${project.title} on GitHub`}>GitHub</a>
+                  <a className="project-github" href={project.href} target="_blank" rel="noopener noreferrer" aria-label={`${project.title} on GitHub`}>GitHub</a>
                 )}
                 {head && <span className="fp-project__weight"><span className="sr-only">Attention weight </span>{weights[index].toFixed(2)}</span>}
               </div>
@@ -367,12 +367,12 @@ function ForwardPassPage() {
               <summary>Earlier projects</summary>
               <ul>
                 {courseworkProjects.map((project) => (
-                  <li key={project.href}><a href={project.href}>{project.title}</a><span className="project-archive__note"> &middot; {project.note}</span></li>
+                  <li key={project.href}><a href={project.href} target="_blank" rel="noopener noreferrer">{project.title}</a><span className="project-archive__note"> &middot; {project.note}</span></li>
                 ))}
-                {earlierProjects.map((project) => <li key={project.slug}><a href={project.href}>{project.title}</a></li>)}
+                {earlierProjects.map((project) => <li key={project.slug}><a href={project.href} target="_blank" rel="noopener noreferrer">{project.title}</a></li>)}
               </ul>
             </details>
-            <a className="small-link" href="https://github.com/sidagarwal-labs?tab=repositories">All repositories on GitHub</a>
+            <a className="small-link" href="https://github.com/sidagarwal-labs?tab=repositories" target="_blank" rel="noopener noreferrer">All repositories on GitHub</a>
           </section>
 
           <section className="fp-section" id="writing" aria-labelledby="fp-writing-heading">
