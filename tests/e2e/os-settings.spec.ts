@@ -221,7 +221,7 @@ test("Reduce motion On stops OS animations even when the device allows motion", 
   const os = page.locator(".os");
   await expect(os).not.toHaveClass(/os--still/);
   const win = await openSettings(page);
-  await expect(win.getByRole("radio", { name: "System", exact: true })).toBeChecked();
+  await expect(win.getByRole("group", { name: "Reduce motion" }).getByRole("radio", { name: "System", exact: true })).toBeChecked();
   await expect(win.getByText("System follows this device, which allows motion.", { exact: false })).toBeVisible();
 
   await win.getByRole("radio", { name: "On", exact: true }).check();

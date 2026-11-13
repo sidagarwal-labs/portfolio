@@ -1,0 +1,154 @@
+/* Appearance is independent of the OS style and wallpaper. Light keeps each view's original
+   palette (including the deliberately dark Terminal); only the dark theme remaps surfaces. */
+:root {
+  color-scheme: light;
+  --cp-bg: #f7f4ef;
+  --cp-bg-elevated: #fcfbf8;
+  --cp-surface: #ffffff;
+  --cp-surface-soft: #f5f5f5;
+  --cp-border: #dedede;
+  --cp-border-strong: #919191;
+  --cp-text: #242424;
+  --cp-text-muted: #5c5c5c;
+  --cp-text-soft: #6f6f6f;
+  --cp-accent: #b11f4b;
+  --cp-accent-hover: #9a1a41;
+  --cp-accent-soft: rgba(177, 31, 75, 0.08);
+  --cp-accent-fg: #ffffff;
+  --cp-success: #16a34a;
+  --cp-danger: #dc2626;
+  --cp-warning: #f59e0b;
+  --cp-link: #0078d4;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+  --cp-overlay: rgba(255, 255, 255, 0.8);
+  --cp-panel: rgba(255, 255, 255, 0.86);
+  --cp-panel-strong: rgba(255, 255, 255, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.55);
+  --cp-highlight: rgba(177, 31, 75, 0.12);
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --cp-bg: #3d3b3a;
+  --cp-bg-elevated: #343231;
+  --cp-surface: #292929;
+  --cp-surface-soft: #2e2e2e;
+  --cp-border: #474747;
+  --cp-border-strong: #5f5f5f;
+  --cp-text: #dedede;
+  --cp-text-muted: #919191;
+  --cp-text-soft: #b0b0b0;
+  --cp-accent: #fd8ea1;
+  --cp-accent-hover: #fb7b91;
+  --cp-accent-soft: rgba(253, 142, 161, 0.14);
+  --cp-accent-fg: #1a1a1a;
+  --cp-success: #4ade80;
+  --cp-danger: #f87171;
+  --cp-warning: #fbbf24;
+  --cp-link: #4da6ff;
+  --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+  --cp-overlay: rgba(41, 41, 41, 0.88);
+  --cp-panel: rgba(41, 41, 41, 0.72);
+  --cp-panel-strong: rgba(41, 41, 41, 0.96);
+  --cp-sheen: rgba(255, 255, 255, 0.04);
+  --cp-highlight: rgba(253, 142, 161, 0.12);
+}
+
+/* Specificity wins over lazily loaded view palettes, regardless of which app opens first. */
+:root[data-theme="dark"] {
+  --paper: var(--cp-surface);
+  --ink: var(--cp-text);
+  --muted: var(--cp-text-soft);
+  --link: var(--cp-link);
+  --line: var(--cp-border);
+  --positive: var(--cp-success);
+  --negative: var(--cp-danger);
+  --se-body: var(--cp-text);
+  --se-chrome: var(--cp-surface-soft);
+  --se-tint: var(--cp-highlight);
+  --fp-tint: var(--cp-highlight);
+  --tr-code-bg: var(--cp-surface-soft);
+  --tr-tint: var(--cp-highlight);
+  --tr-train: var(--cp-warning);
+  --tr-val: var(--cp-link);
+  --theme-selected: color-mix(in srgb, var(--cp-link) 18%, var(--cp-surface));
+  --theme-positive: color-mix(in srgb, var(--cp-success) 12%, var(--cp-surface));
+  --theme-negative: color-mix(in srgb, var(--cp-danger) 12%, var(--cp-surface));
+  --theme-warning: color-mix(in srgb, var(--cp-warning) 12%, var(--cp-surface));
+  --theme-title: color-mix(in srgb, var(--cp-link) 28%, var(--cp-surface));
+  --theme-title-end: color-mix(in srgb, var(--cp-link) 48%, var(--cp-surface));
+}
+
+:root[data-theme="dark"] :focus-visible { outline-color: var(--cp-link); }
+:root[data-theme="dark"] ::selection { background: var(--theme-selected); color: var(--cp-text); }
+
+/* Sid Search and Journal. Images and embedded providers retain their own colors. */
+:root[data-theme="dark"] :is(.se-chrome__address, .se-box, .se-panel, .se-hero, .se-button, .se-suggestions button, .se-hero__try button, .se-stories a, .se-team, .se-filters button) {
+  background: var(--cp-surface);
+  border-color: var(--cp-border);
+}
+:root[data-theme="dark"] :is(.se-matches, .se-favicon, .se-box__clear:hover, .se-team__stats li, .se-image__thumb, .se-video__player, .se-art, .se-contact, .robotics-photo__image, .robotics-video, .fp-books__cover, .tr-books__cover) { background: var(--cp-surface-soft); }
+:root[data-theme="dark"] .se-art::before { color: var(--cp-text-soft); }
+:root[data-theme="dark"] .se-badge { background: var(--cp-panel-strong); }
+:root[data-theme="dark"] .se-filters button[aria-pressed="true"] { background: var(--theme-selected); color: var(--cp-text); }
+:root[data-theme="dark"] .se-filters button[aria-pressed="true"] .se-filters__count { color: var(--cp-text-soft); }
+:root[data-theme="dark"] :is(.se-button--primary, .se-button--primary:hover, .se-tabs__resume:hover, .fp-heads button[aria-pressed="true"], .fp-button:hover, .tr-actions .tr-actions__resume:hover) {
+  background: var(--cp-link);
+  color: var(--cp-accent-fg);
+  border-color: var(--cp-link);
+}
+
+/* Model notebooks use the same semantic tokens for their charts and controls. */
+:root[data-theme="dark"] :is(.tr-status, .tr-status[data-state="Training"]) { background: var(--theme-warning); color: var(--cp-warning); }
+:root[data-theme="dark"] .tr-status[data-state="Complete"] { background: var(--theme-positive); color: var(--cp-success); }
+:root[data-theme="dark"] .tr-status[data-state="Paused"] { background: var(--theme-selected); color: var(--cp-link); }
+:root[data-theme="dark"] .tr-prompt--out { color: var(--cp-warning); }
+:root[data-theme="dark"] .tr-code--string { color: var(--cp-accent); }
+:root[data-theme="dark"] .tr-code--number { color: var(--cp-success); }
+:root[data-theme="dark"] .tr-code--keyword { color: var(--cp-link); }
+:root[data-theme="dark"] :is(.tr-dash__full, .tr-df li:nth-child(even), .tr-table tbody tr:nth-child(even)) { background: var(--cp-surface-soft); }
+:root[data-theme="dark"] .tiny-model [role="alert"] { color: var(--cp-danger); }
+
+:root[data-theme="dark"][data-view="terminal"] { --link: var(--cp-warning); }
+:root[data-theme="dark"] .tm {
+  --tm-panel: var(--cp-surface-soft);
+  --tm-raised: var(--cp-bg-elevated);
+  --tm-ink-2: var(--cp-text-soft);
+  --tm-amber-soft: var(--theme-warning);
+}
+
+/* Live pages share the Journal palette, including when nested in a portfolio window. */
+:root[data-theme="dark"] .live {
+  --live-soft: var(--cp-surface-soft);
+  --market-flat: var(--cp-surface-soft);
+  --market-up: color-mix(in srgb, var(--cp-success) 40%, var(--cp-surface));
+  --market-down: color-mix(in srgb, var(--cp-danger) 40%, var(--cp-surface));
+}
+:root[data-theme="dark"] :is(
+  .live-card, .mk-stats div, .mk-placements li, .mk-tabs button, .mk-button--quiet, .mk-overview, .mk-tools button,
+  .mk-layer__toggle .mk-chevron, .mk-preview-pane, .mk-group, .mk-row-preview .mk-preview, .mk-insight, .mk-level-link,
+  .lt-upcoming, .lt-card, .lb-leaders li, .lb-tabs button, .lb-panel, .lb-toggle, .lb-legend li, .lb-labs__table thead th
+) {
+  background: var(--cp-surface);
+}
+:root[data-theme="dark"] :is(.mk-tabs button[aria-selected="true"], .mk-button:not(.mk-button--quiet), .lb-tabs button[aria-selected="true"], .lb-toggle[aria-pressed="true"]) { background: var(--cp-text); color: var(--cp-surface); }
+:root[data-theme="dark"] :is(.mk-layer > .mk-summary > div, .mk-group__toggle:hover, .mk-row > a:hover, .mk-row.is-also > a, .mk-row-preview, .lb-bar) { background: var(--cp-surface-soft); }
+:root[data-theme="dark"] .mk-row.is-selected > a { background: var(--theme-selected); }
+:root[data-theme="dark"] .mk-missing { border-color: var(--cp-warning); background: var(--theme-warning); color: var(--cp-warning); }
+:root[data-theme="dark"] .mk-level-link__n { color: var(--cp-surface); }
+:root[data-theme="dark"] :is(.mk-level__number, .mk-treemap__group span) { background: color-mix(in srgb, var(--layer) 60%, var(--cp-surface)); color: var(--cp-text); }
+:root[data-theme="dark"] .mk-capex__seg { background: color-mix(in srgb, var(--seg) 45%, var(--cp-surface)); color: var(--cp-text); }
+:root[data-theme="dark"] :is(.mk-badge[data-tightness="medium"], .mk-badge[data-tightness="medium-high"]) { background: var(--theme-warning); color: var(--cp-warning); }
+:root[data-theme="dark"] :is(.mk-badge[data-tightness="low"], .lt-status[data-tone="go"], .lt-status[data-tone="success"], .ticker-item--launch-soon) { background: var(--theme-positive); color: var(--cp-success); }
+:root[data-theme="dark"] .lt-status { background: var(--cp-bg-elevated); color: var(--cp-text); }
+:root[data-theme="dark"] .lt-status[data-tone="failure"] { background: var(--theme-negative); color: var(--cp-danger); }
+:root[data-theme="dark"] :is(.ticker-item .launch-watch, .ticker-item .launch-watch:hover) { background: var(--cp-success); color: var(--cp-accent-fg); }
+:root[data-theme="dark"] .mk-treemap__key i { background: linear-gradient(90deg, var(--market-down), var(--market-flat), var(--market-up)); }
+
+/* The boot illustration is ours too; don't briefly flash a white browser during a dark startup. */
+:root[data-theme="dark"] :is(.se-boot__window, .se-boot__address, .se-boot__home) { background: var(--cp-surface); color: var(--cp-text); }
+:root[data-theme="dark"] .se-boot__flash { background: var(--cp-surface); }
+:root[data-theme="dark"] .se-boot__window-bar { background: var(--cp-surface-soft); }
+:root[data-theme="dark"] :is(.se-boot__logo, .se-boot__query) { color: var(--cp-text); }
+:root[data-theme="dark"] :is(.se-boot__address svg, .se-boot__query svg) { color: var(--cp-text-soft); }
+:root[data-theme="dark"] .framed-notice__card { background: var(--cp-surface); }
+:root[data-theme="dark"] :is(.framed-notice__button--primary, .framed-notice__button--primary:hover) { color: var(--cp-surface); }

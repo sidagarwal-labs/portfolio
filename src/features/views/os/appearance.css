@@ -1,0 +1,189 @@
+/* Color-only overrides shared by Modern and Retro. The original styles still own geometry,
+   typography, wallpaper/desktop-label contrast, and the deliberately colored app/game artwork. */
+:root[data-theme="dark"] .os { color: var(--cp-text); }
+:root[data-theme="dark"][data-os-style="retro"] {
+  --bevel-out: inset -1px -1px var(--cp-accent-fg), inset 1px 1px var(--cp-border-strong), inset -2px -2px var(--cp-surface), inset 2px 2px var(--cp-border);
+  --bevel-in: inset -1px -1px var(--cp-border-strong), inset 1px 1px var(--cp-accent-fg), inset -2px -2px var(--cp-border), inset 2px 2px var(--cp-surface);
+  --bevel-thin-out: inset -1px -1px var(--cp-accent-fg), inset 1px 1px var(--cp-border-strong);
+  --bevel-thin-in: inset -1px -1px var(--cp-border-strong), inset 1px 1px var(--cp-accent-fg);
+  --field: var(--bevel-in);
+}
+
+/* Shell, controls, dialogs, Settings, folders, and Recycle Bin. */
+:root[data-theme="dark"] .os :is(
+  .os-win, .os-win__body, .os-frame, .os-set__section, .os-set__color, .os-set-choice, .os-set-view,
+  .os-folder-name, .os-folder-more, .os-folder-menu, .os-recycle-bin li, .os-button, .os-fb, .os-fb__comment, .os-fb__rating button
+) { background: var(--cp-surface); color: var(--cp-text); border-color: var(--cp-border); }
+
+:root[data-theme="dark"] .os :is(
+  .os-win__bar, .os-toolbar, .os-address, .os-set, .os-set__specs > div, .os-folder-window, .os-recycle-bin,
+  .os-pdf__fallback, .os-widget, .os-home .os-button, .os-taskbar, .os-menu, .os-calendar, .os-status,
+  .os-desktop-notice, .os-welcome-notice, .os-folder-notice, .os-entry-drag__label
+) { background: var(--cp-bg-elevated); color: var(--cp-text); border-color: var(--cp-border); }
+
+:root[data-theme="dark"] .os :is(
+  .os-win__ctl, .os-win__home, .os-win__back, .os-win__close, .os-tool, .os-folder, .os-set__preview,
+  .os-set__group legend, .os-set__intro, .os-set__action p, .os-menu__heading, .os-menu__empty,
+  .os-task, .os-start, .os-fb__rating legend, .os-fb__label, .os-fb__x
+) { color: var(--cp-text); }
+
+:root[data-theme="dark"] .os :is(
+  .os-icon__blurb, .os-loading, .os-note__links, .os-set__hint, .os-set-wall__suits, .os-set-view__about, .os-set__specs dt,
+  .os-folder-manager__hint, .os-folder-empty, .os-folder-menu kbd, .os-recycle-bin small, .os-menu__who span,
+  .os-menu__where, .os-widget__who span, .os-fb__label span, .os-fb__count, .os-fb__hint
+) { color: var(--cp-text-soft); }
+
+:root[data-theme="dark"] .os :is(
+  .os-win__ctl:hover, .os-tool:hover:not(:disabled), .os-button:hover, .os-set-wall:hover, .os-set-choice:hover, .os-set-view:hover,
+  .os-folder-path button:hover, .os-folder .os-icon:hover, .os-fb__x:hover, .os-fb__rating button:hover
+) { background: var(--cp-bg-elevated); color: var(--cp-text); }
+
+:root[data-theme="dark"] .os :is(.os-button--primary, .os-button--primary:hover, .os-home .os-button--primary) {
+  border-color: var(--cp-link); background: var(--cp-link); color: var(--cp-accent-fg);
+}
+:root[data-theme="dark"] .os :is(.os-note a, .os-note__link, .os-fb__thanks a, .os-fb__error a) { color: var(--cp-link); }
+:root[data-theme="dark"] .os :is(.os-set-choice input, .os-fb input) { accent-color: var(--cp-link); }
+:root[data-theme="dark"] .os :is(input, textarea)::placeholder { color: var(--cp-text-soft); opacity: 1; }
+:root[data-theme="dark"] .os :is(.os-set-wall input:checked ~ .os-set-wall__swatch, .os-set-wall input:focus-visible ~ .os-set-wall__swatch) { border-color: var(--cp-link); outline-color: var(--cp-link); }
+:root[data-theme="dark"] .os .os-set-wall__swatch svg { background: var(--cp-link); color: var(--cp-accent-fg); }
+
+:root[data-theme="dark"] .os :is(
+  .os-set-choice:has(input:checked), .os-set-view:hover, .os-folder-menu button:is(:hover, :focus-visible):not(:disabled),
+  .os-folder .os-icon.is-selected, .os-recycle-bin[data-drop-state="valid"], .os-folder-window[data-drop-state="valid"],
+  .os-task[aria-pressed="true"], .os-start[aria-expanded="true"], .os-fb__rating button[aria-pressed="true"], .os-signals button[data-alert]
+) { background: var(--theme-selected); color: var(--cp-text); border-color: var(--cp-link); }
+:root[data-theme="dark"] .os .os-fb__rating button[aria-pressed="true"] { box-shadow: inset 0 0 0 1px var(--cp-link); }
+:root[data-theme="dark"] .os .os-calendar [aria-current="date"] { background: var(--cp-link); color: var(--cp-accent-fg); }
+:root[data-theme="dark"] .os :is(.os-set__confirm, .os-fb__notice) { background: var(--theme-warning); color: var(--cp-text); border-color: var(--cp-warning); }
+:root[data-theme="dark"] .os :is(.os-fb__error, .os-win__ctl--close:hover, .os-set .os-button--danger, .os-set .os-button--danger:hover) { background: var(--theme-negative); color: var(--cp-danger); border-color: var(--cp-danger); }
+:root[data-theme="dark"] .os .os-set__status { color: var(--cp-success); }
+:root[data-theme="dark"] .os :is(.os-tool:disabled, .os-welcome__ctl:disabled) { color: var(--cp-text-muted); filter: none; }
+:root[data-theme="dark"] .os :is(.os-win__body, .os-folder-path, .os-folder-toolbar, .os-set__action, .os-menu__who, .os-menu__foot, .os-menu__sub, .os-tasks) { border-color: var(--cp-border); }
+
+/* A dim sticky note in Modern, a beveled Notepad in Retro. */
+:root[data-theme="dark"] .os .os-welcome { background: var(--theme-warning); color: var(--cp-text); border-color: var(--cp-border-strong); }
+:root[data-theme="dark"] .os .os-welcome__bar { background: var(--cp-sheen); }
+:root[data-theme="dark"] .os :is(.os-welcome__title, .os-welcome__ctl, .os-welcome__ctl:hover:not(:disabled)) { color: var(--cp-text); }
+:root[data-theme="dark"] .os :is(.os-welcome__hint, .os-welcome__text::placeholder) { color: var(--cp-text-soft); }
+
+/* Retro keeps its square corners, raised controls, and navy/blue title bars. */
+:root[data-theme="dark"] .os--retro :is(
+  .os-win, .os-win.is-active, .os-win .os-win__ctl, .os-win.is-active .os-win__ctl,
+  .os-start, .os-start:hover, .os-task, .os-task:hover, .os-button, .os-home .os-button, .os-fb__x, .os-welcome, .os-welcome__ctl, .os-welcome__ctl:hover:not(:disabled)
+) { background: var(--cp-bg-elevated); color: var(--cp-text); }
+:root[data-theme="dark"] .os--retro .os-task[aria-pressed="true"] { background: var(--theme-selected); }
+:root[data-theme="dark"] .os--retro .os-win__bar { background: var(--cp-surface-soft); }
+:root[data-theme="dark"] .os--retro :is(.os-win.is-active .os-win__bar, .os-welcome__bar, .os-fb__bar, .os-menu__band) {
+  background: linear-gradient(90deg, var(--theme-title), var(--theme-title-end)); color: var(--cp-text);
+}
+:root[data-theme="dark"] .os--retro :is(.os-welcome__text, .os-menu__search) { background: var(--cp-surface); color: var(--cp-text); }
+:root[data-theme="dark"] .os--retro :is(.os-set__section, .os-welcome__hint, .os-menu__who, .os-menu__foot, .os-taskbar, .os-tasks) { box-shadow: var(--bevel-thin-out); }
+:root[data-theme="dark"] .os--retro :is(.os-set-wall input:checked ~ .os-set-wall__name, .os-menu__item:hover, .os-menu__item:focus-visible) { background: var(--theme-title); color: var(--cp-text); }
+:root[data-theme="dark"] .os--retro .os-set-wall__swatch::after { background: var(--cp-bg-elevated); box-shadow: var(--bevel-thin-out); }
+
+/* Native app surfaces. All of these share the same palette rather than a second layout per style. */
+:root[data-theme="dark"] .os :is(
+  .gh, .gh-md, .lib, .rdr, .ax, .gh-toolbar, .gh-search__field, .gh-card, .gh-file__box,
+  .gh-sprint__repos li, .lib__search, .lib-chip, .lib-detail, .rdr__size button:hover:not(:disabled),
+  .ax-head, .ax-stagecard, .ax-card, .ax-live__stage, .ax-fallback
+) { background: var(--cp-surface); color: var(--cp-text); border-color: var(--cp-border); }
+
+:root[data-theme="dark"] .os :is(
+  .gh-avatar, .gh-glance__calendar, .gh-stat, .gh-metric, .gh-stage, .gh-sprint, .gh-tabs, .gh-note, .gh-trend, .gh-badge,
+  .gh-file__bar, .gh-md pre, .gh-md tr:nth-child(2n), .lib__seg, .lib-detail, .lib-related__item:hover, .lib-card:hover,
+  .rdr__nav, .rdr__size, .rdr__progress, .ax-tabs, .ax-stat, .ax-caveats, .ax-live__cover
+) { background: var(--cp-surface-soft); color: var(--cp-text); border-color: var(--cp-border); }
+
+:root[data-theme="dark"] .os :is(
+  .gh h3, .gh h4, .gh h5, .gh-md .gh-md__h, .gh-head__bio, .gh-stat__value, .gh-frames__count, .gh-scrubber__readout,
+  .gh-crumbs__file, .gh-file__name, .gh-file__note strong, .gh-search__field input, .gh-tab,
+  .lib__search input, .lib__seg button, .lib-chip, .rdr__lede, .rdr__size button,
+  .ax h3, .ax h4, .ax-stat__value, .ax-stagecard p, .ax-tab, .ax-lede
+) { color: var(--cp-text); }
+
+:root[data-theme="dark"] .os :is(
+  .gh-muted, .gh-fine, .gh-status, .gh-head__login, .gh-head__meta, .gh-stat dt, .gh-stat__note, .gh-totals, .gh-repo__total,
+  .gh-heat__foot, .gh-heat__readout, .gh-glance__label, .gh-card__lead, .gh-facts dt, .gh-sprints__ranks, .gh-sprints__ends,
+  .gh-sprint__meta, .gh-sprint__repos li.is-more, .gh-panel__blurb, .gh-lab__section > h4, .gh-lab__fold-head > h4,
+  .gh-caveats, .gh-metric dt, .gh-metric__note, .gh-train__status, .gh-figure figcaption, .gh-legend, .gh-table caption,
+  .gh-table thead th, .gh-scrubber label, .gh-stage__meta, .gh-scatter__readout, .gh-frames__label, .gh-clusters__members,
+  .gh-crumbs__icon, .gh-crumbs__sep, .gh-file__desc, .gh-file__meta, .gh-file__loading, .gh-file__note, .gh-md blockquote,
+  .lib__intro, .lib-count, .lib__empty, .lib-shelf__head p, .lib-card__by, .lib-kind, .lib-detail__by, .lib-detail__hint,
+  .lib-detail__close, .lib-related h4, .lib-related__by, .rdr__nav-head, .rdr__nav-source, .rdr__source, .rdr__meta, .rdr__note,
+  .ax-muted, .ax-head__sub, .ax-stat dt, .ax-stat__note, .ax-stagecard p.ax-muted, .ax-chart__readout, .ax-legend,
+  .ax-table__caption, .ax-table thead th, .ax-caveats h4, .ax-caveats ul, .ax-source, .ax-card__eyebrow, .ax-card p, .ax-live__loading, .ax-fallback p
+) { color: var(--cp-text-soft); }
+
+:root[data-theme="dark"] .os :is(.gh a:not(.os-button), .gh-link-button, .rdr__note a, .ax a:not(.os-button):not(.os-tool)) { color: var(--cp-link); }
+:root[data-theme="dark"] .os :is(.gh a:not(.os-button):hover, .ax a:not(.os-button):not(.os-tool):hover) { color: var(--cp-text); }
+:root[data-theme="dark"] .os :is(
+  .gh-tab[aria-selected="true"], .lib__seg button[aria-pressed="true"], .lib-chip[aria-pressed="true"],
+  .lib-card[aria-pressed="true"], .rdr__nav button[aria-current="page"], .ax-tab[aria-selected="true"], .gh-sprint__rank
+) { background: var(--theme-selected); color: var(--cp-text); border-color: var(--cp-link); }
+:root[data-theme="dark"] .os :is(.lib-card[aria-pressed="true"] .lib-card__by, .lib-card[aria-pressed="true"] .lib-kind, .lib-chip[aria-pressed="true"] .lib-count, .rdr__nav button[aria-current="page"] .rdr__nav-source) { color: var(--cp-text); }
+:root[data-theme="dark"] .os :is(.gh-guard, .gh-notice, .rdr__badge, .rdr__role, .gh-trend[data-trend="cooling"]) { background: var(--theme-warning); color: var(--cp-warning); border-color: var(--cp-border-strong); }
+:root[data-theme="dark"] .os .gh-alert { background: var(--theme-negative); color: var(--cp-danger); border-color: var(--cp-danger); }
+:root[data-theme="dark"] .os .gh-trend[data-trend="rising"] { background: var(--theme-positive); color: var(--cp-success); }
+:root[data-theme="dark"] .os .ax-live__note { background: var(--theme-positive); color: var(--cp-text); border-color: var(--cp-border); }
+:root[data-theme="dark"] .os .ax-fallback__icon { background: var(--theme-negative); }
+:root[data-theme="dark"] .os :is(.lib-card:hover, .lib-chip:hover, .lib-detail__close:hover, .rdr__nav button:hover) { background: var(--cp-bg-elevated); }
+:root[data-theme="dark"] .os :is(.lib-art, .lib-detail__art, .lib-related__art) { background: var(--cp-bg-elevated); }
+:root[data-theme="dark"] .os :is(.lib-art::before, .lib-detail__art::before, .lib-related__art::before) { color: var(--cp-text-soft); }
+:root[data-theme="dark"] .os :is(
+  .gh-labs, .gh-lab__section > h4, .gh-lab__fold-head, .gh-table th, .gh-table td, .gh-md .gh-md__h, .gh-md blockquote,
+  .gh-md th, .gh-md td, .lib__filters, .lib-related, .rdr__nav, .rdr__bar, .rdr__note, .ax-table th, .ax-table td
+) { border-color: var(--cp-border); }
+:root[data-theme="dark"] .os--retro .gh-card__head { background: var(--theme-title); }
+
+/* Chart labels/halos need their own paint tokens; data marks keep distinguishable colors. */
+:root[data-theme="dark"] .os :is(
+  .gh-heat__month, .gh-heat__weekday, .gh-rose__label, .gh-rose__center-note, .gh-donut__note, .gh-axis text, text.gh-axis,
+  .gh-chart__note, .gh-stageband__label, .ax-axis text, .ax-stage__label
+) { fill: var(--cp-text-soft); }
+:root[data-theme="dark"] .os :is(.gh-rose__center, .gh-rose__label.is-strongest, .gh-donut__value, .gh-point__label, .gh-bar__value, .ax-stage__name, .ax-axis text.is-active, .ax-point text) { fill: var(--cp-text); }
+:root[data-theme="dark"] .os :is(.gh-point__label, .ax-point text) { stroke: var(--cp-surface); }
+:root[data-theme="dark"] .os :is(.gh-grid, .ax-grid, .gh-donut__track, .gh-rose__ring-track) { stroke: var(--cp-border); }
+:root[data-theme="dark"] .os :is(.gh-cell[data-level="0"], .gh-swatch[data-level="0"], .gh-rose__track, .gh-stageband) { fill: var(--cp-bg-elevated); }
+:root[data-theme="dark"] .os .gh-stageband.is-odd { fill: var(--cp-surface); }
+:root[data-theme="dark"] .os :is(.gh-cell, .gh-swatch)[data-level="1"] { fill: color-mix(in srgb, var(--cp-success) 25%, var(--cp-surface)); }
+:root[data-theme="dark"] .os :is(.gh-cell, .gh-swatch)[data-level="2"] { fill: color-mix(in srgb, var(--cp-success) 50%, var(--cp-surface)); }
+:root[data-theme="dark"] .os :is(.gh-cell, .gh-swatch)[data-level="3"] { fill: color-mix(in srgb, var(--cp-success) 75%, var(--cp-surface)); }
+:root[data-theme="dark"] .os :is(.gh-cell, .gh-swatch)[data-level="4"] { fill: var(--cp-success); }
+:root[data-theme="dark"] .os :is(.gh-sprints__track, .gh-wbar, .gh-repo__bar, .gh-langbar) { background: var(--cp-bg-elevated); }
+:root[data-theme="dark"] .os :is(.gh-mo__line, .gh-key--mo-line, .gh-line--train, .gh-line--sma, .gh-line--macd, .gh-line--altitude) { stroke: var(--cp-link); border-color: var(--cp-link); }
+:root[data-theme="dark"] .os :is(.gh-mo__peak, .gh-dot-mark) { fill: var(--cp-accent); }
+:root[data-theme="dark"] .os .gh-key--mo-peak { background: var(--cp-accent); }
+:root[data-theme="dark"] .os .gh-rose__petal.is-strongest { fill: var(--cp-link); }
+:root[data-theme="dark"] .os :is(.gh-rose__ring, .gh-key--ring) { stroke: var(--cp-success); border-color: var(--cp-success); }
+:root[data-theme="dark"] .os :is(.gh-line--valid, .gh-line--velocity, .gh-whisker) { stroke: var(--cp-accent); border-color: var(--cp-accent); }
+:root[data-theme="dark"] .os .gh-peak text { fill: var(--cp-accent); }
+:root[data-theme="dark"] .os :is(.gh-donut__seg, .gh-mix__swatch)[data-kind="commits"] { stroke: var(--cp-link); background: var(--cp-link); }
+:root[data-theme="dark"] .os :is(.gh-donut__seg, .gh-mix__swatch)[data-kind="pullRequests"] { stroke: var(--cp-accent); background: var(--cp-accent); }
+:root[data-theme="dark"] .os :is(.gh-donut__seg, .gh-mix__swatch)[data-kind="issues"] { stroke: var(--cp-success); background: var(--cp-success); }
+:root[data-theme="dark"] .os :is(.gh-donut__seg, .gh-mix__swatch)[data-kind="reviews"] { stroke: var(--cp-warning); background: var(--cp-warning); }
+:root[data-theme="dark"] .os :is(.gh-donut__seg, .gh-mix__swatch)[data-kind="other"] { stroke: var(--cp-text-muted); background: var(--cp-text-muted); }
+:root[data-theme="dark"] .os .ax { --ax-stage1: var(--cp-link); --ax-stage2: var(--cp-accent); }
+:root[data-theme="dark"] .os .ax-line { stroke: var(--cp-text); }
+
+/* Games already expose a shared palette; only the legacy Retro literals need overrides. */
+:root[data-theme="dark"] .os .game {
+  --g-bg: var(--cp-surface);
+  --g-ink: var(--cp-text);
+  --g-muted: var(--cp-text-soft);
+  --g-line: var(--cp-border);
+  --g-panel: var(--cp-bg-elevated);
+  --g-accent: var(--cp-link);
+  --g-accent-ink: var(--cp-accent-fg);
+  --g-link: var(--cp-link);
+}
+:root[data-theme="dark"] .os :is(.mines__board, .mines__cell, .nexttoken__tab, .game__btn, .rankit__query, .rankit__doc, .rankit__track, .nexttoken__input, .nexttoken__progress, .nexttoken__track) { background: var(--g-panel); color: var(--g-ink); }
+:root[data-theme="dark"] .os :is(.game__btn:hover:not(:disabled), .mines__cell:hover:not([data-open])) { background: var(--cp-border); }
+:root[data-theme="dark"] .os :is(.game__btn--primary, .game__btn--primary:hover:not(:disabled), .game__btn[aria-pressed="true"], .nexttoken__tab[aria-selected="true"]) { background: var(--theme-selected); color: var(--cp-text); }
+:root[data-theme="dark"] .os .mines__cell[data-open] { background: var(--g-bg); }
+:root[data-theme="dark"] .os :is(.rankit__source, .mines__cell[data-n="2"], .mines__cell[data-n="6"]) { color: var(--cp-success); }
+:root[data-theme="dark"] .os :is(.mines__cell[data-n="1"], .mines__cell[data-n="4"]) { color: var(--cp-link); }
+:root[data-theme="dark"] .os :is(.mines__cell[data-n="3"], .mines__cell[data-n="5"], .mines__cell:not([data-open]) svg) { color: var(--cp-danger); }
+:root[data-theme="dark"] .os :is(.mines__cell[data-n="7"], .mines__cell[data-n="8"]) { color: var(--cp-text); }
+:root[data-theme="dark"] .os :is(.rankit__doc[data-grade="3"] .rankit__grade, .rankit__doc[data-grade="2"] .rankit__grade) { background: var(--theme-positive); color: var(--cp-success); }
+:root[data-theme="dark"] .os :is(.rankit__doc[data-grade="1"] .rankit__grade, .nexttoken__error, .mines__cell[data-wrong]) { background: var(--theme-warning); color: var(--cp-warning); }
+:root[data-theme="dark"] .os :is(.rankit__doc[data-grade="0"] .rankit__grade, .mines__cell[data-hit]) { background: var(--theme-negative); color: var(--cp-danger); }

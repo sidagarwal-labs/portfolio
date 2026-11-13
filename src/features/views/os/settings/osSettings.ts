@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react";
+import { isAppearance, type Appearance } from "../../../../lib/appearance";
 import type { OsStyle } from "../types";
 
 /* Lab OS settings live in this browser only. Every key starts with "lab-os-", which About this PC counts. */
@@ -61,6 +62,7 @@ export type WallpaperId = (typeof wallpapers)[number]["id"] | "solid";
 export type ClockHours = "12" | "24";
 
 export type OsSettings = {
+  appearance: Appearance;
   wallpaper: WallpaperId;
   /* The solid color, kept while a preset is shown so switching back restores it. */
   color: string;
@@ -71,7 +73,7 @@ export type OsSettings = {
   note: boolean;
 };
 
-export const defaultSettings: OsSettings = { wallpaper: "default", color: "#3a6ea5", clock: "12", seconds: false, motion: "system", note: true };
+export const defaultSettings: OsSettings = { appearance: "light", wallpaper: "default", color: "#3a6ea5", clock: "12", seconds: false, motion: "system", note: true };
 
 const hexColor = /^#[0-9a-f]{6}$/i;
 const isWallpaperId = (value: unknown): value is WallpaperId =>
@@ -83,11 +85,13 @@ export function readSettings(): OsSettings {
     const raw: unknown = JSON.parse(localStorage.getItem(settingsKey) ?? "null");
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return defaultSettings;
     const field = (name: keyof OsSettings): unknown => Reflect.get(raw, name);
+    const appearance = field("appearance");
     const wallpaper = field("wallpaper");
     const color = field("color");
     const clock = field("clock");
     const motion = field("motion");
     return {
+      appearance: isAppearance(appearance) ? appearance : defaultSettings.appearance,
       wallpaper: isWallpaperId(wallpaper) ? wallpaper : defaultSettings.wallpaper,
       color: typeof color === "string" && hexColor.test(color) ? color.toLowerCase() : defaultSettings.color,
       clock: clock === "24" ? "24" : "12",
