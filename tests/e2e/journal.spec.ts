@@ -70,14 +70,17 @@ test("arXiv Search summary covers the product, technologies, and scoped experime
 });
 
 for (const width of [1440, 390, 320]) {
-  test(`arXiv Search title opens the website and its GitHub pill opens the repo at ${width}px`, async ({ page }, testInfo) => {
+  test(`arXiv Search title opens the website and its GitHub pill opens the repo in a new tab at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("./#lab");
+    const original = page.url();
     const project = page.locator(".project-list > li").filter({ has: page.getByRole("link", { name: "arXiv Search", exact: true }) });
     const website = project.getByRole("link", { name: "arXiv Search", exact: true });
     const github = project.getByRole("link", { name: "arXiv Search on GitHub", exact: true });
     await expect(github).toHaveText("GitHub");
     await expect(github).toHaveAttribute("href", "https://github.com/sidagarwal-labs/arxiv-search");
+    await expect(github).toHaveAttribute("target", "_blank");
+    await expect(github).toHaveAttribute("rel", "noopener noreferrer");
     await expect(github).toBeInViewport({ ratio: 1 });
     await expect(website).toHaveAttribute("href", "https://arxiv.agarwal-labs.com/");
     await expect(website).toBeInViewport({ ratio: 1 });
@@ -94,16 +97,21 @@ for (const width of [1440, 390, 320]) {
     await expect(page).toHaveTitle("arXiv Search destination");
     await page.goBack();
     await expect(website).toBeVisible();
-    await page.route("https://github.com/sidagarwal-labs/arxiv-search", (route) => route.fulfill({
+    await page.context().route("https://github.com/sidagarwal-labs/arxiv-search", (route) => route.fulfill({
       contentType: "text/html",
       body: "<!doctype html><title>arXiv Search GitHub destination</title>"
     }));
     await website.focus();
     await page.keyboard.press("Tab");
     await expect(github).toBeFocused();
+    const opened = page.context().waitForEvent("page");
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL("https://github.com/sidagarwal-labs/arxiv-search");
-    await expect(page).toHaveTitle("arXiv Search GitHub destination");
+    const tab = await opened;
+    await expect(tab).toHaveURL("https://github.com/sidagarwal-labs/arxiv-search");
+    await expect(tab).toHaveTitle("arXiv Search GitHub destination");
+    expect(await tab.evaluate(() => window.opener === null)).toBe(true);
+    await expect(page).toHaveURL(original);
+    await tab.close();
   });
 
   test(`enlarged portrait aligns with the header without crowding navigation at ${width}px`, async ({ page }, testInfo) => {
