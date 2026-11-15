@@ -135,7 +135,7 @@ test.describe("listings and Sid Search", () => {
 
 test.describe("Lab OS Robot Vacuum app", () => {
   test("opens from the desktop and shows the read-only status snapshot, with the stuck battery as unknown", async ({ page }) => {
-    await page.clock.setFixedTime(new Date("2026-11-15T07:10:00Z"));
+    await page.clock.setFixedTime(new Date("2026-11-15T17:09:00Z"));
     const win = await openRobotVacuum(page);
     await expect(win.locator(".os-win__title")).toHaveText("Robot Vacuum");
     await expect(win.getByRole("tab", { name: "Status", exact: true })).toHaveAttribute("aria-selected", "true");
@@ -144,16 +144,16 @@ test.describe("Lab OS Robot Vacuum app", () => {
 
     const updated = status.locator(".rv-updated");
     await expect(updated.locator("time")).toHaveAttribute("datetime", snapshot.updatedAt);
-    await expect(updated).toContainText("Last updated Nov 15, 2026, 1:40 AM EST (30 minutes ago)");
+    await expect(updated).toContainText("Last updated Nov 15, 2026, 11:39 AM EST (30 minutes ago)");
     await expect(status.locator(".rv-stale")).toHaveCount(0);
 
     const stats = status.locator(".rv-stat");
     await expect(stats.locator("dt")).toHaveText(["Battery", "State", "Errors", "Model"]);
-    await expect(stats.locator(".rv-stat__value")).toHaveText(["Unknown", "Paused", "None", "MOVA L600"]);
+    await expect(stats.locator(".rv-stat__value")).toHaveText(["Unknown", "Docked", "None", "MOVA L600"]);
     const batteryCard = stats.first();
     await expect(batteryCard).toHaveAttribute("data-unknown", "true");
     await expect(batteryCard).toContainText("Battery reading stuck, diagnosing. The build log has the details.");
-    await expect(batteryCard).toContainText("Not charging, off the dock");
+    await expect(batteryCard).toContainText("On the dock");
     await expect(batteryCard.locator(".rv-bar")).toHaveCount(0);
     await expect(status).toContainText("The current reading is unknown. These are the last trusted readings.");
     await expect(status.getByRole("img", { name: "Battery went from 78% at 12:40 AM to 87% at 12:50 AM, over 2 readings." })).toBeVisible();
@@ -207,7 +207,7 @@ test.describe("Lab OS Robot Vacuum app", () => {
   });
 
   test("an old snapshot says it may be out of date", async ({ page }) => {
-    await page.clock.setFixedTime(new Date("2026-11-18T09:00:00Z"));
+    await page.clock.setFixedTime(new Date("2026-11-18T17:00:00Z"));
     const win = await openRobotVacuum(page);
     await expect(win.locator(".rv-updated")).toContainText("(3 days ago)");
     await expect(win.locator(".rv-stale")).toHaveText("This snapshot is from 3 days ago, so the robot may have changed since.");
@@ -292,7 +292,7 @@ test.describe("Lab OS Robot Vacuum app", () => {
       json: { ...snapshot, extra: { nested: true }, robot: { ...snapshot.robot, firmware: "ignored", note: "<b>ignored</b>" } }
     }));
     const win = await openRobotVacuum(page);
-    await expect(win.locator(".rv-stat__value")).toHaveText(["Unknown", "Paused", "None", "MOVA L600"]);
+    await expect(win.locator(".rv-stat__value")).toHaveText(["Unknown", "Docked", "None", "MOVA L600"]);
     await expect(win.getByRole("tabpanel", { name: "Status" })).not.toContainText("ignored");
   });
 

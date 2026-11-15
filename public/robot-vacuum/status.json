@@ -1,12 +1,12 @@
 {
   "schema": 1,
-  "updatedAt": "2026-11-15T06:40:00Z",
+  "updatedAt": "2026-11-15T16:39:00Z",
   "robot": {
     "model": "MOVA L600",
-    "state": "Paused",
+    "state": "Docked",
     "battery": null,
-    "charging": false,
-    "docked": false,
+    "charging": null,
+    "docked": true,
     "error": null
   },
   "maintenance": {
