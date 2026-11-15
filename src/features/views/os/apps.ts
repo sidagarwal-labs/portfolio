@@ -1,4 +1,4 @@
-import { Activity, Blocks, Bomb, BookOpen, BrainCircuit, BriefcaseBusiness, Calculator, ChartCandlestick, Database, FileText, Folder, GitGraph, LibraryBig, ListOrdered, MessageSquareText, Newspaper, NotebookText, Rocket, ScanSearch, Search, Settings, SquareTerminal, Trash2, Trophy, Worm, type LucideIcon } from "lucide-react";
+import { Activity, Blocks, Bomb, BookOpen, BrainCircuit, BriefcaseBusiness, Calculator, ChartCandlestick, Database, FileText, Folder, GitGraph, LibraryBig, ListOrdered, MessageSquareText, Newspaper, NotebookText, RobotVacuum, Rocket, ScanSearch, Search, Settings, SquareTerminal, Trash2, Trophy, Worm, type LucideIcon } from "lucide-react";
 import { selectedProjects } from "../../../content/journalContent";
 import type { SiteView } from "../siteViews";
 
@@ -6,7 +6,7 @@ export type AppId =
   | "search" | "library" | "github" | "reader" | "journal" | "forward" | "training" | "terminal"
   | "resume" | "readme" | "designs" | "games" | "markets" | "launches" | "leaderboards"
   | "snake" | "mines" | "rankit" | "nexttoken" | "blocks"
-  | "projects" | "arxiv" | "nvdocs" | "hireme" | "finmodels" | "settings" | "recyclebin";
+  | "projects" | "arxiv" | "robotvacuum" | "nvdocs" | "hireme" | "finmodels" | "settings" | "recyclebin";
 
 export type AppDef = {
   id: AppId;
@@ -58,6 +58,7 @@ export const apps: Record<AppId, AppDef> = {
   games: app({ id: "games", title: "Games", label: "Games", blurb: "Snake, Mines, Blocks, and two machine-learning games.", icon: Folder, tint: "linear-gradient(145deg, #5dbf78, #2f8a4b)", kind: "folder", children: ["snake", "mines", "blocks", "rankit", "nexttoken"], size: { w: 580, h: 350 } }),
   projects: app({ id: "projects", title: "Projects", label: "Projects", blurb: "NVDocs RAG, HireMe.AI, Financial models, and Reader.", icon: Folder, tint: "linear-gradient(145deg, #e0699f, #a63a6e)", kind: "folder", children: ["nvdocs", "hireme", "finmodels", "reader"], size: { w: 580, h: 330 } }),
   arxiv: app({ id: "arxiv", title: "arXiv Search", label: "arXiv Search", blurb: "Hybrid search with LLM reranking over 23,304 arXiv papers: nDCG@10 from 0.51 to 0.84.", icon: ScanSearch, tint: "linear-gradient(145deg, #d6453d, #9c1f1f)", kind: "app", size: { w: 1080, h: 820 } }),
+  robotvacuum: app({ id: "robotvacuum", title: "Robot Vacuum", label: "Robot Vacuum", blurb: "Build log and read-only status for a MOVA L600 robot vacuum I'm reviving: battery, maintenance, and what's next.", icon: RobotVacuum, tint: "linear-gradient(145deg, #4fb0a5, #23716a)", kind: "app", size: { w: 1000, h: 780 } }),
   nvdocs: repoLink("nvdocs", "NVDocs RAG", Database, "linear-gradient(145deg, #86c34a, #4a8a1c)"),
   hireme: repoLink("hireme", "HireMe.AI", BriefcaseBusiness, "linear-gradient(145deg, #8f7ae6, #5540b0)"),
   finmodels: repoLink("finmodels", "Financial models", Calculator, "linear-gradient(145deg, #3fa889, #1f6e57)"),
@@ -74,7 +75,7 @@ export const apps: Record<AppId, AppDef> = {
 
 export const desktopRows: AppId[][] = [
   ["search", "library", "github"],
-  ["projects", "arxiv"],
+  ["projects", "arxiv", "robotvacuum"],
   ["forward", "designs"],
   ["games", "markets", "launches", "leaderboards"]
 ];

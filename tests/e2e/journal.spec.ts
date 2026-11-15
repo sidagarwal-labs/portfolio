@@ -46,7 +46,8 @@ test("homepage presents real writing and projects without the scene runtime", as
 
   await expect(page.getByRole("heading", { name: "Sid Agarwal", exact: true })).toBeVisible();
   await expect(page.locator("canvas, .glass-card, .scene-canvas")).toHaveCount(0);
-  await expect(page.locator("#writing .writing-list > li > a")).toHaveCount(3);
+  await expect(page.locator("#writing .writing-list > li > a")).toHaveCount(4);
+  await expect(page.locator("#writing .writing-list > li > a").last()).toHaveAttribute("href", "/writing/reviving-a-robot-vacuum");
   await expect(page.locator(".project-list .project-title").first()).toHaveText("arXiv Search");
   await expect(page.getByRole("link", { name: "arXiv Search", exact: true })).toHaveAttribute("href", "https://arxiv.agarwal-labs.com/");
   await expect(page.getByRole("link", { name: "Financial models", exact: true })).toHaveAttribute("href", "https://github.com/sidagarwal-labs/models");
@@ -257,10 +258,10 @@ test("coursework sits under earlier projects and links to public repos with clea
   await expect(archive.locator("li").filter({ hasText: "Text Analytics" })).toContainText("source attribution");
 });
 
-test("writing features the three latest notes, links to Markets Insights, and keeps the rest one click away", async ({ page }) => {
+test("writing features the three latest notes and the build log, links to Markets Insights, and keeps the rest one click away", async ({ page }) => {
   await page.goto("./");
   const writing = page.locator("#writing");
-  await expect(writing.locator(".writing-list > li > a")).toHaveText(["AI buildout: October 2026", "Foundation labs", "AI memory & storage"]);
+  await expect(writing.locator(".writing-list > li > a")).toHaveText(["AI buildout: October 2026", "Foundation labs", "AI memory & storage", "Reviving a robot vacuum: a build log"]);
   await expect(page.getByRole("heading", { name: "Following the AI buildout" })).toHaveCount(0);
   await expect(writing.getByRole("link", { name: "AI / LLM Stack Tracker", exact: true })).toHaveAttribute("href", "/markets");
   const insights = writing.locator(".notes-insights");

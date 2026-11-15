@@ -331,6 +331,30 @@ test("existing folder layouts migrate without losing names, locations, or apps",
   expect(state.folders[id].name).toBe("Legacy");
 });
 
+test("apps added after a layout was saved join it without resetting custom folders", async ({ page }) => {
+  const id = await create(page, "Kept");
+  await icon(page, "Kept").click();
+  await icon(page, "Library").press("Control+x");
+  await folderWindow(page, id).locator(".os-folder-window").press("Control+v");
+  await expect(icon(page, "Library")).toHaveCount(0);
+  await page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem("lab-os-folders-v1")!);
+    state.root = state.root.filter((entry: string) => entry !== "robotvacuum");
+    state.folders.games.items = state.folders.games.items.filter((entry: string) => entry !== "snake");
+    localStorage.setItem("lab-os-folders-v1", JSON.stringify(state));
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Show desktop", exact: true }).click();
+  await expect(icon(page, "Kept")).toHaveAttribute("data-entry-id", id);
+  await expect(icon(page, "Robot Vacuum")).toBeVisible();
+  await expect(icon(page, "Library")).toHaveCount(0);
+  await create(page, "After update");
+  const state = await saved(page);
+  expect(state.folders[id].items).toEqual(["library"]);
+  expect(state.root.filter((entry: string) => entry === "robotvacuum")).toHaveLength(1);
+  expect(state.folders.games.items).toContain("snake");
+});
+
 test("a stale cut selection cannot pull contents out of the Recycle Bin", async ({ page }) => {
   const id = await create(page, "Cut folder");
   await icon(page, "Cut folder").click();
