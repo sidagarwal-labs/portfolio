@@ -1094,7 +1094,7 @@ for (const style of ["modern", "retro"]) {
       const search = (await page.locator(searchWin).boundingBox())!;
       const desk = (await page.locator(".os-desktop").boundingBox())!;
       await page.getByRole("button", { name: "Show desktop", exact: true }).click();
-      const rows = [["Sid Search", "Library", "GitHub"], ["Projects", "arXiv Search"], ["Forward pass", "Other designs"], ["Games", "Markets", "Launches", "AI leaderboards"]];
+      const rows = [["Sid Search", "Library", "GitHub"], ["Projects", "arXiv Search", "Robot Vacuum"], ["Forward pass", "Other designs"], ["Games", "Markets", "Launches", "AI leaderboards"]];
       const labels = [...rows.flat(), "Resume.pdf", "README.txt", "Recycle Bin"];
       await expect(page.locator(".os-icons .os-icon__label")).toHaveText(labels);
       const boxes = await page.locator(".os-icons > li").evaluateAll((icons) => icons.map((icon) => {
