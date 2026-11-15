@@ -1,10 +1,9 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
-import { AlertTriangle, Check, ExternalLink, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Check, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
 import { robotVacuumDone, robotVacuumLog, robotVacuumRoadmap } from "../../../../content/robotVacuum";
 import ArticleBlocks from "../../../writing/ArticleBlocks";
 import { useWidth } from "../../../live/chart";
 import { apps } from "../apps";
-import { siteUrl } from "../embed";
 import type { OsActions, OsTarget } from "../types";
 import { loadRobotStatus, type BatteryReading, type Consumable, type RobotStatus } from "./robotStatus";
 import "./robot.css";
@@ -271,7 +270,7 @@ function StatusView({ status, now, onRefresh }: { status: RobotStatus; now: numb
   );
 }
 
-export default function RobotVacuum({ target }: { target?: OsTarget; actions: OsActions }) {
+export default function RobotVacuum({ target, actions }: { target?: OsTarget; actions: OsActions }) {
   const baseId = useId();
   const [active, setActive] = useState<TabId>("status");
   const tabRefs = useRef<Partial<Record<TabId, HTMLButtonElement | null>>>({});
@@ -309,6 +308,7 @@ export default function RobotVacuum({ target }: { target?: OsTarget; actions: Os
   });
 
   const Icon = def.icon;
+  const SearchIcon = apps.search.icon;
   return (
     <div className="rv">
       <header className="rv-head">
@@ -374,10 +374,11 @@ export default function RobotVacuum({ target }: { target?: OsTarget; actions: Os
           <header className="rv-log__head">
             <h2 id={`${baseId}-log-title`}>{robotVacuumLog.title}</h2>
             <p className="rv-muted">{robotVacuumLog.date} · {robotVacuumLog.readTime} read</p>
-            <a className="os-button" href={siteUrl(`/writing/${robotVacuumLog.slug}`)} target="_blank" rel="noreferrer">
-              <ExternalLink size={14} strokeWidth={2} aria-hidden="true" />
-              Open as a full page
-            </a>
+            {/* Opens the article in Sid Search, where Writing lists it, rather than leaving Lab OS for a new tab. */}
+            <button type="button" className="os-button" onClick={() => actions.open("search", `/writing/${robotVacuumLog.slug}`)}>
+              <SearchIcon size={14} strokeWidth={2} aria-hidden="true" />
+              Open in Sid Search
+            </button>
           </header>
           <div className="article-body rv-log__body">
             <ArticleBlocks blocks={robotVacuumLog.content} headingLevel={3} idPrefix="rv-log-" />

@@ -167,8 +167,8 @@ test.describe("Lab OS Robot Vacuum app", () => {
     await expect(status.locator(".rv-facts dt")).toHaveText(["Cleans", "Cleaning time", "Area cleaned", "Charge cycles, last 7 days", "Charge sessions, last 7 days", "Reboots, last 7 days"]);
     await expect(status.locator(".rv-facts dd")).toHaveText(["0", "0 min", "0 m²", "0", "1", "Unknown"]);
 
-    /* No remote controls: the only buttons are the tabs and Refresh. */
-    await expect(win.locator(".rv button")).toHaveText(["Status", "Build log", "Roadmap", "Refresh"]);
+    /* No remote controls: the only buttons are the tabs, Refresh, and opening the build log in Sid Search. */
+    await expect(win.locator(".rv button")).toHaveText(["Status", "Build log", "Roadmap", "Refresh", "Open in Sid Search"]);
     await expect(win.locator(".rv input, .rv select, .rv textarea")).toHaveCount(0);
   });
 
@@ -225,8 +225,8 @@ test.describe("Lab OS Robot Vacuum app", () => {
     const log = win.getByRole("tabpanel", { name: "Build log" });
     await expect(log.getByRole("heading", { level: 2 })).toHaveText(title);
     await expect(log.locator(".rv-log__body h3")).toHaveText(headings);
-    await expect(log.getByRole("link", { name: "Open as a full page" })).toHaveAttribute("href", new RegExp(`/writing/${slug}$`));
-    await expect(log.getByRole("link", { name: "Open as a full page" })).toHaveAttribute("target", "_blank");
+    await expect(log.getByRole("button", { name: "Open in Sid Search" })).toBeVisible();
+    await expect(log.getByRole("link", { name: /full page/ })).toHaveCount(0);
     await expectPhotos(log);
 
     await page.keyboard.press("End");
@@ -237,6 +237,30 @@ test.describe("Lab OS Robot Vacuum app", () => {
     await page.keyboard.press("Home");
     await expect(win.getByRole("tabpanel", { name: "Status" })).toBeVisible();
     await expect(roadmap).toBeHidden();
+  });
+
+  test("the build log opens its article in Sid Search, inside Lab OS", async ({ page }) => {
+    const popups: string[] = [];
+    page.context().on("page", (opened) => popups.push(opened.url()));
+    const win = await openRobotVacuum(page);
+    const searchWin = page.locator('.os-win[data-app="search"]');
+    await expect(searchWin).not.toHaveClass(/is-active/);
+    await win.getByRole("tab", { name: "Build log", exact: true }).click();
+    await win.getByRole("tabpanel", { name: "Build log" }).getByRole("button", { name: "Open in Sid Search" }).click();
+
+    await expect(searchWin).toHaveClass(/is-active/);
+    await expect(searchWin.locator(".os-address__text")).toHaveText(`agarwal-labs.com/writing/${slug}`);
+    await expect(page.frameLocator('.os-win[data-app="search"] iframe').getByRole("heading", { level: 1 })).toHaveText(title);
+    await expect(page.locator('.os-win[data-app="journal"]')).toHaveCount(0);
+    expect(popups).toEqual([]);
+
+    /* With Sid Search closed, the button opens a new Sid Search window on the article. */
+    await searchWin.getByRole("button", { name: "Close Sid Search" }).click();
+    await expect(searchWin).toHaveCount(0);
+    await win.getByRole("tabpanel", { name: "Build log" }).getByRole("button", { name: "Open in Sid Search" }).click();
+    await expect(searchWin.locator(".os-address__text")).toHaveText(`agarwal-labs.com/writing/${slug}`);
+    await expect(page.frameLocator('.os-win[data-app="search"] iframe').getByRole("heading", { level: 1 })).toHaveText(title);
+    expect(popups).toEqual([]);
   });
 
   test("a failed snapshot shows an error with a retry, and the other tabs keep working", async ({ page }) => {
