@@ -38,7 +38,7 @@ export const robotVacuumLog: WritingEntry = {
       text: "This is a living log. I add to it as the project moves; the latest status snapshot is in the Robot Vacuum app on this site's Lab OS desktop."
     },
     { type: "heading", text: "The robot" },
-    "I picked up a MOVA L600 robot vacuum (MIoT model dreame.vacuum.p2157) to revive and hack on as a lab project.",
+    "My family had an old, broken MOVA L600 robot vacuum (MIoT model dreame.vacuum.p2157), so I picked it up to try to revive it and hack on it as a lab project.",
     "I gave it a first charge and a factory reset, then joined it to my Wi-Fi through its setup hotspot. I bound it once in the Xiaomi Home app (US region) to get its local token.",
     "Then I built my own app for it: a TypeScript miIO client with a CLI and a local dashboard, plus a simulator and tests. It controls the robot locally, on my own network.",
     { type: "heading", text: "The problem" },
