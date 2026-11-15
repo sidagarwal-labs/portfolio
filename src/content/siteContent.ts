@@ -1,5 +1,6 @@
 import resumeHref from "../../Siddhant_Agarwal_Resume.pdf?url";
 import { AI_STACK_SHEET } from "./aiStackSheet.mjs";
+import { robotVacuumLog } from "./robotVacuum";
 import type {
   BookEntry,
   ExperienceEntry,
@@ -1111,7 +1112,7 @@ const projects: ProjectEntry[] = [
   }
 ];
 
-const writing: WritingEntry[] = [];
+const writing: WritingEntry[] = [robotVacuumLog];
 
 const books: BookEntry[] = [
   {
