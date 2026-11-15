@@ -21,6 +21,7 @@ const nativeApps = {
   github: lazy(() => import("./github/GitHubApp")),
   reader: lazy(() => import("./reader/Reader")),
   arxiv: lazy(() => import("./arxiv/ArxivSearch")),
+  robotvacuum: lazy(() => import("./robot/RobotVacuum")),
   recyclebin: lazy(() => import("./RecycleBin")),
   settings: lazy(() => import("./settings/Settings"))
 };
@@ -107,13 +108,13 @@ function ResumeViewer() {
 }
 
 function Readme({ actions }: { actions: OsActions }) {
-  const appList: AppId[] = ["search", "library", "github", "projects", "arxiv", "forward", "designs"];
+  const appList: AppId[] = ["search", "library", "github", "projects", "arxiv", "robotvacuum", "forward", "designs"];
   return (
     <div className="os-note">
       <p><strong>Hi, I'm Sid Agarwal.</strong> {roleLine}.</p>
       <p>This site is a browser-based desktop simulation, and its apps are my portfolio. It does not control your computer or files.</p>
       <p>Drag desktop icons to arrange them; Shift + arrow keys also move a focused icon. Positions are saved in this browser. Drag title bars to move windows, their edges or corners to resize, and double-click a title bar to maximize. The taskbar restores minimized apps. Settings, in Start or behind the taskbar's gear, changes the wallpaper, style, clock, and motion.</p>
-      <p>Sid Search, Library, and GitHub start on the top row of the desktop. arXiv Search has its own icon beside the Projects folder on the second row. Projects, Other designs, and Games start with shortcuts to my projects, other site designs, and games. Right-click empty space for New folder, or use the New folder buttons in Start, Settings, Home, and folder windows. Names edit inline: Enter saves, Escape cancels, and F2 renames a folder. Folder Actions buttons also offer Rename and Move to Recycle Bin. Delete moves any app or folder (with everything inside it) to Recycle Bin, and so does dropping it on the Recycle Bin or cutting it and pasting into an open Recycle Bin; Restore brings it back to where it was. Drag apps or folders onto a folder icon, between open folder windows, or back onto the desktop. The path at the top of a folder also accepts drops onto its parent or Desktop. Control-click to select several items; Ctrl/Cmd+X and Ctrl/Cmd+V cut and paste. On touch screens, enable Arrange apps on Home or Select items inside a folder before dragging. Your folder layout is shared with Start and the phone home screen. Settings can restore the default layout, clearing the Recycle Bin too. Resume, README.txt, and Recycle Bin start at the bottom-left of the desktop.</p>
+      <p>Sid Search, Library, and GitHub start on the top row of the desktop. arXiv Search and Robot Vacuum have their own icons beside the Projects folder on the second row. Projects, Other designs, and Games start with shortcuts to my projects, other site designs, and games. Right-click empty space for New folder, or use the New folder buttons in Start, Settings, Home, and folder windows. Names edit inline: Enter saves, Escape cancels, and F2 renames a folder. Folder Actions buttons also offer Rename and Move to Recycle Bin. Delete moves any app or folder (with everything inside it) to Recycle Bin, and so does dropping it on the Recycle Bin or cutting it and pasting into an open Recycle Bin; Restore brings it back to where it was. Drag apps or folders onto a folder icon, between open folder windows, or back onto the desktop. The path at the top of a folder also accepts drops onto its parent or Desktop. Control-click to select several items; Ctrl/Cmd+X and Ctrl/Cmd+V cut and paste. On touch screens, enable Arrange apps on Home or Select items inside a folder before dragging. Your folder layout is shared with Start and the phone home screen. Settings can restore the default layout, clearing the Recycle Bin too. Resume, README.txt, and Recycle Bin start at the bottom-left of the desktop.</p>
       <ul>
         {appList.map((id) => (
           <li key={id}>

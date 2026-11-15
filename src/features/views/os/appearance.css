@@ -164,6 +164,25 @@
 :root[data-theme="dark"] .os :is(.gh-donut__seg, .gh-mix__swatch)[data-kind="other"] { stroke: var(--cp-text-muted); background: var(--cp-text-muted); }
 :root[data-theme="dark"] .os .ax { --ax-stage1: var(--cp-link); --ax-stage2: var(--cp-accent); }
 :root[data-theme="dark"] .os .ax-line { stroke: var(--cp-text); }
+:root[data-theme="dark"] .os .rv {
+  --rv-bg: var(--cp-surface);
+  --rv-soft: var(--cp-surface-soft);
+  --rv-chrome: var(--cp-bg-elevated);
+  --rv-track: var(--cp-bg-elevated);
+  --rv-line: var(--cp-border);
+  --rv-text: var(--cp-text);
+  --rv-body: var(--cp-text);
+  --rv-muted: var(--cp-text-soft);
+  --rv-accent: var(--cp-link);
+  --rv-ok: var(--cp-success);
+  --rv-warn: var(--cp-warning);
+  --rv-bad: var(--cp-danger);
+  --rv-note-bg: var(--theme-positive);
+  --rv-note-text: var(--cp-text);
+  --rv-error-bg: var(--theme-negative);
+  --rv-selected: var(--theme-selected);
+  --rv-selected-text: var(--cp-text);
+}
 
 /* Games already expose a shared palette; only the legacy Retro literals need overrides. */
 :root[data-theme="dark"] .os .game {

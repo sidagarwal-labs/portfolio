@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "updatedAt": "2026-11-15T06:40:00Z",
+  "robot": {
+    "model": "MOVA L600",
+    "state": "Paused",
+    "battery": null,
+    "charging": false,
+    "docked": false,
+    "error": null
+  },
+  "maintenance": {
+    "mainBrush": { "percentLeft": 100, "hoursLeft": 300, "lastReset": "2026-11-15" },
+    "sideBrush": { "percentLeft": 100, "hoursLeft": 200, "lastReset": "2026-11-15" },
+    "filter": { "percentLeft": 100, "hoursLeft": 150, "lastReset": "2026-11-15" }
+  },
+  "lifetime": { "cleans": 0, "minutes": 0, "areaM2": 0 },
+  "battery": {
+    "chargeCycles": 0,
+    "chargeSessions": 1,
+    "history": [
+      { "t": "2026-11-15T05:40:00Z", "battery": 78 },
+      { "t": "2026-11-15T05:50:00Z", "battery": 87 }
+    ]
+  },
+  "uptime": { "rebootsLast7d": null }
+}

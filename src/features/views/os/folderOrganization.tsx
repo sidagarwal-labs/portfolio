@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
-import { apps, desktopApps, desktopDocuments, desktopRows, menuSections, type AppId } from "./apps";
+import { apps, desktopApps, desktopDocuments, desktopRows, folderApps, menuSections, type AppId } from "./apps";
 
 export type FolderId = string;
 export type EntryId = AppId | FolderId;
@@ -102,6 +102,14 @@ function validateOrganization(value: unknown): FolderOrganization {
   // Add the new system shortcut to layouts saved before the Recycle Bin existed.
   if (!seen.has("recyclebin")) { root.push("recyclebin"); seen.add("recyclebin"); }
   if (!root.includes("recyclebin")) throw new Error("Recycle Bin must remain on the desktop.");
+  // Add apps released after this layout was saved: desktop apps to the desktop, the rest to their default folder.
+  for (const id of availableApps) {
+    if (seen.has(id)) continue;
+    const home = desktopApps.includes(id) ? undefined : folderIds.find((folder) => hasOwn(folders, folder) && folderApps(folder).includes(id));
+    if (home) folders[home].items.push(id);
+    else root.push(id);
+    seen.add(id);
+  }
   if (seen.size !== availableApps.length + ids.length || availableApps.some((id) => !seen.has(id)) || ids.some((id) => !seen.has(id))) {
     throw new Error("Saved folders must contain every app exactly once.");
   }
