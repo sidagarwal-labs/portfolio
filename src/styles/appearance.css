@@ -86,7 +86,7 @@ html[data-theme="dark"] {
   background: var(--cp-surface);
   border-color: var(--cp-border);
 }
-:root[data-theme="dark"] :is(.se-matches, .se-favicon, .se-box__clear:hover, .se-team__stats li, .se-image__thumb, .se-video__player, .se-art, .se-contact, .robotics-photo__image, .robotics-video, .fp-books__cover, .tr-books__cover) { background: var(--cp-surface-soft); }
+:root[data-theme="dark"] :is(.se-matches, .se-favicon, .se-box__clear:hover, .se-team__stats li, .se-image__thumb, .se-video__player, .se-art, .se-contact, .robotics-photo__image, .article-figure__frame, .robotics-video, .fp-books__cover, .tr-books__cover) { background: var(--cp-surface-soft); }
 :root[data-theme="dark"] .se-art::before { color: var(--cp-text-soft); }
 :root[data-theme="dark"] .se-badge { background: var(--cp-panel-strong); }
 :root[data-theme="dark"] .se-filters button[aria-pressed="true"] { background: var(--theme-selected); color: var(--cp-text); }

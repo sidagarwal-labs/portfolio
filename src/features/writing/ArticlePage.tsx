@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import JournalLayout from "../../components/JournalLayout";
 import { profileContent } from "../../content/siteContent";
+import ArticleBlocks from "./ArticleBlocks";
 
 function ArticlePage() {
   const { slug } = useParams();
@@ -22,7 +23,7 @@ function ArticlePage() {
           <>
             <p className="article-meta">{entry.date} &middot; {entry.readTime} read</p>
             <div className="article-body">
-              {entry.content.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+              <ArticleBlocks blocks={entry.content} />
             </div>
           </>
         ) : <p>This note isn't here. You can find the current writing on the home page.</p>}

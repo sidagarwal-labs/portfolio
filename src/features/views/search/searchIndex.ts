@@ -3,6 +3,7 @@ import { archivedResearchNotes, courseworkProjects, featuredResearchNotes } from
 import { libraryCategories, podcasts, spotifyShowUrl } from "../../../content/library";
 import { robotNames } from "../../../content/robotics";
 import { profileContent } from "../../../content/siteContent";
+import { articleText } from "../../writing/articleContent";
 import { contactLinks, earlierProjects, marketTracker, viewProjects } from "../viewData";
 
 export type SearchDoc = {
@@ -151,7 +152,7 @@ export const searchDocs: SearchDoc[] = [
     href: `/writing/${entry.slug}`,
     route: true,
     snippet: entry.summary,
-    keywords: ["writing essay", ...entry.content].join(" ")
+    keywords: ["writing essay", articleText(entry.content)].join(" ")
   })),
   ...background,
   ...profileContent.books.map((book) => ({

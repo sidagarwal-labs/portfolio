@@ -94,13 +94,23 @@ export interface ProjectEntry {
   visualMode: "orbit" | "signal" | "grid" | "spectrum" | "score";
 }
 
+/* A plain string is a paragraph, so older entries written as string[] still work. Image src is relative to the site's
+   public folder unless it is an absolute URL. */
+export type ArticleBlock =
+  | string
+  | { type: "paragraph"; text: string }
+  | { type: "heading"; text: string }
+  | { type: "image"; src: string; alt: string; caption?: string; width: number; height: number }
+  | { type: "list"; items: string[]; ordered?: boolean }
+  | { type: "note"; title?: string; text: string };
+
 export interface WritingEntry {
   slug: string;
   title: string;
   date: string;
   readTime: string;
   summary: string;
-  content: string[];
+  content: ArticleBlock[];
 }
 
 export interface BookEntry {
